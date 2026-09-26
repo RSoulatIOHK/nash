@@ -24,7 +24,8 @@ historical implementation sketches below.
 - Use current Build/Core/program assembly APIs. Do not introduce historical
   `lower_value(&ModuleSet, ...)` or `Core::Const` APIs merely to match this sketch.
 - Chunks 1–8, 10–13 are pending macro work. Chunk 9 is existing comptime plus
-  integration checks. Chunk 14 proposes concrete pattern-library interfaces.
+  integration checks. Chunk 14 requires reusable structured invocation forms, without defining
+  library macro behavior.
 
 AST builders construct expressions, patterns, arms, types, functions, and
 declarations. Initial quote/splice shorthand handles expressions only;
@@ -1744,7 +1745,8 @@ returns `print::module` of the named module after the final round.
 explicit AST operation. The user chooses it through an ordinary library macro;
 there is no automatic dispatch selection for literal patterns.
 
-Public invocation:
+Illustrative positional invocation (capability required; public library API not
+fixed by this example):
 
 ```nash
 dispatch!(n, [branch0, branch1, branch2])
@@ -1801,9 +1803,9 @@ Other macros may construct the same AST node directly.
 
 - [ ] Extend ASTs, `Ast.nash`, builders, host tag table, reifier/unreifier, hygiene,
   typing, Core traversal/printing, and direct lowering as one coherent feature.
-- [ ] Implement the ordinary library `dispatch` macro and document its import.
-  Keep the interface positional; numbered arms and wildcard syntax are not part
-  of this chunk.
+- [ ] Demonstrate the positional interface with an ordinary test macro and
+  document its import. Chunk 14 separately supplies generic case-shaped input;
+  the public dispatch macro and its accepted arms are later library decisions.
 - [ ] Add expansion snapshots proving the list becomes an IntegerDispatch node,
   including source locations and hygienic references from caller scope.
 - [ ] Test first/last branch selection; subject evaluation exactly once; trace
@@ -1824,123 +1826,126 @@ through every exhaustive match when implemented.
 
 ---
 
-## Chunk 14 proposal: ordinary pattern-library macros
+## Chunk 14: reusable structured macro invocation forms
 
-**Status: proposed interfaces, not implemented or reserved syntax.** Ordinary
-macros can build ordinary Case/Lambda/declaration AST. No AssertPattern,
-DecodePattern, or MultiClauseFunction compiler node is needed. Confirm the
-recommended public names and input policy before implementing this library.
+**User requirement, accepted; implementation pending.** Support familiar Nash
+syntax shapes as structured macro inputs. This chunk provides the capability;
+it does not define standard-library macros or their behavior. Names such as
+`expect`, `dispatch`, and `decodeIf` below are illustrative, not reserved.
 
-### Recommended input: existing lambda syntax carries pattern and body
-
-```nash
-expect!(value, \(Some x) -> use x)
-matchOr!(value, \(Some x) -> use x, fallback)
-
-inspect = clauses!(
-    \None -> 0,
-    \(Some x) -> x
-)
-```
-
-The macro receives Lambda AST nodes, not evaluated functions. Extract parameters
-and bodies together, retaining their bindings. Do not call the carrier lambda at
-runtime. A variable holding a function is not inspectable pattern syntax and is
-rejected by these library macros. This is a syntax-shape requirement, like the
-literal branch list required by dispatch, not compiler recognition of the name.
-
-`expect` and `matchOr` require a one-parameter carrier and respectively emit:
-
-```nash
-case value of
-    Some x -> use x
-    _ -> fail
-
-case value of
-    Some x -> use x
-    _ -> fallback
-```
-
-Build with `Ast.case_`, `Ast.arm`, the input pattern/body, and `Ast.wildcard`;
-quote can build `fail`. The subject occurs once. The fallback stays branch syntax,
-not an eagerly evaluated argument. Pattern bindings scope over the success body
-only: in `matchOr!(value, \(Some x) -> x, x)`, the final `x` is the caller's outer
-variable. Result types come from the branches; expect need not return unit.
-
-A boolean `assert!(condition)` can emit `if condition then () else fail`.
-This does not reproduce existing compiler-owned power-assert diagnostics/capture
-reporting. Preserve existing assertion syntax and runner behavior until a separate
-explicit migration covers that contract. Do not claim reporting equivalence.
-
-### Several function clauses
-
-`clauses!` accepts one or more lambda arguments of equal, nonzero arity. It emits
-one lambda with fresh variable parameters and an ordered case. With one argument,
-match it directly; with multiple arguments, match their tuple:
-
-```nash
-combine = clauses!(
-    \None y -> y,
-    \(Some x) _ -> x
-)
-```
-
-becomes conceptually:
-
-```nash
-combine = \arg0 arg1 ->
-    case (arg0, arg1) of
-        (None, y) -> y
-        (Some x, _) -> x
-```
-
-Preserve source clause order. Do not add a catch-all or failure branch; normal
-coverage checking diagnoses missing/redundant clauses. Match after all arguments
-arrive; partial application captures arguments normally without running the case.
-Argument expressions still follow normal strict evaluation. The enclosing ordinary
-definition owns naming, recursion, annotations, exports, and local scope. Final
-recanonicalization/SCC analysis and inference handle recursion; no special
-recursion typing or automatic polymorphic recursion is added. There is no emitted
-runtime list of closures or clause-dispatch framework.
-
-### Options to close before implementation
-
-| Choice | Recommendation | Alternative and consequence |
+| Form | Example | Structured input |
 |---|---|---|
-| Pattern/body input | Literal lambda AST | Pattern quote/splice sugar can follow later; it requires extra grammar but not extra AST capability |
-| Several clauses | Separate lambda arguments to `clauses!` | Grouped declaration syntax can resemble repeated definitions but needs a grouping contract; attributes cannot inspect neighboring definitions |
-| Match-or-else name | `matchOr!` | `decode!` suggests validation/conversion that this expansion does not provide |
-| Match-or-fail name | `expect!` | `assertMatch!` is more explicit; same expansion |
-| Irrefutable success pattern | Keep ordinary redundancy diagnostics initially; use normal let/destructuring | Generic solved-pattern irrefutability metadata would let the macro omit an unreachable fallback; extra generic API, not a macro-name exception |
+| Call-shaped | `name!(a, b)` | Ordered expression AST arguments |
+| Binding-shaped | `name! pattern = value` | Pattern AST, subject expression AST, and the remaining lexical scope/block AST |
+| Case-shaped | `name! subject of` followed by arms | Subject expression AST and ordered pattern/body arms |
 
-Appending a fallback to an irrefutable pattern such as `\x -> body` or a
-single-constructor pattern can produce an ordinary redundant-arm error. Do not
-silently suppress it. If broader support is selected, specify reliable generic
-irrefutability metadata, including nested field patterns; never guess from a
-constructor's spelling/field count. This choice remains open, rather than hiding
-an implementation restriction behind an assertion-specific compiler exemption.
+Examples of the required syntax capability:
 
-A later `decode!` must specify visible checks/conversions in its ordinary AST
-expansion. Typed Big-constructor matching alone does not recursively validate
-Data; unchecked fromData/coerce behavior remains unchanged.
+```nash
+someMacro!(argument)
 
-### Acceptance checklist
+-- Inside a binding/block context:
+expect! Some x = value
 
-- [ ] Confirm names, lambda-carrier syntax, and irrefutable-pattern policy.
-- [ ] Implement imported ordinary library macros without name-based compiler hooks.
-- [ ] Snapshot source → expanded AST → Core → UPLC for match/fail/fallback,
-  boolean assert, and single-/multi-argument clauses.
-- [ ] Execute Big/little matches, selected/unselected effects/failures, subject-once
-  behavior, returned functions, captures, repeated names across clauses, nested
-  shadowing, and caller/fallback name collisions.
-- [ ] Test wrong argument counts, non-lambda carriers, arity mismatch, incompatible
-  types, empty clauses, duplicate binders within one pattern, irrefutable and
-  nested-refutable patterns, and redundant/nonexhaustive generated cases.
-- [ ] Test local/top-level recursion, mutual recursion, annotations, partial
-  application, and a differently named macro producing the same AST. Surviving
-  illegal runtime lambda patterns must fail final checking.
+-- Expression with a normal case-arm block:
+dispatch! value of
+    0 -> first
+    1 -> second
 
-Depends on chunks 1–8 and 11–12, not integer dispatch or Plan 08.
+decodeIf! valueData of
+    Box _ -> body
+    Something a b -> otherBody
+```
+
+These examples establish parsing and AST access only. They do not specify what
+is dispatched, decoded, validated, returned, or done on failure. Different macros
+using the same shape may construct different AST. Do not encode their names or
+semantics in the parser, solver, or lowerer.
+
+### Parsing and AST transport
+
+- Reuse the existing expression-argument, pattern/binding, and case-arm parsers
+  and indentation/delimiter rules. Add generic invocation nodes, not a dedicated
+  parser per library macro. Preserve source locations and qualification rules.
+- The binding-shaped form belongs in contexts with a remaining lexical body,
+  such as let bindings and do blocks. Specify each supported context and its
+  scope boundary in the grammar; do not consume arbitrary following module
+  declarations. Multiple binding macros must nest in source order.
+- The case-shaped form is an expression with normal ordered pattern/body arms.
+  It is not a block of bare positional expressions; the call-shaped interface
+  can still carry an explicit list AST when a macro wants positional input.
+- Macro shape metadata, signature validation, imports, reification/unreification,
+  expansion, and diagnostics must distinguish all supported input shapes.
+  Extend the earlier two-shape sketches (expression/declaration); they are not a
+  restriction preventing binding/case-shaped inputs. Settle the exact Nash AST
+  payload/signature encoding during implementation and update both sides together.
+- Input is structured AST, never arbitrary token streams. This does not add
+  user-defined parser rules, an open keyword-replacement mechanism, or a macro's
+  ability to inspect neighboring declarations.
+- Macro output remains Nash AST. Builders can construct cases, functions,
+  declarations, and the separately accepted IntegerDispatch node. Additional
+  quote/splice shorthand is not a prerequisite.
+
+### Scope and checking
+
+- A binding macro must be able to place its remaining body under the supplied
+  pattern bindings in its output. Preserve references to those bindings while
+  retaining caller free references. The macro need not receive or generate an
+  evaluated runtime lambda to transport the body.
+- Case arms preserve independent pattern/body scopes and source order. Repeated
+  names in different arms must not capture one another or generated temporaries.
+- Do not turn a case-shaped invocation into an ordinary runtime case *before*
+  expansion. In `decodeIf! valueData of Box _ -> ...`, the input subject and
+  pattern need not already satisfy ordinary case subject-type compatibility:
+  generating the conversion/checks is precisely a possible macro responsibility.
+- Define provisional inference for each structured input shape: retain useful
+  type information where available, check names/bindings and independent bodies,
+  but defer relationships introduced by the eventual expansion. Represent
+  unresolved type metadata honestly. Do not disable ordinary checking everywhere
+  or introduce exceptions keyed to `decodeIf`/`expect`/`dispatch`.
+- Coverage, redundancy, and binding-pattern irrefutability checks apply to the
+  final expanded program, not to syntax awaiting macro interpretation. Final
+  strict inference and coverage checking remain mandatory; malformed output is
+  not accepted merely because it came from a macro.
+- Syntax transport itself does not evaluate subjects, arms, or remaining bodies.
+  Runtime evaluation order and laziness are determined by the resulting AST.
+  Tests should demonstrate that a library expansion can evaluate a subject once
+  and leave unselected bodies unevaluated, without intrinsic compiler behavior
+  for any example macro name.
+
+### Capability acceptance tests
+
+- [ ] Parse and format each generic form, including qualified names, multiline
+  subjects, nested invocations, indentation boundaries, malformed arms/bindings,
+  and combinations of ordinary and macro bindings.
+- [ ] Reify/unreify subject, patterns, ordered arms, and remaining bodies with
+  source metadata and correct scopes; test imported macros and shape errors.
+- [ ] Use small test-only macros to demonstrate binding propagation, case-arm
+  inspection, and expression argument inspection. Public macro APIs are not a
+  prerequisite for completing this capability.
+- [ ] Snapshot source → macro input AST → expanded AST → Core → UPLC. Test an
+  expansion with a converted subject so raw input is not incorrectly checked as
+  an ordinary case, plus final type/coverage errors in invalid output.
+- [ ] Test two nested binding macros, caller/generated-name collisions, repeated
+  arm variable names, nested shadowing, outer captures, returned functions, and
+  subject-once/selected-branch effects under representative expansions.
+- [ ] Show that macros can build a normal multi-clause function as a lambda/case,
+  including multi-argument patterns and normal recursion/partial application.
+  Do not introduce a multi-definition library syntax or public macro today.
+- [ ] Update docs and all earlier macro-shape/checking sketches during
+  implementation; use current solver/formatter/driver APIs.
+
+### Deliberately not decided here
+
+No public `expect`, `decodeIf`, `clauses`, or assertion migration is specified.
+Failure/fallback rules, validation depth (including ignored fields), target-type
+selection, accepted dispatch arms, and library treatment of irrefutable patterns
+remain library design decisions. Do not replace current power-assert reporting,
+insert automatic guards/validation, or choose integer-dispatch heuristics as part
+of this capability. The compiler supplies syntax/AST facilities and final checking.
+
+Depends on chunks 1–8 and 11–12. Coordinate shape support across those chunks;
+it does not require Plan 08 or implementation of particular standard macros.
 
 ---
 
@@ -1958,5 +1963,6 @@ Chunks 1–6 can land before plans/07; chunks 7–10 need it. Chunk 11 can
 land any time after 8; chunk 12 after 10.
 
 Chunk 13 requires chunks 2–8 and Plan 12 Ast coordination, not Plan 08 or deriving.
-Proposed chunk 14 depends on the generic expansion/hygiene/checking work and
-expansion snapshots; it does not depend on dispatch or additional quote syntax.
+Chunk 14 extends generic parsing, AST transport, hygiene, and checking with
+binding/case-shaped inputs; no particular library macro or extra quote syntax
+is required.

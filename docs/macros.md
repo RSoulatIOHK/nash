@@ -14,7 +14,7 @@ macros.
 
 | Term | Meaning |
 |---|---|
-| Macro | A top-level function declared with `macro`, of one of two fixed shapes (declaration macro or expression macro). |
+| Macro | A top-level function declared with `macro`, with a declared structured input/output shape (including the binding/case forms required below). |
 | Invocation | `@name(args)` before a declaration, or `name!(args)` in an expression. |
 | Reification | Turning compiler AST into `Ast.*` values (little ADTs, so they are UPLC `constr` terms at runtime) and back. |
 | Expansion round | One pass: find every invocation in a module, run each macro, splice results. |
@@ -54,7 +54,9 @@ macro name : Ast.decl -> cons Ast.expr -> cons Ast.decl
 macro name : cons Ast.expr -> Ast.expr
 ```
 
-Any other annotation on a `macro` line is an error (`MacroBadShape`).
+These are the original expression/declaration interfaces. Plan 11 chunk 14
+requires additional binding/case-shaped interfaces; extend shape validation and
+its diagnostics together rather than restricting the system to these two forms.
 
 Rules:
 
@@ -445,41 +447,43 @@ nameText : name -> string
 exprName : expr -> option string           -- `Some "Eq"` for `Var (Raw "Eq")`
 ```
 
-## Proposed pattern-library macros
+## Required reusable structured invocation forms
 
-Plan 11 chunk 14 recommends lambda ASTs as pattern/body input, using existing
-expression syntax:
+Plan 11 chunk 14 requires these capabilities, without defining particular library
+macros:
+
+| Form | Structured input |
+|---|---|
+| `name!(a, b)` | Expression arguments |
+| `name! pattern = value` | Pattern, value, and remaining lexical body |
+| `name! subject of` followed by normal arms | Subject and ordered pattern/body arms |
+
+For example, a library could later offer `expect! Some x = value` or:
 
 ```nash
-expect!(value, \(Some x) -> use x)
-matchOr!(value, \(Some x) -> use x, fallback)
-inspect = clauses!(\None -> 0, \(Some x) -> x)
+decodeIf! valueData of
+    Box _ -> body
+    Something a b -> otherBody
 ```
 
-These are proposed library interfaces, not implemented or reserved compiler
-forms. The macros extract the lambda pattern/body instead of calling the lambda.
-`expect` emits an ordinary case with failure fallback; `matchOr` uses the supplied
-fallback. `clauses` builds one lambda and an ordered case, matching a tuple for
-multiple arguments. No new pattern/assert/decode compiler node is needed.
+The parser reuses existing grammar components and transports structured AST; it
+never recognizes these illustrative macro names. The binding form needs a defined
+remaining-scope boundary in let/do contexts. Its expansion can put subsequent code
+inside the supplied pattern's scope. Case-shaped inputs preserve independent arm
+bindings and order. No raw token parser or arbitrary syntax extension is required.
 
-Use builders for patterns/arms/declarations and quote for expression fragments.
-Refutable carrier patterns are checked for coverage after expansion; generated
-cases and any remaining runtime lambdas receive normal coverage checking. Preserve
-scopes when moving each pattern/body together. A fallback stays outside its
-success-pattern bindings. Function clause matching runs after all arguments have
-arrived, with ordinary strict argument evaluation and partial application.
+Earlier expression/declaration signature sketches must be extended for these
+input shapes. Their exact payload encoding is implementation work. In particular,
+case-shaped macro input must not be constrained as an ordinary runtime case before
+expansion: an expansion may introduce the conversion between subject and pattern.
+Preserve available provisional types and scopes; strictly check the final AST,
+including exhaustiveness/redundancy. Test this generically, not by macro name.
 
-Public names and treatment of irrefutable success patterns remain decisions in
-chunk 14. Appending a wildcard to an irrefutable pattern creates a redundant arm;
-either retain that ordinary error initially or expose generic reliable
-irrefutability metadata so the library can omit the fallback. Never suppress
-coverage errors based on a macro name. Grouped declaration syntax and additional
-quote/splice shorthand are optional alternatives, not required machinery.
-
-A match-or-else expansion does not imply recursive Data validation; `matchOr` is
-therefore clearer than `decode` for this behavior. A boolean assert macro can emit
-an ordinary if/fail, but replacing current power-assert reporting requires a
-separate explicit migration contract.
+These are capability requirements, not standard-library definitions. Decoding,
+validation depth, failure/fallback, dispatch-arm rules, pattern conveniences, and
+assertion reporting are not decided here. Builders already let macros generate
+ordinary cases/functions and the explicit IntegerDispatch node. Quote extensions
+are optional shorthand rather than a prerequisite.
 
 ## `quote` and splices
 
