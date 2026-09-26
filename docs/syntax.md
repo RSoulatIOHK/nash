@@ -367,8 +367,7 @@ x :: rest as all
 { owner, deadline }        -- record pattern (field punning)
 ```
 
-`Data` is a prelude Big type `Constr (pair int (list Data)) | Map (list (pair Data
-Data)) | List (list Data) | I int | B bytes`; its constructors need no
+`Data` is a prelude Big type `Constr (pair int (list Data)) | Map (map Data Data) | List (list Data) | I int | B bytes`; its constructors need no
 special grammar.
 
 ## Tests block

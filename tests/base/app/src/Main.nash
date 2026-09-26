@@ -52,11 +52,11 @@ leftMap : Map Int Bytes
 leftMap = fromData (Map [Builtin.mkPairData (I 1) (B #"aa"), Builtin.mkPairData (I 2) (B #"bb")])
 rightMap : Map Int Bytes
 rightMap = fromData (Map [Builtin.mkPairData (I 2) (B #"cc"), Builtin.mkPairData (I 2) (B #"dd")])
-combinedMap : list (pair Int Bytes)
+combinedMap : map Int Bytes
 combinedMap = Map.union leftMap rightMap
-mapWithEmpty : list (pair Int Bytes)
+mapWithEmpty : map Int Bytes
 mapWithEmpty = Map.union leftMap emptyEntries
-mergeMaps : Eq 'k => Map 'k 'v -> Map 'k 'v -> list (pair 'k 'v)
+mergeMaps : Eq 'k => Map 'k 'v -> Map 'k 'v -> map 'k 'v
 mergeMaps = Map.union
 
 emptyBigBytes : Bytes
@@ -174,11 +174,11 @@ loweredOrdering = lower liftedOrdering
 reflexiveBool : Bool.Bool
 reflexiveBool = lift liftedBool
 
-emptyPairs : list (pair Int Bytes)
+emptyPairs : map Int Bytes
 emptyPairs = []
 liftedMap : Map Int Bytes
 liftedMap = lift emptyPairs
-loweredMap : list (pair Int Bytes)
+loweredMap : map Int Bytes
 loweredMap = lower liftedMap
 
 integers = eq 1 2
@@ -245,7 +245,7 @@ emptyUnit = empty
 combined = append [1, 2] [3]
 text = withEmpty "text"
 
-emptyEntries : list (pair Int Bytes)
+emptyEntries : map Int Bytes
 emptyEntries = []
 emptyInts : list Int
 emptyInts = []

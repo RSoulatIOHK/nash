@@ -83,6 +83,21 @@ pub fn create_initial_env<'a>(
         );
     }
 
+    for alias in nash_ast::primitives::ALIASES {
+        env.types.insert(
+            alias.name,
+            Info::Specific(
+                builtin_home,
+                Type::Alias {
+                    arity: alias.parameters.len(),
+                    home: builtin_home,
+                    parameters: alias.parameters,
+                    typ: alias.typ,
+                },
+            ),
+        );
+    }
+
     env.q_types.insert("Primitive", env.types.clone());
 
     for name in ["Primitive", "Builtin"] {
@@ -606,6 +621,15 @@ mod tests {
                     assert_eq!(*arity, primitive.kind.arity());
                 }
                 other => panic!("Expected primitive {}, got {other:?}", primitive.name),
+            }
+        }
+        for alias in nash_ast::primitives::ALIASES {
+            match env.types.get(alias.name) {
+                Some(Info::Specific(module, Type::Alias { arity, .. })) => {
+                    assert_eq!(*module, nash_ast::primitives::primitive_home());
+                    assert_eq!(*arity, alias.kind.arity());
+                }
+                other => panic!("Expected primitive alias {}, got {other:?}", alias.name),
             }
         }
     }

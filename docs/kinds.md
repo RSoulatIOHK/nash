@@ -72,6 +72,7 @@ sugar (below).
 | uppercase user union, uppercase alias | `Big` |
 | `int`, `bytes`, `string`, `bool`, `unit`, `list _`, `pair _ _`, `array _`, `bls_*`, `value` | `Const` |
 | lowercase user union, tuple, function, little record alias | `Term` |
+| `map _ _` (Primitive alias of `list (pair _ _)`) | `Const` |
 | lowercase alias of a non-record body | `repr` of the body |
 
 Arguments never change the head's representation: `List (option int)` is
@@ -257,8 +258,7 @@ rendered signatures. They are still stored and still instantiated.
 
 ### Contexts and `Data`
 
-`Data`'s constructors (`Constr (pair int (list Data))`, `Map (list (pair Data
-Data))`, `List (list Data)`, `I int`, `B bytes`) are compiler-known and
+`Data`'s constructors (`Constr (pair int (list Data))`, `Map (map Data Data)`, `List (list Data)`, `I int`, `B bytes`) are compiler-known and
 exempt from the Big-field rule: they mirror `chooseData`.
 
 ## Traits and impls
@@ -275,9 +275,9 @@ exempt from the Big-field rule: they mirror `chooseData`.
   representation classes attached to their variables. Big and Little are
   disjoint; Storable and Little overlap at Const. Ordinary trait prerequisites
   do not distinguish implementations. See [traits.md](traits.md).
-- Base ships one elementwise `impl Eq 'a => Eq (list 'a)`. Plan 08 proposes
-  a whole-list `equalsData` rewrite for ground Big elements; this is an
-  optimizer plan, not a restriction imposed by impl coherence.
+- Base splits list Eq into disjoint Big- and Little-element impls. Big elements
+  compare Data lists structurally; Little elements compare elementwise. Generic
+  callers with unknown representation require `Eq (list 'a)` explicitly.
 
 ## Recursion and infinite kinds
 

@@ -1,0 +1,7 @@
+---
+source: crates/nash-solve/tests/inference.rs
+description: "module Main exposing (..)\nimport Lift exposing (Lift)\ntype Packed 'k 'v = Packed 'k 'v\ntype alias entries 'k 'v = list (pair 'k 'v)\nimpl Lift (entries 'k 'v) (Packed 'k 'v) where\n    lift _ = fail\n    lower _ = fail\nkeys : Lift (entries 'k 'v) 'input => 'input -> list 'k\nkeys input = keysOf (lower input)\nkeysOf : entries 'k 'v -> list 'k\nkeysOf input = case input of\n    [] -> []\n    pair(key, _) :: _ -> [key]\nfirst : Packed Int Bytes -> list Int\nfirst = keys\n"
+---
+first : Packed Int Bytes -> list Int
+keys : forall input k v. (Storable k, Storable v, Lift (entries k v) input) => input -> list k
+keysOf : forall k v. (Storable k, Storable v) => entries k v -> list k

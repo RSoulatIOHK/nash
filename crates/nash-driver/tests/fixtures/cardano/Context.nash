@@ -71,10 +71,10 @@ tx = Tx
     (lift (Map.singleton key (integer 24)))
     (Time.Interval (Time.IntervalBound (Time.Finite 10) Bool.False) (Time.IntervalBound (Time.Finite 30) Bool.True))
     (lift [lift #"6b6579"])
-    (lift (List.map (\purpose -> Builtin.mkPairData purpose (toData (integer 25))) purposes))
+    (Builtin.mapData (List.map (\purpose -> Builtin.mkPairData purpose (toData (integer 25))) purposes))
     (lift (Map.singleton (bytes #"646174756d") (toData (integer 23))))
     (lift #"7472616e73616374696f6e")
-    (lift (List.map2 (\voter vote -> Builtin.mkPairData voter (Builtin.mapData (Map.singleton actionId vote))) voters [VoteNo, VoteYes, Abstain]))
+    (Builtin.mapData (List.map2 (\voter vote -> Builtin.mkPairData voter (Builtin.mapData (Map.singleton actionId vote))) voters [VoteNo, VoteYes, Abstain]))
     proposals
     (Option.Some 26)
     Option.None

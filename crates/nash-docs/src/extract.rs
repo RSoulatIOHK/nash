@@ -344,7 +344,7 @@ fn constraint(constraint: &nash_source::Constraint<'_>) -> String {
 
 /// Compiler-owned modules have no source file, so document their actual catalog.
 pub fn primitives() -> Vec<ModuleDocs> {
-    use nash_ast::primitives::{BUILTINS, COERCE, PRIMITIVES, ReprTrait};
+    use nash_ast::primitives::{ALIASES, BUILTINS, COERCE, PRIMITIVES, ReprTrait};
     let local = Localizer::from_names(["Primitive", "Builtin"]);
     let builtins = BUILTINS
         .iter()
@@ -408,6 +408,23 @@ pub fn primitives() -> Vec<ModuleDocs> {
             })
         })
         .collect();
+    for alias in ALIASES {
+        primitive.push(Block::Declaration(Declaration {
+            name: alias.name.into(),
+            kind: K::Alias,
+            type_kind: Some(types::kind(alias.kind)),
+            signature: format!(
+                "type alias {}{}{} = {}",
+                types::context(&local, alias.context),
+                alias.name,
+                parameters(alias.parameters),
+                types::typ(&local, &alias.typ.value, Ctx::None)
+            ),
+            doc:
+                "Native map entries with storable keys and values; preserves order and duplicates."
+                    .into(),
+        }));
+    }
     for repr in ReprTrait::ALL {
         primitive.push(Block::Declaration(Declaration {
             name: repr.name().into(),

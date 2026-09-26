@@ -6,11 +6,11 @@ two : Int
 two = 2
 three : Int
 three = 3
-emptyEntries : list (pair Int Int)
+emptyEntries : map Int Int
 emptyEntries = Map.empty
 
-entries : list (pair Int Int)
-entries = List.append (Map.singleton one two) (List.append (Map.singleton one three) (Map.singleton two one))
+entries : map Int Int
+entries = List.append (Map.toList (Map.singleton one two)) (List.append (Map.toList (Map.singleton one three)) (Map.toList (Map.singleton two one)))
 big : Map Int Int
 big = lift entries
 
@@ -39,7 +39,7 @@ unionNative = Map.union native native
 emptyBig : Map Int Int
 emptyBig = lift emptyEntries
 
-differentEntries : list (pair Int Bytes)
+differentEntries : map Int Bytes
 differentEntries = Map.singleton one (lift #"aa")
 differentBig : Map Int Bytes
 differentBig = lift differentEntries
@@ -55,8 +55,8 @@ tests
         assert (missing == None)
         assert (missingEmpty == None)
     test "insertion replaces all duplicates and appends" = do
-        assert (Map.insert one one big == List.append (Map.singleton two one) (Map.singleton one one))
-        assert (Map.insert three two big == List.append entries (Map.singleton three two))
+        assert (Map.insert one one big == List.append (Map.toList (Map.singleton two one)) (Map.toList (Map.singleton one one)))
+        assert (Map.insert three two big == List.append (Map.toList entries) (Map.toList (Map.singleton three two)))
         assert (Map.insert one two emptyEntries == Map.singleton one two)
     test "removal preserves other entries" = do
         assert (Map.remove one big == Map.singleton two one)

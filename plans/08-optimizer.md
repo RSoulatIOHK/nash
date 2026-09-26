@@ -613,18 +613,11 @@ code removed.
 
 ---
 
-## Chunk 6 — Case-of-known-constructor, constant folding, inverse builtin simplification, Big-list fast paths
+## Chunk 6 — Case-of-known-constructor, constant folding, inverse builtin simplification
 
 **Files**
 
 - `crates/nash-ir/src/fold.rs` (new)
-- `crates/nash-ir/src/fastpath.rs` (new): rewrites a monomorphized call of
-  core's elementwise `Eq (list 'a)` method at a ground Big element type
-  into `equalsData (listData a) (listData b)`. Do not apply this rewrite to
-  `Ord` or `Show`: Big representation does not fix user ordering or rendering. Keyed on the core impl's
-  `ImplRef` plus the ground `MonoKey`; semantics identical because Big
-  equality is structural `equalsData` per element. Budget test: `list Int`
-  equality of 100 elements must cost one `equalsData` plus two `listData`.
 - `crates/nash-codegen/src/comptime.rs` (`eval_closed` reused)
 - `crates/nash-codegen/src/lower.rs` (`Case(Bool)` without delay when
   both branches are values)
@@ -647,6 +640,16 @@ One bottom-up pass with these rules:
 | `Force(Delay(x))` | `x` | always |
 | `App(App(f, as), bs)` | `App(f, as ++ bs)` | always |
 | `Case(Bool, Builtin(IfThenElse, [c, Lit true, Lit false]), ..)` | `Case(Bool, c, ..)` | always |
+
+Big-element native list equality is implemented in the base library through
+disjoint Big/Little element implementations of `Eq (list ...)`. The Big-element
+implementation compares `listData` results using structural Big Eq; no optimizer
+recognition of Eq impl identities or specialized list-equality pass is needed.
+Little-element lists retain elementwise equality. Native map-shaped lists still
+use that Little-element implementation because builtin pairs are Little; a
+map-specific list impl would overlap it. The distinct Primitive alias `map`
+has its own Eq using `mapData`, without an optimizer rewrite or runtime wrapper.
+Big `Map` already has structural Eq.
 
 **Single-field pair projection**
 

@@ -10,7 +10,8 @@ Runtime types below refer to `crates/nash-plutus/src/constant.rs`
 
 ## Const types
 
-A `Const` value is a UPLC constant. Each Nash Const type maps to one
+A `Const` value is a UPLC constant. Primitive `map k v` is a transparent alias
+of `list (pair k v)` and adds no wrapper; its parameters need only be Storable. Each Nash Const type maps to one
 `Constant` variant and one UPLC `Type`:
 
 | Nash type | `Constant` variant | UPLC `Type` | Notes |
@@ -82,7 +83,7 @@ canonical AST already records (`Ctor.index`, `FieldType.index` in
 lookup, so codegen must sort by `index` before emitting.
 
 `Data` is a Big type with pattern-matchable constructors
-`Constr (pair int (list Data)) | Map (list (pair Data Data)) | List (list Data) | I int | B bytes`.
+`Constr (pair int (list Data)) | Map (map Data Data) | List (list Data) | I int | B bytes`.
 Its fields are exactly what `chooseData`, `unConstrData`, `unMapData`,
 `unListData`, `unIData`, `unBData` return, so matching on `Data` costs one
 `chooseData` plus one unwrap and no conversion. `Data` is exempt from the
@@ -254,7 +255,7 @@ Builtin impls, with their UPLC:
 | `Lift bool Bool` | `case c [Constr 0 [], Constr 1 []]` | tag compare |
 | `Lift unit Unit` | `Constr 0 []` | `()` |
 | `Lift (list ('a : Big)) (List 'a)` | `listData` | `unListData` |
-| `Lift (list (pair 'k 'v)) (Map 'k 'v)` with `'k 'v : Big` | `mapData` | `unMapData` |
+| `Lift (map 'k 'v) (Map 'k 'v)` with `'k 'v : Big` | `mapData` | `unMapData` |
 | `Lift 'a 'a` for every type `'a` (compiler built-in) | identity | identity |
 | `Lift (option ('a : Big)) (Option 'a)` | `case`, rebuild | `unConstrData`, rebuild |
 | `Lift ordering Ordering` | rebuild | rebuild |

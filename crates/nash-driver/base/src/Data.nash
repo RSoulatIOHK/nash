@@ -359,7 +359,7 @@ impl ( Big 'k, Big 'v, Decode 'k, Decode 'v ) => Decode (Map 'k 'v) where
 
 
 decodeEntries : ( Big 'k, Big 'v, Decode 'k, Decode 'v )
-    => list (pair Data Data) -> option (list (pair 'k 'v))
+    => map Data Data -> option (map 'k 'v)
 decodeEntries entries =
     case entries of
         [] ->

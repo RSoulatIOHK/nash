@@ -182,7 +182,7 @@ description: Constr payload
                                             column: 0,
                                         },
                                     },
-                                    value: Named {
+                                    value: Alias {
                                         reference: QualifiedName {
                                             home: ModuleName {
                                                 package: Some(
@@ -193,10 +193,73 @@ description: Constr payload
                                                 ),
                                                 name: "Primitive",
                                             },
-                                            name: "list",
+                                            name: "map",
                                         },
-                                        args: [
-                                            Located {
+                                        arguments: [
+                                            AliasArgument {
+                                                name: "k",
+                                                typ: Located {
+                                                    region: Region {
+                                                        start: Position {
+                                                            line: 0,
+                                                            column: 0,
+                                                        },
+                                                        end: Position {
+                                                            line: 0,
+                                                            column: 0,
+                                                        },
+                                                    },
+                                                    value: Named {
+                                                        reference: QualifiedName {
+                                                            home: ModuleName {
+                                                                package: Some(
+                                                                    PackageName {
+                                                                        author: "nash",
+                                                                        project: "base",
+                                                                    },
+                                                                ),
+                                                                name: "Primitive",
+                                                            },
+                                                            name: "Data",
+                                                        },
+                                                        args: [],
+                                                    },
+                                                },
+                                            },
+                                            AliasArgument {
+                                                name: "v",
+                                                typ: Located {
+                                                    region: Region {
+                                                        start: Position {
+                                                            line: 0,
+                                                            column: 0,
+                                                        },
+                                                        end: Position {
+                                                            line: 0,
+                                                            column: 0,
+                                                        },
+                                                    },
+                                                    value: Named {
+                                                        reference: QualifiedName {
+                                                            home: ModuleName {
+                                                                package: Some(
+                                                                    PackageName {
+                                                                        author: "nash",
+                                                                        project: "base",
+                                                                    },
+                                                                ),
+                                                                name: "Primitive",
+                                                            },
+                                                            name: "Data",
+                                                        },
+                                                        args: [],
+                                                    },
+                                                },
+                                            },
+                                        ],
+                                        remaining: [],
+                                        target: Filled {
+                                            body: Located {
                                                 region: Region {
                                                     start: Position {
                                                         line: 0,
@@ -218,7 +281,7 @@ description: Constr payload
                                                             ),
                                                             name: "Primitive",
                                                         },
-                                                        name: "pair",
+                                                        name: "list",
                                                     },
                                                     args: [
                                                         Located {
@@ -243,11 +306,70 @@ description: Constr payload
                                                                         ),
                                                                         name: "Primitive",
                                                                     },
-                                                                    name: "Data",
+                                                                    name: "pair",
                                                                 },
-                                                                args: [],
+                                                                args: [
+                                                                    Located {
+                                                                        region: Region {
+                                                                            start: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                            end: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                        },
+                                                                        value: Var(
+                                                                            "k",
+                                                                        ),
+                                                                    },
+                                                                    Located {
+                                                                        region: Region {
+                                                                            start: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                            end: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                        },
+                                                                        value: Var(
+                                                                            "v",
+                                                                        ),
+                                                                    },
+                                                                ],
                                                             },
                                                         },
+                                                    ],
+                                                },
+                                            },
+                                            typ: Located {
+                                                region: Region {
+                                                    start: Position {
+                                                        line: 0,
+                                                        column: 0,
+                                                    },
+                                                    end: Position {
+                                                        line: 0,
+                                                        column: 0,
+                                                    },
+                                                },
+                                                value: Named {
+                                                    reference: QualifiedName {
+                                                        home: ModuleName {
+                                                            package: Some(
+                                                                PackageName {
+                                                                    author: "nash",
+                                                                    project: "base",
+                                                                },
+                                                            ),
+                                                            name: "Primitive",
+                                                        },
+                                                        name: "list",
+                                                    },
+                                                    args: [
                                                         Located {
                                                             region: Region {
                                                                 start: Position {
@@ -270,15 +392,70 @@ description: Constr payload
                                                                         ),
                                                                         name: "Primitive",
                                                                     },
-                                                                    name: "Data",
+                                                                    name: "pair",
                                                                 },
-                                                                args: [],
+                                                                args: [
+                                                                    Located {
+                                                                        region: Region {
+                                                                            start: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                            end: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                        },
+                                                                        value: Named {
+                                                                            reference: QualifiedName {
+                                                                                home: ModuleName {
+                                                                                    package: Some(
+                                                                                        PackageName {
+                                                                                            author: "nash",
+                                                                                            project: "base",
+                                                                                        },
+                                                                                    ),
+                                                                                    name: "Primitive",
+                                                                                },
+                                                                                name: "Data",
+                                                                            },
+                                                                            args: [],
+                                                                        },
+                                                                    },
+                                                                    Located {
+                                                                        region: Region {
+                                                                            start: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                            end: Position {
+                                                                                line: 0,
+                                                                                column: 0,
+                                                                            },
+                                                                        },
+                                                                        value: Named {
+                                                                            reference: QualifiedName {
+                                                                                home: ModuleName {
+                                                                                    package: Some(
+                                                                                        PackageName {
+                                                                                            author: "nash",
+                                                                                            project: "base",
+                                                                                        },
+                                                                                    ),
+                                                                                    name: "Primitive",
+                                                                                },
+                                                                                name: "Data",
+                                                                            },
+                                                                            args: [],
+                                                                        },
+                                                                    },
+                                                                ],
                                                             },
                                                         },
                                                     ],
                                                 },
                                             },
-                                        ],
+                                        },
                                     },
                                 },
                             ],

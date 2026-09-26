@@ -44,7 +44,12 @@ impl Eq unit where
     eq _ _ = True
 
 
-impl Eq 'a => Eq (list 'a) where
+impl Eq (list ('a : Big)) where
+    eq xs ys =
+        eq (Builtin.listData xs) (Builtin.listData ys)
+
+
+impl Eq 'a => Eq (list ('a : Little)) where
     eq xs ys =
         case xs of
             [] ->
@@ -78,6 +83,22 @@ impl ( Eq 'a, Eq 'b ) => Eq (pair 'a 'b) where
                 eq secondA secondB
             else
                 False
+
+
+impl Eq (map ('k : Big) ('v : Big)) where
+    eq xs ys = eq (Builtin.mapData xs) (Builtin.mapData ys)
+
+
+impl ( Eq 'k, Eq 'v ) => Eq (map ('k : Little) 'v) where
+    eq = eqMapEntries
+
+
+impl Eq 'v => Eq (map ('k : Big) ('v : Little)) where
+    eq = eqMapEntries
+
+
+eqMapEntries : ( Eq 'k, Eq 'v ) => list (pair 'k 'v) -> list (pair 'k 'v) -> bool
+eqMapEntries = eq
 
 
 impl Eq value where

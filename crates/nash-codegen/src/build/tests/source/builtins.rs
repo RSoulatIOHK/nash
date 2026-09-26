@@ -610,11 +610,11 @@ case!(
     module Main exposing (..)
     import Primitive exposing (..)
     import Lift exposing (Lift)
-    entries : list (pair Int (List Data))
+    entries : map Int (List Data)
     entries = [Builtin.mkPairData (Builtin.iData 7) (Builtin.listData [I 42])]
     wrapped : Map Int (List Data)
     wrapped = lift entries
-    decoded : list (pair Int (List Data))
+    decoded : map Int (List Data)
     decoded = lower wrapped
     main : int
     main =

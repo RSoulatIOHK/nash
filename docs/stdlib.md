@@ -53,7 +53,7 @@ crates/nash-driver/base/
     Cons.nash             cons: Term linked list (elements of any representation)
     Pair.nash             pair
     Array.nash            array
-    Map.nash              Map (Big; its little form is `list (pair 'k 'v)`)
+    Map.nash              Map and native map (alias of a pair list)
     Prop.nash             generators
     Test.nash             label, property preparation and assertion reporting
     Ast.nash              macro AST: little ADTs over cons (see macros.md)
@@ -283,7 +283,7 @@ and Applicative/Monad for `option`. Computation traits
 operate on little representations. Normalize Big inputs through named helpers:
 `Int.add`/`negate` and the other arithmetic helpers return `int`, `Bytes.append`
 returns `bytes`, `List.map`/`append` return `list`, and `Map.union` returns
-`list (pair 'k 'v)`. Helpers preserve element types and accept inputs independently.
+`map 'k 'v`. Helpers preserve element types and accept inputs independently.
 Sorting Big elements uses an explicit normalizing comparator, for example
 `List.sortBy Int.compare values`; the elements themselves remain Big.
 Operators retain their little-type trait signatures; use a helper or explicit
@@ -303,15 +303,25 @@ are forbidden; a custom Eq method cannot change equality of a Big value.
 The compiler supplies Eq for Big types, including user-defined ADTs and
 nominal aliases, through the shared kind, representation and evidence contracts.
 
-Base provides one elementwise `impl Eq 'a => Eq (list 'a)`. Plan 08
-proposes replacing its specialized body for Big elements with
-`equalsData (listData left) (listData right)`. This optimization is not yet
-implemented. Representation-classed impl heads permit disjoint Big/Const
-alternatives, but Base does not use them here. Typed `listData` preserves
-Big elements and produces `List 'a`. Generic `Ord (list 'a)` retains
-`Ord 'a` in its context and gets `Eq (list 'a)` through the superclass.
+Base uses disjoint list Eq implementations. Big elements compare the results of
+`listData` through structural Big Eq; Little elements use short-circuiting
+elementwise Eq. No optimizer fast path is required. Typed `listData` preserves
+Big elements and produces `List 'a`. Generic callers with unknown element
+representation request `Eq (list 'a)` explicitly; `Eq 'a` alone no longer suffices.
+Generic `Ord (list 'a)` retains both `Ord 'a` and `Eq (list 'a)` in its context.
+Native `list (pair 'k 'v)` uses elementwise pair equality because pairs are Little.
 Map Data equality compares the encoded sequence of entries, including order
 and duplicates. It is not dictionary-style equality.
+
+Native `map 'k 'v` is a compiler-declared Primitive alias for
+`list (pair 'k 'v)`, with only Storable requirements on keys and values. It has
+no runtime wrapper. Its ordinary library Eq implementations are disjoint:
+Big/Big compares `mapData` results structurally; Little keys with any values and
+Big keys with Little values compare entries using the selected element Eq.
+The alias itself requires neither Big nor Eq. Alias identity selects the map
+impl; raw pair lists still select list Eq. `unMapData` returns the alias, and Map
+operations retain it in native map results. `Map.toList` explicitly returns the
+underlying list. Entry order and duplicate entries remain significant.
 
 Lowercase `value` is a dedicated Const ledger-value representation. Its Eq
 impl compares `valueData` results with `equalsData`. There is no
@@ -375,9 +385,10 @@ impl Eq bool where
 impl Eq unit where
     eq _ _ = True
 
--- One impl; plans/08 rewrites it to `equalsData` on `listData` when the
--- ground element is Big.
-impl Eq 'a => Eq (list 'a) where
+impl Eq (list ('a : Big)) where
+    eq xs ys = eq (Builtin.listData xs) (Builtin.listData ys)
+
+impl Eq 'a => Eq (list ('a : Little)) where
     eq xs ys =
         if Builtin.nullList xs then Builtin.nullList ys
         else if Builtin.nullList ys then False
@@ -410,7 +421,7 @@ impl Lift (list ('a : Big)) (List 'a) where
     lift = Builtin.listData
     lower = Builtin.unListData
 
-impl (Big 'k, Big 'v) => Lift (list (pair 'k 'v)) (Map 'k 'v) where
+impl (Big 'k, Big 'v) => Lift (map 'k 'v) (Map 'k 'v) where
     lift = Builtin.mapData
     lower = Builtin.unMapData
 ```
@@ -599,12 +610,12 @@ Rules:
 | `DropList` | `dropList` | `int -> list 'a -> list 'a` |
 | `ChooseData` | `chooseData` | `Data -> 'a -> 'a -> 'a -> 'a -> 'a -> 'a` |
 | `ConstrData` | `constrData` | `int -> list Data -> Data` |
-| `MapData` | `mapData` | `(Big 'k, Big 'v) => list (pair 'k 'v) -> Map 'k 'v` |
+| `MapData` | `mapData` | `(Big 'k, Big 'v) => map 'k 'v -> Map 'k 'v` |
 | `ListData` | `listData` | `list ('a : Big) -> List 'a` |
 | `IData` | `iData` | `int -> Int` |
 | `BData` | `bData` | `bytes -> Bytes` |
 | `UnConstrData` | `unConstrData` | `Data -> pair int (list Data)` |
-| `UnMapData` | `unMapData` | `(Big 'k, Big 'v) => Map 'k 'v -> list (pair 'k 'v)` |
+| `UnMapData` | `unMapData` | `(Big 'k, Big 'v) => Map 'k 'v -> map 'k 'v` |
 | `UnListData` | `unListData` | `Big 'a => List 'a -> list 'a` |
 | `UnIData` | `unIData` | `Int -> int` |
 | `UnBData` | `unBData` | `Bytes -> bytes` |
@@ -612,7 +623,7 @@ Rules:
 | `SerialiseData` | `serialiseData` | `Data -> bytes` |
 | `MkPairData` | `mkPairData` | `(Big 'a, Big 'b) => 'a -> 'b -> pair 'a 'b` |
 | `MkNilData` | `mkNilData` | `unit -> list Data` |
-| `MkNilPairData` | `mkNilPairData` | `unit -> list (pair Data Data)` |
+| `MkNilPairData` | `mkNilPairData` | `unit -> map Data Data` |
 | `Bls12_381_G1_Add` | `bls12_381_g1_add` | `bls_g1 -> bls_g1 -> bls_g1` |
 | `Bls12_381_G1_Neg` | `bls12_381_g1_neg` | `bls_g1 -> bls_g1` |
 | `Bls12_381_G1_ScalarMul` | `bls12_381_g1_scalarMul` | `int -> bls_g1 -> bls_g1` |
@@ -942,31 +953,31 @@ pairs, matching the target builtin.
 
 ### `Map`
 
-Map helpers accept Big `Map 'k 'v` or little `list (pair 'k 'v)` inputs.
-Collection results are little lists and preserve component types. Big maps
+Map helpers accept Big `Map 'k 'v` or native `map 'k 'v` or raw pair-list inputs.
+Map results retain the native alias and preserve component types; `keys`,
+`values`, and `toList` return lists. Big maps
 require Big keys and values; native pairs obtained from builtins can also hold
 little components, and the read/filter helpers support them.
 
 ```elm
-empty : list (pair 'k 'v)
-singleton : ('k : Big) -> ('v : Big) -> list (pair 'k 'v)
-insert : (Eq 'k, Lift (list (pair 'k 'v)) 'm) => ('k : Big) -> ('v : Big) -> 'm -> list (pair 'k 'v)
-get : (Eq 'k, Lift (list (pair 'k 'v)) 'm) => 'k -> 'm -> option 'v
-remove : (Eq 'k, Lift (list (pair 'k 'v)) 'm) => 'k -> 'm -> list (pair 'k 'v)
-toList : Lift (list (pair 'k 'v)) 'm => 'm -> list (pair 'k 'v)
-foldl : Lift (list (pair 'k 'v)) 'm => ('k -> 'v -> 'b -> 'b) -> 'b -> 'm -> 'b
-union : (Eq 'k, Lift (list (pair 'k 'v)) 'a, Lift (list (pair 'k 'v)) 'b) => 'a -> 'b -> list (pair 'k 'v)
+empty : map 'k 'v
+singleton : ('k : Big) -> ('v : Big) -> map 'k 'v
+insert : (Eq 'k, Lift (map 'k 'v) 'm) => ('k : Big) -> ('v : Big) -> 'm -> map 'k 'v
+get : (Eq 'k, Lift (map 'k 'v) 'm) => 'k -> 'm -> option 'v
+remove : (Eq 'k, Lift (map 'k 'v) 'm) => 'k -> 'm -> map 'k 'v
+toList : Lift (map 'k 'v) 'm => 'm -> list (pair 'k 'v)
+foldl : Lift (map 'k 'v) 'm => ('k -> 'v -> 'b -> 'b) -> 'b -> 'm -> 'b
+union : (Eq 'k, Lift (map 'k 'v) 'a, Lift (map 'k 'v) 'b) => 'a -> 'b -> map 'k 'v
 ```
 
 ```nash
-keys : Lift (list (pair 'k 'v)) 'input => 'input -> list 'k
-values : Lift (list (pair 'k 'v)) 'input => 'input -> list 'v
+keys : Lift (map 'k 'v) 'input => 'input -> list 'k
+values : Lift (map 'k 'v) 'input => 'input -> list 'v
 ```
 
 Both projections lower only the outer representation. For `Map Int Bytes`,
 `keys` returns `list Int` and `values` returns `list Bytes`. The unused component
-is inferred through the map's Lift implementation. Little pair lists use identity
-Lift. Competing conversions still require enough type information to choose one.
+is inferred through the map's Lift implementation. Raw pair lists use an explicit representation-preserving Lift adapter. Competing conversions still require enough type information to choose one.
 
 `get` returns the first matching entry. `remove` removes every matching entry.
 `insert` removes all previous matches and appends the new pair. `union` removes

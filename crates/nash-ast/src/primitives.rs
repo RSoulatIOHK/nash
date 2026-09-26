@@ -1,5 +1,35 @@
 //! Compiler-owned types and representation predicates of `nash/base.Primitive`.
 
+// Native map is an ordinary transparent alias, with nominal impl identity.
+macro_rules! native_map_type {
+    ($key:expr, $value:expr) => {
+        &nash_region::Located::at_zero(crate::Type::Alias {
+            reference: crate::QualifiedName {
+                home: crate::primitives::primitive_home(),
+                name: "map",
+            },
+            arguments: &[
+                crate::AliasArgument {
+                    name: "k",
+                    typ: $key,
+                },
+                crate::AliasArgument {
+                    name: "v",
+                    typ: $value,
+                },
+            ],
+            remaining: &[],
+            target: crate::AliasType::Filled {
+                body: crate::primitives::MAP_BODY,
+                typ: &crate::primitives::builtins::named(
+                    "list",
+                    &[&crate::primitives::builtins::named("pair", &[$key, $value])],
+                ),
+            },
+        })
+    };
+}
+
 mod builtins;
 pub use builtins::{BUILTINS, Builtin, COERCE};
 
@@ -169,6 +199,38 @@ pub struct Primitive {
 const TYPE: &Kind<'static> = &Kind::Type;
 const UNARY: &Kind<'static> = &Kind::Arrow(TYPE, TYPE);
 const BINARY: &Kind<'static> = &Kind::Arrow(TYPE, UNARY);
+pub struct PrimitiveAlias {
+    pub name: &'static str,
+    pub kind: &'static Kind<'static>,
+    pub parameters: &'static [&'static str],
+    pub context: &'static [crate::Pred<'static>],
+    pub typ: &'static nash_region::Located<crate::Type<'static>>,
+}
+
+const MAP_KEY: &nash_region::Located<crate::Type<'static>> =
+    &nash_region::Located::at_zero(crate::Type::Var("k"));
+const MAP_VALUE: &nash_region::Located<crate::Type<'static>> =
+    &nash_region::Located::at_zero(crate::Type::Var("v"));
+const MAP_BODY: &nash_region::Located<crate::Type<'static>> =
+    &builtins::named("list", &[&builtins::named("pair", &[MAP_KEY, MAP_VALUE])]);
+
+pub const ALIASES: &[PrimitiveAlias] = &[PrimitiveAlias {
+    name: "map",
+    kind: BINARY,
+    parameters: &["k", "v"],
+    context: &[
+        crate::Pred::Implied {
+            trait_: ReprTrait::Storable.qualified(),
+            args: &[MAP_KEY],
+        },
+        crate::Pred::Implied {
+            trait_: ReprTrait::Storable.qualified(),
+            args: &[MAP_VALUE],
+        },
+    ],
+    typ: MAP_BODY,
+}];
+
 const BOOL_CTORS: &[&crate::Ctor<'static>] = &[
     &crate::Ctor {
         labels: None,
@@ -203,10 +265,7 @@ const DATA_CTORS: &[&crate::Ctor<'static>] = &[
         name: "Map",
         index: 1,
         arity: 1,
-        arguments: &[&builtins::named(
-            "list",
-            &[&builtins::named("pair", &[DATA, DATA])],
-        )],
+        arguments: &[native_map_type!(DATA, DATA)],
     },
     &crate::Ctor {
         labels: None,

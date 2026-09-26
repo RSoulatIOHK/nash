@@ -261,10 +261,7 @@ pub const BUILTINS: &[Builtin] = &[
     Builtin {
         name: "mapData",
         free_vars: &["a", "b"],
-        typ: function!(
-            &named("list", &[&named("pair", &[A, B])]),
-            &named("Map", &[A, B])
-        ),
+        typ: function!(native_map_type!(A, B), &named("Map", &[A, B])),
         variant: "MapData",
         context: &[
             crate::Pred::Trait {
@@ -298,10 +295,7 @@ pub const BUILTINS: &[Builtin] = &[
     Builtin {
         name: "unMapData",
         free_vars: &["a", "b"],
-        typ: function!(
-            &named("Map", &[A, B]),
-            &named("list", &[&named("pair", &[A, B])])
-        ),
+        typ: function!(&named("Map", &[A, B]), native_map_type!(A, B)),
         variant: "UnMapData",
         context: &[
             crate::Pred::Trait {
@@ -359,7 +353,7 @@ pub const BUILTINS: &[Builtin] = &[
         "mkNilPairData",
         "MkNilPairData",
         [],
-        function!(UNIT, &named("list", &[&named("pair", &[DATA, DATA])]))
+        function!(UNIT, native_map_type!(DATA, DATA))
     ),
     builtin!(
         "bls12_381_g1_add",

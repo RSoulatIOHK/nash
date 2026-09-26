@@ -23,7 +23,9 @@ impl Localizer {
             local_module: Some(module.name.map_or("Main", |name| name.value).to_owned()),
             bare_primitives: nash_ast::primitives::PRIMITIVES
                 .iter()
-                .map(|primitive| primitive.name.to_owned())
+                .map(|primitive| primitive.name)
+                .chain(nash_ast::primitives::ALIASES.iter().map(|alias| alias.name))
+                .map(str::to_owned)
                 .collect(),
             local_unions: module
                 .unions
@@ -127,7 +129,9 @@ impl Localizer {
         if home == nash_ast::primitives::primitive_home()
             && nash_ast::primitives::PRIMITIVES
                 .iter()
-                .any(|primitive| primitive.name == name)
+                .map(|primitive| primitive.name)
+                .chain(nash_ast::primitives::ALIASES.iter().map(|alias| alias.name))
+                .any(|primitive| primitive == name)
             && self.local_module.is_some()
         {
             return if self.bare_primitives.contains(name) {

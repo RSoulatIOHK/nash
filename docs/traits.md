@@ -185,9 +185,26 @@ any earlier assumption that Big types may override structural equality.
 Core declares no explicit Big Eq impls. Inference, superclass entailment
 and ground resolution use the same representation rule; `StructuralEq` evidence
 retains the compared type for codegen.
-Builtin-list Eq has one elementwise implementation for every storable element
-type with Eq. The later Plan 08 Eq-only optimization may replace a ground
-Big-element comparison with structural listData equality.
+Builtin-list Eq has disjoint implementations by element representation:
+Big elements compare `listData` results through structural Big Eq; Little elements
+use elementwise Eq with short-circuiting. This is ordinary library code, not a
+compiler optimization. Generic callers with unknown element representation must
+request `Eq (list 'a)` directly; `Eq 'a` alone does not select one of the two
+representation-constrained impls. Known Big elements need no element Eq context;
+known Little elements still require element Eq. Builtin pair elements are Little,
+so native map-shaped lists retain elementwise pair equality. Big `Map` equality
+is already covered by structural Big Eq.
+
+Native `map 'k 'v` is a compiler-declared Primitive alias for
+`list (pair 'k 'v)`, with only Storable requirements on keys and values. It has
+no runtime wrapper. Its ordinary library Eq implementations are disjoint:
+Big/Big compares `mapData` results structurally; Little keys with any values and
+Big keys with Little values compare entries using the selected element Eq.
+The alias itself requires neither Big nor Eq. A generic caller whose key/value
+representations are unknown requests `Eq (map 'k 'v)` directly. Alias identity selects the map
+impl; raw pair lists still select list Eq. `unMapData` returns the alias, and Map
+operations retain it in native map results. `Map.toList` explicitly returns the
+underlying list. Entry order and duplicate entries remain significant.
 
 An impl's identity retains its trait and full recursive head patterns,
 with bound variables normalized independently of their spelling.
@@ -388,14 +405,14 @@ annotation dictionaries take priority over global implementations. Reflexive
 Lift participates alongside explicit conversions. Transparent alias comparisons
 that the probe cannot establish remain deferred rather than excluding a candidate.
 
-For example, `Lift (list (pair Int 'v)) (Map Int Bytes)` determines `'v = Bytes`.
+For example, `Lift (map Int 'v) (Map Int Bytes)` determines `'v = Bytes`.
 `Lift (list (pair Int 'v)) (list (pair Int Bytes))` does the same through identity.
 If two conversions remain possible, neither is chosen. After improvement, retry
 pending constraints and use ordinary selection to record implementation evidence.
 
 Annotations may quantify a context-only variable when multi-parameter constraints
 connect it to a nonempty argument whose variables occur in the function type.
-This permits `keys : Lift (list (pair 'k 'v)) 'input => 'input -> list 'k`.
+This permits `keys : Lift (map 'k 'v) 'input => 'input -> list 'k`.
 It does not permit a disconnected `Show 'v` constraint. Each use instantiates the
 hidden variables independently and must resolve its required dictionaries.
 

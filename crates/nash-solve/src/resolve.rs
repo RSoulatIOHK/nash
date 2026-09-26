@@ -330,6 +330,8 @@ pub(crate) fn select<'a>(
 /// Probe equalities without changing the inference graph. A candidate may relate
 /// existing variables, but cannot manufacture a missing constructor application.
 struct Probe<'u, 'a> {
+    // Reflexive Lift requires nominal identity, unlike ordinary type unification.
+    nominal: bool,
     types: ClassedTypes<'u, 'a>,
     substitutions: std::collections::BTreeMap<Variable, Variable>,
     equations: Vec<(Variable, Variable)>,
@@ -443,7 +445,9 @@ impl<'a> nash_ast::head::Types<'a> for Probe<'_, 'a> {
                             && !matches!(alias.body.value, nash_ast::Type::Record { .. })
                     })
                 };
-                if transparent(self.types.types.0, a) || transparent(self.types.types.0, b) {
+                if !self.nominal
+                    && (transparent(self.types.types.0, a) || transparent(self.types.types.0, b))
+                {
                     deferred = true;
                 } else {
                     return Ok(Match::No);
@@ -494,6 +498,7 @@ fn given_candidates<'a>(
         }
         seen.push(given);
         let mut probe = Probe {
+            nominal: false,
             types: ClassedTypes {
                 types: InferenceTypes(uf),
                 tables,
@@ -550,6 +555,7 @@ pub(crate) fn improvement<'a>(
     }
     for (key, info) in tables.impls_for(trait_) {
         let mut probe = Probe {
+            nominal: false,
             types: ClassedTypes {
                 types: InferenceTypes(uf),
                 tables,
@@ -583,6 +589,7 @@ pub(crate) fn improvement<'a>(
         && args.len() == 2
     {
         let mut probe = Probe {
+            nominal: true,
             types: ClassedTypes {
                 types: InferenceTypes(uf),
                 tables,

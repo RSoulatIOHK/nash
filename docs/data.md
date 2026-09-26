@@ -13,7 +13,7 @@ for conversion and independent trapping or optional checks. Decisions follow
 ```elm
 type Data
     = Constr (pair int (list Data))
-    | Map (list (pair Data Data))
+    | Map (map Data Data)
     | List (list Data)
     | I int
     | B bytes

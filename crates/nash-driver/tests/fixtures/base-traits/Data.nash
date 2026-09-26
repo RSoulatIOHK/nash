@@ -21,11 +21,11 @@ nested : List (List Int)
 nested = lift [bigList, bigList]
 smallNested : list (List Int)
 smallNested = lower nested
-entries : list (pair Int Bytes)
+entries : map Int Bytes
 entries = [Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa")]
 bigMap : Map Int Bytes
 bigMap = lift entries
-roundTripMap : list (pair Int Bytes)
+roundTripMap : map Int Bytes
 roundTripMap = lower bigMap
 utf8 : Bytes
 utf8 = lift (String.toBytes "é")

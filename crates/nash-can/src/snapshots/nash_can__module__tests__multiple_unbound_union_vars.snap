@@ -14,9 +14,9 @@ nash::names::not_found_type
   help: Similar names:
 
             Map
+            map
             Data
             Foo
-            Int
 
 nash::names::not_found_type
 

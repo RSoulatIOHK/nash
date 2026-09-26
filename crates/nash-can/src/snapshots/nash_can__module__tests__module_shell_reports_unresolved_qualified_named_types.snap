@@ -15,5 +15,5 @@ nash::names::not_found_type
 
             string
             Primitive.Map
+            Primitive.map
             Primitive.value
-            Int

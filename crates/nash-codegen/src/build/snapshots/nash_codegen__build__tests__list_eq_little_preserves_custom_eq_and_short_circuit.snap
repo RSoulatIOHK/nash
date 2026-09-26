@@ -1,0 +1,97 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nvalues : list int\nvalues = [1, 2]\nmain = eq values values\n"
+---
+--- core
+let message#30 : string = "custom" in
+let fromBool#6 : bool -> bool = \value#22 : bool -> value#22 in
+let fromString#25 : string -> string = \value#29 : string -> value#29 in
+let eq#14 : int -> int -> bool = \arg#23 : int arg#24 : int -> let match#27 : int = arg#23 in
+let match#26 : int = arg#24 in
+trace (fromString#25 message#30) in fromBool#6 false in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#31 : 'erased -> self#31 self#31) (\self#31 : 'erased xs#4 : list 'erased ys#5 : list 'erased -> let match#18 : list 'erased = xs#4 in
+case@List match#18 of
+  Nil -> let match#7 : list 'erased = ys#5 in
+  case@List match#7 of
+    Nil -> fromBool#6 true
+    Cons field#8 field#9 -> fromBool#6 false
+  Cons field#19 field#20 -> let x#10 : 'erased = field#19 in
+  let restX#11 : list 'erased = field#20 in
+  let match#15 : list 'erased = ys#5 in
+  case@List match#15 of
+    Nil -> fromBool#6 false
+    Cons field#16 field#17 -> let y#12 : 'erased = field#16 in
+    let restY#13 : list 'erased = field#17 in
+    case@Bool eq#14 x#10 y#12 of
+      True -> self#31 self#31 restX#11 restY#13
+      False -> fromBool#6 false) in
+let fromInt#21 : int -> int = \value#28 : int -> value#28 in
+let values#3 : list int = mkCons (fromInt#21 1) (mkCons (fromInt#21 2) (con (list integer) [])) in
+let main#1 : bool = eq#2 values#3 values#3 in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_30
+    [(lam fromBool_6
+      [(lam fromString_25
+        [(lam eq_14
+          [(lam eq_2
+            [(lam fromInt_21
+              [(lam values_3 [(lam main_1 main_1) [[eq_2 values_3] values_3]])
+                [[(force (builtin mkCons)) [fromInt_21 (con integer 1)]]
+                  [[(force (builtin mkCons)) [fromInt_21 (con integer 2)]]
+                    (con (list integer) [])]]])
+              (lam value_28 value_28)])
+            [(lam self_31 [self_31 self_31])
+              (lam self_31
+                (lam xs_4
+                  (lam ys_5
+                    [(lam match_18
+                      (case
+                        match_18
+                        (lam field_19
+                          (lam field_20
+                            [(lam x_10
+                              [(lam restX_11
+                                [(lam match_15
+                                  (case
+                                    match_15
+                                    (lam field_16
+                                      (lam field_17
+                                        [(lam y_12
+                                          [(lam restY_13
+                                            (case
+                                              [[eq_14 x_10] y_12]
+                                              [fromBool_6 (con bool False)]
+                                              [[[self_31 self_31] restX_11] restY_13]))
+                                            field_17])
+                                          field_16]))
+                                    [fromBool_6 (con bool False)]))
+                                  ys_5])
+                                field_20])
+                              field_19]))
+                        [(lam match_7
+                          (case
+                            match_7
+                            (lam field_8 (lam field_9 [fromBool_6 (con bool False)]))
+                            [fromBool_6 (con bool True)]))
+                          ys_5]))
+                      xs_4])))]])
+          (lam arg_23
+            (lam arg_24
+              [(lam match_27
+                [(lam match_26
+                  (force
+                    [[(force (builtin trace)) [fromString_25 message_30]]
+                      (delay [fromBool_6 (con bool False)])]))
+                  arg_24])
+                arg_23]))])
+        (lam value_29 value_29)])
+      (lam value_22 value_22)])
+    (con string "custom")])
+--- result
+(con bool False)
+--- logs
+["custom"]
+--- budget
+cpu: 1948322, memory: 11096

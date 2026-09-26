@@ -1,0 +1,42 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype alias map 'k 'v = list (pair ('k : Big) ('v : Big))\nimpl Eq (map 'k 'v) where\n    eq xs ys = eq (Builtin.mapData xs) (Builtin.mapData ys)\nentries : map Int Int\nentries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]\nreversed : map Int Int\nreversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]\nsame : Eq 'a => 'a -> 'a -> bool\nsame = eq\nmain = (same entries entries, same entries reversed)\n"
+---
+--- core
+let eq#5 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = \xs#7 : list (pair 'erased 'erased) ys#8 : list (pair 'erased 'erased) -> equalsData (mapData xs#7) (mapData ys#8) in
+let same#2 : 'erased -> 'erased -> bool = eq#5 in
+let fromInt#6 : int -> Int = iData in
+let entries#3 : list (pair Int Int) = mkCons (mkPairData (fromInt#6 1) (fromInt#6 2)) (mkCons (mkPairData (fromInt#6 1) (fromInt#6 3)) (con (list (pair data data)) [])) in
+let reversed#4 : list (pair Int Int) = mkCons (mkPairData (fromInt#6 1) (fromInt#6 3)) (mkCons (mkPairData (fromInt#6 1) (fromInt#6 2)) (con (list (pair data data)) [])) in
+let main#1 : (bool, bool) = constr 0 (same#2 entries#3 entries#3) (same#2 entries#3 reversed#4) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam eq_5
+    [(lam same_2
+      [(lam fromInt_6
+        [(lam entries_3
+          [(lam reversed_4
+            [(lam main_1 main_1)
+              (constr 0 [[same_2 entries_3] entries_3] [[same_2 entries_3] reversed_4])])
+            [[(force (builtin mkCons))
+              [[(builtin mkPairData) [fromInt_6 (con integer 1)]] [fromInt_6 (con integer 3)]]]
+              [[(force (builtin mkCons))
+                [[(builtin mkPairData) [fromInt_6 (con integer 1)]] [fromInt_6 (con integer 2)]]]
+                (con (list (pair data data)) [])]]])
+          [[(force (builtin mkCons))
+            [[(builtin mkPairData) [fromInt_6 (con integer 1)]] [fromInt_6 (con integer 2)]]]
+            [[(force (builtin mkCons))
+              [[(builtin mkPairData) [fromInt_6 (con integer 1)]] [fromInt_6 (con integer 3)]]]
+              (con (list (pair data data)) [])]]])
+        (builtin iData)])
+      eq_5])
+    (lam xs_7
+      (lam ys_8
+        [[(builtin equalsData) [(builtin mapData) xs_7]] [(builtin mapData) ys_8]]))])
+--- result
+(constr 0 (con bool True) (con bool False))
+--- logs
+[]
+--- budget
+cpu: 5452796, memory: 10842

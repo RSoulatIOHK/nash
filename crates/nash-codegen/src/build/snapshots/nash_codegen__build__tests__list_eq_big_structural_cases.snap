@@ -1,0 +1,53 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nsame : list Int -> list Int -> bool\nsame = eq\nmain =\n    ( same [] []\n    , same [1, 2] [1, 2]\n    , same [1, 2] [1, 3]\n    , same [1] [1, 2]\n    , same [1, 2] [2, 1]\n    )\n"
+---
+--- core
+let eq#4 : list 'erased -> list 'erased -> bool = \xs#5 : list 'erased ys#6 : list 'erased -> equalsData (listData xs#5) (listData ys#6) in
+let same#2 : list Int -> list Int -> bool = eq#4 in
+let fromInt#3 : int -> Int = iData in
+let main#1 : (bool, bool, bool, bool, bool) = constr 0 (same#2 (con (list data) []) (con (list data) [])) (same#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) []))) (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) [])))) (same#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) []))) (mkCons (fromInt#3 1) (mkCons (fromInt#3 3) (con (list data) [])))) (same#2 (mkCons (fromInt#3 1) (con (list data) [])) (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) [])))) (same#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) []))) (mkCons (fromInt#3 2) (mkCons (fromInt#3 1) (con (list data) [])))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam eq_4
+    [(lam same_2
+      [(lam fromInt_3
+        [(lam main_1 main_1)
+          (constr 0
+            [[same_2 (con (list data) [])] (con (list data) [])]
+            [[same_2
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 2)]] (con (list data) [])]]]
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 2)]] (con (list data) [])]]]
+            [[same_2
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 2)]] (con (list data) [])]]]
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 3)]] (con (list data) [])]]]
+            [[same_2
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]] (con (list data) [])]]
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 2)]] (con (list data) [])]]]
+            [[same_2
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 2)]] (con (list data) [])]]]
+              [[(force (builtin mkCons)) [fromInt_3 (con integer 2)]]
+                [[(force (builtin mkCons)) [fromInt_3 (con integer 1)]] (con (list data) [])]]])])
+        (builtin iData)])
+      eq_4])
+    (lam xs_5
+      (lam ys_6
+        [[(builtin equalsData) [(builtin listData) xs_5]] [(builtin listData) ys_6]]))])
+--- result
+(constr 0
+  (con bool True)
+  (con bool True)
+  (con bool False)
+  (con bool False)
+  (con bool False))
+--- logs
+[]
+--- budget
+cpu: 10732620, memory: 20685

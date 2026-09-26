@@ -270,7 +270,7 @@ source: crates/nash-docs/src/tests.rs
     - Declaration:
         name: mapData
         kind: Builtin
-        signature: "mapData : (Big 'a, Big 'b) => list (pair 'a 'b) -> Map 'a 'b"
+        signature: "mapData : (Big 'a, Big 'b) => map 'a 'b -> Map 'a 'b"
         type_kind: ~
         doc: "Plutus Core `MapData` builtin."
     - Declaration:
@@ -300,7 +300,7 @@ source: crates/nash-docs/src/tests.rs
     - Declaration:
         name: unMapData
         kind: Builtin
-        signature: "unMapData : (Big 'a, Big 'b) => Map 'a 'b -> list (pair 'a 'b)"
+        signature: "unMapData : (Big 'a, Big 'b) => Map 'a 'b -> map 'a 'b"
         type_kind: ~
         doc: "Plutus Core `UnMapData` builtin."
     - Declaration:
@@ -348,7 +348,7 @@ source: crates/nash-docs/src/tests.rs
     - Declaration:
         name: mkNilPairData
         kind: Builtin
-        signature: "mkNilPairData : unit -> list (pair Data Data)"
+        signature: "mkNilPairData : unit -> map Data Data"
         type_kind: ~
         doc: "Plutus Core `MkNilPairData` builtin."
     - Declaration:
@@ -614,7 +614,7 @@ source: crates/nash-docs/src/tests.rs
     - Declaration:
         name: Data
         kind: Primitive
-        signature: type Data = Constr (pair int (list Data)) | Map (list (pair Data Data)) | List (list Data) | I int | B bytes
+        signature: type Data = Constr (pair int (list Data)) | Map (map Data Data) | List (list Data) | I int | B bytes
         type_kind: Type
         doc: "Data representation; kind `Type`."
     - Declaration:
@@ -713,6 +713,12 @@ source: crates/nash-docs/src/tests.rs
         signature: "type pair 'a 'b"
         type_kind: Type -> Type -> Type
         doc: "Constant representation; kind `Type -> Type -> Type`. Parameter 1 requires `Storable`. Parameter 2 requires `Storable`."
+    - Declaration:
+        name: map
+        kind: Alias
+        signature: "type alias map 'k 'v = list (pair 'k 'v)"
+        type_kind: Type -> Type -> Type
+        doc: Native map entries with storable keys and values; preserves order and duplicates.
     - Declaration:
         name: Big
         kind: Trait

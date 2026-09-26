@@ -184,7 +184,7 @@ tests
     test "Big collection decode validates children 2" = do
         assert (asBigList (List [B #"aa"]) == None)
     test "Big collection decode validates children 3" = do
-        assert (asMap (Map entries) == Some (lift [Builtin.mkPairData bigOne firstBytes, Builtin.mkPairData bigOne secondBytes]))
+        assert (asMap (Map entries) == Some (Builtin.mapData [Builtin.mkPairData bigOne firstBytes, Builtin.mkPairData bigOne secondBytes]))
     test "Big collection decode validates children 4" = do
         assert (asMap (Map [Builtin.mkPairData (B #"aa") (B #"bb")]) == None)
     test "Big collection decode validates children 5" = do

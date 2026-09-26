@@ -61,9 +61,9 @@ The subsequent cleanup and its verification are recorded in
 
 ## Shipping core and acceptance
 
-- [x] Use one elementwise `Eq (list 'a)` implementation. Keep structural
-  Big Eq compiler-owned. The later Big-list fast path is restricted to Eq;
-  no optimizer implementation is part of this delivery.
+- [x] Keep structural Big Eq compiler-owned. Originally shipped one elementwise
+  list Eq impl; superseded by disjoint Big/Little element library impls, removing
+  the need for the proposed Plan 08 Big-list equality fast path.
 - [x] Replace obsolete lattice expectations with Haskell 98 regressions.
   Keep all 22 supplied declaration fixtures with explicit expected outcomes.
   Cover local and imported higher-kinded applications, partial arguments,

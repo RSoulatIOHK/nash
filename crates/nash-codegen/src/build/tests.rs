@@ -146,9 +146,23 @@ fn with_base_modules(
     extra_modules: &[&str],
     check: impl FnOnce(&Arena, &Build<'_, '_>, QualifiedName<'_>),
 ) {
+    with_base_eq(
+        source,
+        include_str!("../../../nash-driver/base/src/Eq.nash"),
+        extra_modules,
+        check,
+    );
+}
+
+fn with_base_eq(
+    source: &str,
+    eq_source: &str,
+    extra_modules: &[&str],
+    check: impl FnOnce(&Arena, &Build<'_, '_>, QualifiedName<'_>),
+) {
     let modules: Vec<_> = [
         include_str!("../../../nash-driver/base/src/Literal.nash"),
-        include_str!("../../../nash-driver/base/src/Eq.nash"),
+        eq_source,
     ]
     .into_iter()
     .chain(extra_modules.iter().copied())
@@ -477,7 +491,7 @@ fn generic_impl_context_default_and_superclass_evidence_are_closed() {
             same : 'a -> 'a -> bool
             same x y = eq x y
         impl Same int where
-        impl Eq 'a => Same (list 'a) where
+        impl Eq (list 'a) => Same (list 'a) where
         use : Same 'a => 'a -> 'a -> bool
         use x y = if same x y then neq x y else True
         main = use [1, 2] [1, 3]
@@ -1792,3 +1806,267 @@ source_codegen_snapshot!(
     "#,
     "(constr 0 (con data (I 1)) (con data (I 4)) (con data (I 5)) (con data (I 4)))"
 );
+
+#[test]
+fn list_eq_generic_big_and_little() {
+    let result = core_eval(
+        "list_eq_generic_big_and_little",
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Builtin exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            same : Eq (list 'a) => list 'a -> list 'a -> bool
+            same xs ys = eq xs ys
+            big : list Int
+            big = [1, 2]
+            small : list int
+            small = [1, 2]
+            main = if same big big then same small small else False
+        "#
+        ),
+    );
+    assert_eq!(result.result, "(con bool True)");
+    assert!(result.logs.is_empty());
+}
+
+#[test]
+fn list_eq_big_structural_cases() {
+    let result = core_eval(
+        "list_eq_big_structural_cases",
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Builtin exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            same : list Int -> list Int -> bool
+            same = eq
+            main =
+                ( same [] []
+                , same [1, 2] [1, 2]
+                , same [1, 2] [1, 3]
+                , same [1] [1, 2]
+                , same [1, 2] [2, 1]
+                )
+        "#
+        ),
+    );
+    assert_eq!(
+        result
+            .result
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" "),
+        "(constr 0 (con bool True) (con bool True) (con bool False) (con bool False) (con bool False))"
+    );
+    assert!(result.logs.is_empty());
+}
+
+#[test]
+fn list_eq_little_preserves_custom_eq_and_short_circuit() {
+    // A trait-owner fixture gives a storable little type nonstructural equality.
+    let eq_source = include_str!("../../../nash-driver/base/src/Eq.nash").replace(
+        "eq = Builtin.equalsInteger",
+        "eq _ _ = trace \"custom\" False",
+    );
+    with_base_eq(
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            values : list int
+            values = [1, 2]
+            main = eq values values
+        "#
+        ),
+        &eq_source,
+        &[],
+        |arena, build, root| {
+            let compiled = build
+                .compile(arena, root, None, TraceConfig::default())
+                .unwrap();
+            let core =
+                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
+                    .unwrap();
+            let result = crate::harness::eval_core(arena, core);
+            assert_eq!(result.result, "(con bool False)");
+            assert_eq!(result.logs, ["custom"]);
+            insta::assert_snapshot!(format!(
+                "--- core\n{}\n{result}",
+                nash_ir::pretty::pretty(core)
+            ));
+        },
+    );
+}
+
+#[test]
+fn map_eq_big_and_native_preserve_entry_order() {
+    let result = core_eval(
+        "map_eq_big_and_native_preserve_entry_order",
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Builtin exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            entries : list (pair Int Int)
+            entries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]
+            reversed : list (pair Int Int)
+            reversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]
+            main =
+                ( eq (Builtin.mapData entries) (Builtin.mapData entries)
+                , eq (Builtin.mapData entries) (Builtin.mapData reversed)
+                , eq entries entries
+                , eq entries reversed
+                )
+        "#
+        ),
+    );
+    assert_eq!(
+        result
+            .result
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" "),
+        "(constr 0 (con bool True) (con bool False) (con bool True) (con bool False))"
+    );
+    assert!(result.logs.is_empty());
+}
+
+#[test]
+fn native_map_alias_has_distinct_eq() {
+    let result = core_eval(
+        "native_map_alias_has_distinct_eq",
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Builtin exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            type alias entriesMap 'k 'v = list (pair ('k : Big) ('v : Big))
+            impl Eq (entriesMap 'k 'v) where
+                eq xs ys = eq (Builtin.mapData xs) (Builtin.mapData ys)
+            entries : entriesMap Int Int
+            entries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]
+            reversed : entriesMap Int Int
+            reversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]
+            same : Eq 'a => 'a -> 'a -> bool
+            same = eq
+            main = (same entries entries, same entries reversed)
+        "#
+        ),
+    );
+    assert_eq!(result.result, "(constr 0 (con bool True) (con bool False))");
+    assert!(result.logs.is_empty());
+}
+
+#[test]
+fn primitive_map_unwrap_retains_structural_eq() {
+    let result = core_eval(
+        "primitive_map_unwrap_retains_structural_eq",
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Builtin exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            encoded : Map Int Int
+            encoded = Builtin.mapData [Builtin.mkPairData 1 2]
+            native = Builtin.unMapData encoded
+            main = eq native native
+        "#
+        ),
+    );
+    assert_eq!(result.result, "(con bool True)");
+}
+
+#[test]
+fn primitive_map_eq_all_representation_classes() {
+    let result = core_eval(
+        "primitive_map_eq_all_representation_classes",
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Builtin exposing (..)
+            import Literal exposing (..)
+            import Eq exposing (..)
+            bigBig : map Int Int
+            bigBig = [Builtin.mkPairData 1 2]
+            bigLittle : map Int int
+            bigLittle = []
+            littleBig : map int Int
+            littleBig = []
+            littleLittle : map int (list Data)
+            littleLittle = [Builtin.unConstrData (Builtin.constrData 1 [])]
+            different : map int (list Data)
+            different = [Builtin.unConstrData (Builtin.constrData 2 [])]
+            same : Eq (map 'k 'v) => map 'k 'v -> map 'k 'v -> bool
+            same = eq
+            main =
+                ( same bigBig bigBig
+                , same bigLittle bigLittle
+                , same littleBig littleBig
+                , same littleLittle different
+                )
+        "#
+        ),
+    );
+    assert_eq!(
+        result
+            .result
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" "),
+        "(constr 0 (con bool True) (con bool True) (con bool True) (con bool False))"
+    );
+}
+
+#[test]
+fn map_eq_little_preserves_custom_eq_and_short_circuit() {
+    // A trait-owner fixture gives a storable little type nonstructural equality.
+    let eq_source = include_str!("../../../nash-driver/base/src/Eq.nash").replace(
+        "eq = Builtin.equalsInteger",
+        "eq _ _ = trace \"custom\" False",
+    );
+    with_base_eq(
+        indoc::indoc!(
+            r#"
+            module Main exposing (..)
+            import Primitive exposing (..)
+            import Literal exposing (..)
+            import Builtin exposing (..)
+            import Eq exposing (..)
+            values : map int (list Data)
+            values = [Builtin.unConstrData (Builtin.constrData 1 []), Builtin.unConstrData (Builtin.constrData 2 [])]
+            main = eq values values
+        "#
+        ),
+        &eq_source,
+        &[],
+        |arena, build, root| {
+            let compiled = build
+                .compile(arena, root, None, TraceConfig::default())
+                .unwrap();
+            let core =
+                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
+                    .unwrap();
+            let result = crate::harness::eval_core(arena, core);
+            assert_eq!(result.result, "(con bool False)");
+            assert_eq!(result.logs, ["custom"]);
+            insta::assert_snapshot!(format!(
+                "--- core\n{}\n{result}",
+                nash_ir::pretty::pretty(core)
+            ));
+        },
+    );
+}

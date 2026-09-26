@@ -30,7 +30,13 @@ impl Lift (list ('a : Big)) (List 'a) where
     lower = Builtin.unListData
 
 
-impl ( Big 'k, Big 'v ) => Lift (list (pair 'k 'v)) (Map 'k 'v) where
+impl ( Big 'k, Big 'v ) => Lift (map 'k 'v) (Map 'k 'v) where
     lift = Builtin.mapData
 
     lower = Builtin.unMapData
+
+
+impl Lift (map 'k 'v) (list (pair 'k 'v)) where
+    lift entries = entries
+
+    lower entries = entries

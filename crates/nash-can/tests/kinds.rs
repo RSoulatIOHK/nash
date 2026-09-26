@@ -891,3 +891,19 @@ fn impl_head_rejects_inconsistent_higher_kinded_arguments() {
         Error::KindMismatch { .. }
     );
 }
+
+#[test]
+fn map_requires_storable_key() {
+    assert_kind_error_snapshot!(
+        "type alias invalid = map (int -> int) int",
+        Error::RepresentationMismatch { .. }
+    );
+}
+
+#[test]
+fn map_requires_storable_value() {
+    assert_kind_error_snapshot!(
+        "type alias invalid = map int (int -> int)",
+        Error::RepresentationMismatch { .. }
+    );
+}

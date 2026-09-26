@@ -400,7 +400,7 @@ case!(
         }
     main =
         let
-            emptyPairs : list (pair Bytes (Map Bytes Int))
+            emptyPairs : map Bytes (Map Bytes Int)
             emptyPairs = []
             prevOutput : Output
             prevOutput =
@@ -438,7 +438,7 @@ case!(
         }
     main =
         let
-            emptyPairs : list (pair Bytes (Map Bytes Int))
+            emptyPairs : map Bytes (Map Bytes Int)
             emptyPairs = []
             prevOutput : Output
             prevOutput =
@@ -476,7 +476,7 @@ case!(
         }
     main =
         let
-            emptyPairs : list (pair Bytes (Map Bytes Int))
+            emptyPairs : map Bytes (Map Bytes Int)
             emptyPairs = []
             prevOutput : Output
             prevOutput =

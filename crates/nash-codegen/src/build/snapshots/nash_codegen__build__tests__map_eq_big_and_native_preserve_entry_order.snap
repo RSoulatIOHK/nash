@@ -1,0 +1,155 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nentries : list (pair Int Int)\nentries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]\nreversed : list (pair Int Int)\nreversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]\nmain =\n    ( eq (Builtin.mapData entries) (Builtin.mapData entries)\n    , eq (Builtin.mapData entries) (Builtin.mapData reversed)\n    , eq entries entries\n    , eq entries reversed\n    )\n"
+---
+--- core
+let fromInt#5 : int -> Int = iData in
+let entries#2 : list (pair Int Int) = mkCons (mkPairData (fromInt#5 1) (fromInt#5 2)) (mkCons (mkPairData (fromInt#5 1) (fromInt#5 3)) (con (list (pair data data)) [])) in
+let reversed#3 : list (pair Int Int) = mkCons (mkPairData (fromInt#5 1) (fromInt#5 3)) (mkCons (mkPairData (fromInt#5 1) (fromInt#5 2)) (con (list (pair data data)) [])) in
+let fromBool#8 : bool -> bool = \value#23 : bool -> value#23 in
+let eq#16 : pair 'erased 'erased -> pair 'erased 'erased -> bool = \a#24 : pair 'erased 'erased b#25 : pair 'erased 'erased -> let destruct#26 : pair 'erased 'erased = b#25 in
+let destruct#27 : pair 'erased 'erased = a#24 in
+let match#30 : pair 'erased 'erased = destruct#27 in
+case@Pair match#30 of
+  Pair field#31 field#32 -> let firstA#28 : 'erased = field#31 in
+  let secondA#29 : 'erased = field#32 in
+  let match#35 : pair 'erased 'erased = destruct#26 in
+  case@Pair match#35 of
+    Pair field#36 field#37 -> let firstB#33 : 'erased = field#36 in
+    let secondB#34 : 'erased = field#37 in
+    case@Bool equalsData firstA#28 firstB#33 of
+      True -> let match#40 : pair 'erased 'erased = destruct#27 in
+      let firstA#38 : 'erased = field#31 in
+      let secondA#39 : 'erased = field#32 in
+      let match#45 : pair 'erased 'erased = destruct#26 in
+      let firstB#43 : 'erased = field#36 in
+      let secondB#44 : 'erased = field#37 in
+      equalsData secondA#39 secondB#44
+      False -> fromBool#8 false in
+let eq#4 : list 'erased -> list 'erased -> bool = (\self#41 : 'erased -> self#41 self#41) (\self#41 : 'erased xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
+case@List match#20 of
+  Nil -> let match#9 : list 'erased = ys#7 in
+  case@List match#9 of
+    Nil -> fromBool#8 true
+    Cons field#10 field#11 -> fromBool#8 false
+  Cons field#21 field#22 -> let x#12 : 'erased = field#21 in
+  let restX#13 : list 'erased = field#22 in
+  let match#17 : list 'erased = ys#7 in
+  case@List match#17 of
+    Nil -> fromBool#8 false
+    Cons field#18 field#19 -> let y#14 : 'erased = field#18 in
+    let restY#15 : list 'erased = field#19 in
+    case@Bool eq#16 x#12 y#14 of
+      True -> self#41 self#41 restX#13 restY#15
+      False -> fromBool#8 false) in
+let main#1 : (bool, bool, bool, bool) = constr 0 (equalsData (mapData entries#2) (mapData entries#2)) (equalsData (mapData entries#2) (mapData reversed#3)) (eq#4 entries#2 entries#2) (eq#4 entries#2 reversed#3) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam fromInt_5
+    [(lam entries_2
+      [(lam reversed_3
+        [(lam fromBool_8
+          [(lam eq_16
+            [(lam eq_4
+              [(lam main_1 main_1)
+                (constr 0
+                  [[(builtin equalsData) [(builtin mapData) entries_2]]
+                    [(builtin mapData) entries_2]]
+                  [[(builtin equalsData) [(builtin mapData) entries_2]]
+                    [(builtin mapData) reversed_3]]
+                  [[eq_4 entries_2] entries_2]
+                  [[eq_4 entries_2] reversed_3])])
+              [(lam self_41 [self_41 self_41])
+                (lam self_41
+                  (lam xs_6
+                    (lam ys_7
+                      [(lam match_20
+                        (case
+                          match_20
+                          (lam field_21
+                            (lam field_22
+                              [(lam x_12
+                                [(lam restX_13
+                                  [(lam match_17
+                                    (case
+                                      match_17
+                                      (lam field_18
+                                        (lam field_19
+                                          [(lam y_14
+                                            [(lam restY_15
+                                              (case
+                                                [[eq_16 x_12] y_14]
+                                                [fromBool_8 (con bool False)]
+                                                [[[self_41 self_41] restX_13] restY_15]))
+                                              field_19])
+                                            field_18]))
+                                      [fromBool_8 (con bool False)]))
+                                    ys_7])
+                                  field_22])
+                                field_21]))
+                          [(lam match_9
+                            (case
+                              match_9
+                              (lam field_10 (lam field_11 [fromBool_8 (con bool False)]))
+                              [fromBool_8 (con bool True)]))
+                            ys_7]))
+                        xs_6])))]])
+            (lam a_24
+              (lam b_25
+                [(lam destruct_26
+                  [(lam destruct_27
+                    [(lam match_30
+                      (case
+                        match_30
+                        (lam field_31
+                          (lam field_32
+                            [(lam firstA_28
+                              [(lam secondA_29
+                                [(lam match_35
+                                  (case
+                                    match_35
+                                    (lam field_36
+                                      (lam field_37
+                                        [(lam firstB_33
+                                          [(lam secondB_34
+                                            (case
+                                              [[(builtin equalsData) firstA_28] firstB_33]
+                                              [fromBool_8 (con bool False)]
+                                              [(lam match_40
+                                                [(lam firstA_38
+                                                  [(lam secondA_39
+                                                    [(lam match_45
+                                                      [(lam firstB_43
+                                                        [(lam secondB_44 [[(builtin equalsData) secondA_39] secondB_44]) field_37])
+                                                        field_36])
+                                                      destruct_26])
+                                                    field_32])
+                                                  field_31])
+                                                destruct_27]))
+                                            field_37])
+                                          field_36]))))
+                                  destruct_26])
+                                field_32])
+                              field_31]))))
+                      destruct_27])
+                    a_24])
+                  b_25]))])
+          (lam value_23 value_23)])
+        [[(force (builtin mkCons))
+          [[(builtin mkPairData) [fromInt_5 (con integer 1)]] [fromInt_5 (con integer 3)]]]
+          [[(force (builtin mkCons))
+            [[(builtin mkPairData) [fromInt_5 (con integer 1)]] [fromInt_5 (con integer 2)]]]
+            (con (list (pair data data)) [])]]])
+      [[(force (builtin mkCons))
+        [[(builtin mkPairData) [fromInt_5 (con integer 1)]] [fromInt_5 (con integer 2)]]]
+        [[(force (builtin mkCons))
+          [[(builtin mkPairData) [fromInt_5 (con integer 1)]] [fromInt_5 (con integer 3)]]]
+          (con (list (pair data data)) [])]]])
+    (builtin iData)])
+--- result
+(constr 0 (con bool True) (con bool False) (con bool True) (con bool False))
+--- logs
+[]
+--- budget
+cpu: 16892054, memory: 43548

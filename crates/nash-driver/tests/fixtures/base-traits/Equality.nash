@@ -4,9 +4,31 @@ type Token = Token Int
 bigList : List Int
 bigList = lift [Builtin.iData 1, Builtin.iData 2]
 bigMap : Map Int Bytes
-bigMap = lift [Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa")]
+bigMap = Builtin.mapData [Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa")]
+
+nativeMap : map Int Int
+nativeMap = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]
+reversedMap : map Int Int
+reversedMap = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]
+emptyMap : map Int Int
+emptyMap = []
+sameGeneric : Eq 'a => 'a -> 'a -> bool
+sameGeneric = eq
+mixedMap : map int (list Data)
+mixedMap = [Builtin.unConstrData (Builtin.constrData 7 [])]
 
 tests
+    test "native map alias equality" = do
+        assert (sameGeneric nativeMap nativeMap)
+        assert (nativeMap /= reversedMap)
+        assert (emptyMap == emptyMap)
+        assert (emptyMap /= nativeMap)
+    test "native map operation results" = do
+        assert (Map.union nativeMap emptyMap == nativeMap)
+        assert (Map.toList nativeMap == [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3])
+    test "mixed native map operations" = do
+        assert (Map.get 7 mixedMap == Some [])
+        assert (Map.remove 7 mixedMap == [])
     test "primitive equality" = do
         assert (1 == 1)
         assert (1 /= 2)

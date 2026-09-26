@@ -302,6 +302,21 @@ impl<'a> KindEnv<'a> {
                 .map(|t| (t.qualified(), &[&Kind::Type][..]))
                 .collect(),
         };
+        for alias in primitives::ALIASES {
+            env.types.insert(
+                QualifiedName {
+                    home: primitives::primitive_home(),
+                    name: alias.name,
+                },
+                TypeInfo::Defined {
+                    kind: alias.kind,
+                    parameters: alias.parameters,
+                    context: alias.context,
+                    repr: None,
+                    alias: Some(alias.typ),
+                },
+            );
+        }
         // Literal expressions and literal patterns emit these compiler-owned
         // predicates even before an imported implementation is available.
         for name in ["FromInt", "FromString", "FromBytes", "FromBool", "FromUnit"] {
@@ -1987,7 +2002,16 @@ pub fn primitive_interface(bump: &Bump) -> crate::Interface<'_> {
     crate::Interface {
         home: primitives::primitive_home(),
         impls: &[],
-        aliases: &[],
+        aliases: bump.alloc_slice_fill_iter(primitives::ALIASES.iter().map(|alias| {
+            crate::interface::InterfaceAlias {
+                name: alias.name,
+                kind: alias.kind,
+                parameters: alias.parameters,
+                context: alias.context,
+                typ: alias.typ,
+                visibility: crate::interface::AliasVisibility::Public,
+            }
+        })),
         binops: &[],
         traits: bump.alloc_slice_fill_iter(ReprTrait::ALL.into_iter().map(|trait_| {
             InterfaceTrait {

@@ -3,7 +3,7 @@ module Main exposing (..)
 bigList : List Int
 bigList = lift [Builtin.iData 1, Builtin.iData 2]
 bigMap : Map Int Bytes
-bigMap = lift [Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa")]
+bigMap = Builtin.mapData [Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa")]
 
 tests
     test "scalar formats" = do

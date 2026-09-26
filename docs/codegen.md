@@ -215,7 +215,7 @@ A use of a trait method `Ord.compare` at type `int` with evidence
 `Var(compare#Ord#int)`, whose definition is the impl's method body
 instantiated at `type_args` (or the trait's default method body with the
 impl's evidence substituted). `args` supplies the evidence for the impl's
-own context (`impl Eq 'a => Eq (list 'a)`), and a `Super` node (`lt` using
+own context (`impl Eq 'a => Eq (list ('a : Little))`), and a `Super` node (`lt` using
 `Eq` through `Ord`'s superclass) resolves to the superclass impl through
 the impl table. After this phase there are no dictionaries and no trait
 names in `Core`.

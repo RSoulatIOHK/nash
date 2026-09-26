@@ -5419,3 +5419,46 @@ fn relational_given_precedes_a_matching_blanket() {
     "#
     );
 }
+
+#[test]
+fn nominal_reflexive_lift_does_not_block_alias_conversion_inference() {
+    let bump = Bump::new();
+    let interfaces = std::collections::BTreeMap::from([("Lift", lift_interface(&bump, true))]);
+    let source = indoc!(
+        r#"
+        module Main exposing (..)
+        import Lift exposing (Lift)
+        type Packed 'k 'v = Packed 'k 'v
+        type alias entries 'k 'v = list (pair 'k 'v)
+        impl Lift (entries 'k 'v) (Packed 'k 'v) where
+            lift _ = fail
+            lower _ = fail
+        keys : Lift (entries 'k 'v) 'input => 'input -> list 'k
+        keys input = keysOf (lower input)
+        keysOf : entries 'k 'v -> list 'k
+        keysOf input = case input of
+            [] -> []
+            pair(key, _) :: _ -> [key]
+        first : Packed Int Bytes -> list Int
+        first = keys
+    "#
+    );
+    let module = nash_parse::Parser::new(&bump, source).module().unwrap();
+    let canonical = nash_can::canonicalize(
+        &bump,
+        Context {
+            package: None,
+            interfaces: Some(&interfaces),
+        },
+        &module,
+    )
+    .unwrap();
+    let (annotations, _) = nash_solve::run(
+        &bump,
+        &mut UnionFind::new(),
+        &canonical.module,
+        &canonical.tables,
+    )
+    .unwrap();
+    assert_inference_snapshot!(@output source, &annotations);
+}
