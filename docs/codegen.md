@@ -140,19 +140,20 @@ Can AST + solved types + trait evidence
    │ 2. trait methods -> impl bodies      (folded into 1)
    │ 3. pattern matching -> decision trees
    │ 4. desugar do / records / tuples / lists   (folded into 1 and 3)
-   │ 5. recursion rewrite                 (LetRec -> self-application)
+   ▼
+Core with LetRec
+   │ 5. hygiene + ANF + main optimization (Plan 08; O1/O2 only)
+   │ 6. recursion rewrite                 (LetRec -> self-application/dispatch)
+   │ 7. ANF + cleanup optimization        (Plan 08; O1/O2 only)
    ▼
 Core
-   │ 6. Core -> Core optimization passes  (plans/08-optimizer.md)
-   ▼
-Core
-   │ 7. Core -> Term<Name> -> Term<DeBruijn> -> Program
+   │ 8. Core -> Term<Name> -> Term<DeBruijn> -> Program
    ▼
 UPLC
 ```
 
-Phases 1–4 run in one traversal in `nash-codegen` (`Can -> Core`), phase 5
-is a Core pass in `nash-codegen`, phase 6 lives in `nash-ir`, phase 7 in
+Phases 1–4 run in one traversal in `nash-codegen` (`Can -> Core`), phase 6
+is a Core pass in `nash-codegen`, phases 5 and 7 are planned in `nash-ir`, phase 8 in
 `nash-codegen`.
 
 ### 1. Monomorphization worklist
@@ -336,7 +337,12 @@ No Y combinator is ever emitted.
 ### 6. Optimizations
 
 Plan 08 is deferred. Its accepted pipeline now begins with binder hygiene and
-A-normal form (ANF), after recursion rewriting and before reduction passes.
+A-normal form (ANF) while recursive groups remain explicit as `LetRec`. Main
+optimization runs before recursion rewriting; generated code is normalized again
+and cleaned up afterward. Assembly coordinates these phases. Before recursion
+rewrite, refresh recursive groups and static-parameter metadata so simplification
+can expose newly unchanged arguments. Do not repeatedly unfold recursive calls
+or generated self-application. O0 still performs required recursion rewriting.
 Non-atomic intermediate operands receive explicit bindings; variables/literals
 can stay inline. Existing Core nodes are reused. Later passes preserve ANF and
 strict evaluation order, including application staging and trace timing; they

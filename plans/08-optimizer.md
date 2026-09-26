@@ -5,8 +5,9 @@
 The four optimizations named in [docs/overview.md](../docs/overview.md)
 as Core -> Core passes in `crates/nash-ir`, beginning with A-normal form (ANF).
 Give binders unique names, normalize evaluation into explicit bindings, then run
-ANF-preserving optimizations. Use temporary cost measurements to compare candidate
-implementations.
+ANF-preserving optimizations while `LetRec` is explicit. Then rewrite recursion,
+normalize the generated code, and run cleanup passes before lowering. Use temporary
+cost measurements to compare candidate implementations.
 Remove measurement code and fixtures after each experiment; keep findings in docs
 and functional snapshot coverage in the test suite.
 
@@ -194,17 +195,50 @@ pub fn size(core: &Core<'_>) -> usize {
 
 **Accepted decision: ANF is the first transformation after binder hygiene.**
 This is pending implementation, like the rest of Plan 08. Reuse existing Core
-Let/Case/Lam/Delay nodes rather than adding a parallel optimizer IR.
+Let/LetRec/Case/Lam/Delay nodes rather than adding a parallel optimizer IR.
 
 Pipeline:
 
 ```text
-existing Core -> recursion rewrite -> unique names -> ANF
-             -> ANF-preserving optimization passes -> UPLC lowering
+Core with LetRec -> unique names -> ANF -> main optimization passes
+                 -> recursion rewrite -> ANF for generated code
+                 -> cleanup passes -> UPLC lowering
 ```
 
-Recursion rewriting already precedes optimization in assembly. `O0` remains the
-unchanged pre-optimizer baseline; `O1`/`O2` normalize before their reduction passes.
+Current assembly rewrites recursion immediately before lowering; the optimizer is
+not installed yet. For `O1`/`O2`, assembly must run the main optimizer before that
+rewrite and cleanup afterward. `O0` keeps the current path: recursion rewrite
+then lowering, without optimizer normalization or reduction.
+
+**Recursion boundary**
+
+- Normalize and optimize `LetRec` function bodies inside their parameter scopes;
+  retain the group's simultaneous binding scope and its continuation. Do not
+  evaluate a recursive body while creating the group.
+- Simplify bodies and calls while function identities and recursive groups are
+  explicit. Remove unreachable group members by reachability from the continuation
+  (including escaping function references), not by counting internal self uses.
+- Do not unfold recursive calls in the fixed-point inliner. Ordinary nonrecursive
+  helpers may still be inlined into recursive bodies. Post-rewrite cleanup must
+  likewise avoid repeatedly expanding generated self-application or dispatchers.
+- Remove unused recursive parameters only when all affected uses are known and
+  rewritable, including calls within the group. Preserve argument evaluation and
+  application staging; keep signatures for escaping/partial uses when unsafe to
+  rewrite. Keep at least one parameter where removing all would create an
+  unsupported zero-parameter recursive value.
+- Recompute recursive groups and static-parameter metadata after changes to calls,
+  parameter positions, or reachability, immediately before recursion rewrite.
+  Rechecking stale hints alone is insufficient: newly proven static parameters
+  must be discovered. For example, deleting a dead call that changes `config`
+  can let the worker capture `config` instead of forwarding it on each call.
+- Recursion rewrite remains in `nash-codegen`; optimization remains in `nash-ir`.
+  Assembly coordinates the two phases without introducing an IR-to-codegen
+  dependency. Rewrite recursion once, using a collision-free fresh-name supply.
+- Normalize generated wrappers, self-applications, constructor packets and cases
+  back into ANF. Then simplify safe applications, aliases, unused bindings and
+  force/delay pairs; at O2 also fold known cases and constants. Reuse the same
+  pass implementations and semantic checks, rather than adding another optimizer.
+  Preserve selected-branch execution, strict arguments and delayed worker bodies.
 
 **Representation invariant**
 
@@ -254,8 +288,9 @@ addInteger product difference
 **Pass contract**
 
 Add `anf::normalize` and `anf::check` in `nash-ir` (or its existing traversal
-organization). Normalize once at entry; each optimizer pass must preserve ANF,
-using local normalization/reassociation when a rewrite introduces computations.
+organization). Normalize at entry and again after recursion rewrite; each
+optimizer pass must preserve ANF, using local normalization/reassociation when a
+rewrite introduces computations.
 Check the invariant after each pass in tests/debug builds.
 
 Inlining must not substitute a non-atomic computation into an atomic operand.
@@ -277,7 +312,8 @@ framework is required for ANF.
 - [ ] Implement normalization and structural invariant checking with fresh names
   and valid types; reuse existing Core traversal/substitution facilities.
 - [ ] Snapshot nested applications/builtins, existing let nesting, case subjects,
-  constructor fields, projections, force/delay, and recursive rewritten Core.
+  constructor fields, projections, force/delay, both explicit `LetRec` and
+  recursion-rewritten Core.
 - [ ] Differentially evaluate before/after ANF: values, traces, failures, subject
   once, left-to-right evaluation, trace-before-body, partial application, and
   unselected branch/unforced delay/uncalled lambda behavior.
@@ -285,6 +321,11 @@ framework is required for ANF.
   ignored fields, and function-valued results. ANF must not force helpers early.
 - [ ] Test idempotence of normalization and hygiene/ANF preservation after every
   optimization pass. Include no-op and same-size rewrites in convergence tests.
+- [ ] Test dead recursive members, self/mutual recursion, escaping and partial
+  recursive calls, safe unused-parameter removal, and all-static workers.
+- [ ] Test that dead-branch removal exposes a newly static argument, and parameter
+  removal cannot leave stale static indices. Verify recursion is rewritten once
+  and neither phase repeatedly unfolds recursive calls.
 - [ ] Preserve raw O0 snapshots; add separate ANF and optimized snapshots. Record
   temporary CPU/memory/serialized-size findings, then remove experiment code.
 
@@ -321,6 +362,9 @@ snapshots that show the selected lowering and its results.
 Adapt the historical sketch below to the ANF contract in chunk 1a. Never insert
 a compound expression into an atomic operand; keep strict evaluation at its
 original execution point unless a separate safety proof permits movement.
+
+Traverse `LetRec` bodies without unfolding recursive calls, as specified in
+chunk 1a. The rules below also apply inside those bodies.
 
 One pass, three rules:
 
@@ -522,6 +566,10 @@ code removed.
    `inner` of a self-application (its first parameter is the function
    itself; it is used), so plan 07's static-param lifting is preserved.
 
+Before recursion rewrite, also apply the `LetRec` reachability and recursive
+parameter rules in chunk 1a. The historical sketch below covers only ordinary
+`Let`/`Lam`; extend it to recursive groups and refresh affected metadata.
+
 **Code**
 
 ```rust
@@ -688,14 +736,29 @@ code removed.
 
 **Change**
 
-Order and fixed point, following `aiken_optimize_and_intern`:
+Assembly runs two optimizer phases around the existing recursion rewrite:
+
+```text
+O0: recursion::rewrite -> lower
+O1/O2: optimize::run -> refresh recursive groups/static metadata
+       -> recursion::rewrite -> optimize::cleanup -> lower
+```
+
+`run` consumes explicit `LetRec`; `cleanup` consumes the rewritten Core and
+normalizes its generated code before reductions. Both use shared pass functions
+and fresh names. The sketch below describes the main phase; cleanup reuses its
+inlining/DCE loop and, at O2, folding. It need not repeat whole-program force
+caching/currying unless generated code exposes new eligible sites. Test the
+complete assembly pipeline as well as each phase separately.
+
+Main-phase order and fixed point, following `aiken_optimize_and_intern`:
 
 ```rust
 /// `--optimize 0|1|2` (docs/cli.md, docs/validators.md); `Options.optimize: u8`
 /// in plan 07 maps onto it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
-    /// No Core passes (front-end tests, `Core` snapshots).
+    /// No optimization passes; assembly still performs required recursion rewrite.
     O0,
     /// Inlining, DCE, builtin force caching and currying.
     O1,
@@ -741,7 +804,8 @@ Convergence tests must include same-size rewrites and a second optimizer run.
 A size metric is useful for inlining decisions, not proof of a fixed point.
 
 
-`assemble` passes `Level::from_flag(build.options.optimize)`; the plan 07 test macros
+`assemble` passes `Level::from_flag(build.options.optimize)` to both phases;
+recursion rewriting remains required at every level. The plan 07 test macros
 gain a variant `assert_eval_snapshot_unoptimized!` so front-end tests keep
 readable output, and every existing `Core` snapshot in plan 07 is
 re-accepted once with the optimizer on (their evaluation results must not
@@ -754,6 +818,10 @@ change; the test asserts that separately by running both).
 
 - `run_is_idempotent`: `run(run(x)) == run(x)` on every fixture (pretty
   `Core` equality).
+- `cleanup_is_idempotent`: cleanup of recursion-rewritten fixtures reaches a
+  fixed point without expanding recursion indefinitely.
+- `phase_snapshots`: retain explicit recursive Core, optimized recursive Core,
+  rewritten Core, and cleaned Core snapshots for self and mutual recursion.
 - `results_unchanged`: every plan 07 evaluation snapshot has the same
   `result` and `logs` with and without the optimizer (a loop over the
   fixtures).
