@@ -142,9 +142,9 @@ Can AST + solved types + trait evidence
    │ 4. desugar do / records / tuples / lists   (folded into 1 and 3)
    ▼
 Core with LetRec
-   │ 5. hygiene + ANF + main optimization (Plan 08; O1/O2 only)
+   │ 5. hygiene + ANF + main optimization (Plan 08; optimized path only)
    │ 6. recursion rewrite                 (LetRec -> self-application/dispatch)
-   │ 7. ANF + cleanup optimization        (Plan 08; O1/O2 only)
+   │ 7. ANF + cleanup optimization        (Plan 08; optimized path only)
    ▼
 Core
    │ 8. Core -> Term<Name> -> Term<DeBruijn> -> Program
@@ -348,32 +348,40 @@ can stay inline. Existing Core nodes are reused. Later passes preserve ANF and
 strict evaluation order, including application staging and trace timing; they
 must not move work across case-branch, lambda, or delay boundaries without a
 separate semantic justification. O0 remains the unnormalized baseline. See
-[Plan 08 chunk 1a](../plans/08-optimizer.md#chunk-1a--a-normal-form-before-optimization).
+[Plan 08 chunk 2](../plans/08-optimizer.md#chunk-2--anf-normalization).
 
 
-Specified in `plans/08-optimizer.md`:
+Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
+one rewrite at a time. Implement and measure a concrete candidate, then wait for
+the user's keep/revise/discard decision before advancing. Small functions used
+multiple times are eligible for consideration; code duplication must be measured.
 
-- **Inline** single-use `Let`s and small lambdas (Aiken `inline_reducer`,
-  `lambda_reducer` in `crates/uplc/src/optimize/shrinker.rs`).
-- **Builtin force caching**: hoist `force (builtin f)` for every forced
-  builtin to one binding at the program root, and curry constant first
-  arguments (Aiken `builtin_force_reducer`, `builtin_curry_reducer`).
-- **DCE + unused params**: drop unreferenced `Let`/`LetRec` bindings and
-  parameters that no call site needs.
-- **Case-of-known-constructor + constant folding**: `Case` on a `Constr`
-  or `Lit` picks the branch; a closed `Builtin` application whose arguments
-  are all `Lit` is evaluated on the nash-plutus CEK machine
-  (`Program::eval`, `crates/nash-plutus/src/program.rs:38`) and replaced by
-  the resulting constant when the builtin is error-safe on those arguments
-  (Aiken `builtin_eval_reducer`, `is_error_safe`). Adjacent inverse builtin calls
-  (`unIData (iData x)`) cancel (Aiken `cast_data_reducer`).
+- Inlining, atom/alias propagation and binding cleanup.
+- Builtin force sharing and repeated constant partial applications.
+- Dead bindings, unreachable recursive members and unused parameters.
+- Known-case and field simplification, preserving strict ignored fields.
+- Valid inverse representation conversions and force/delay cancellation.
+- Bounded CEK evaluation of safe constant builtin calls.
+- Single-field native pair case versus `fstPair`/`sndPair`, including measurements
+  with and without shared builtin forces.
 
-Plan 08 also compares native pair case with `fstPair`/`sndPair` when only one
-field is used, using measured CPU, memory and serialized size. The rewrite must
-preserve strict subject/field evaluation and leave O0 as the baseline.
+Each retained pass preserves ANF, results, trace order, failures and termination.
+Compose accepted passes to a structural fixed point; equal node counts are not
+proof of convergence. Test idempotence and preserve separate O0/ANF/optimized
+snapshots. Recursion rewriting remains required even for O0.
 
-The passes preserve ANF and run until no structural rewrite remains. Equal node
-counts alone do not establish a fixed point; convergence and idempotence are tested.
+Permanent performance regression cases and temporary per-chunk experiments use
+an isolated, explicit performance runner outside root Cargo test discovery.
+Ordinary `cargo test` and `cargo nextest run`, including workspace/all-features
+runs, must not execute them. Record CPU, memory and serialized size; tradeoffs
+are decided case by case, with no fixed metric priority. Baseline updates are
+explicit. Temporary experiments are removed after review unless promoted into
+permanent performance coverage. Ordinary semantic tests continue to run normally.
+
+Optimization levels, flags and defaults are deferred until the accepted passes
+have been evaluated. No automatic integer-dispatch heuristic or specialized
+list/map Eq recognition belongs to this optimizer; those decisions remain with
+explicit source operations and library trait implementations.
 
 ### 7. Lowering to UPLC
 

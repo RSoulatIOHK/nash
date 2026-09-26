@@ -89,7 +89,7 @@ implementation, default imports, Prop and the full validator example.
 | Exposing little types | `exposing (type option(..), map)` — the `type` prefix marks a lowercase type in exposing/import lists. |
 | Target | Plutus V3, latest builtins (`case`/`constr`, bitwise, BLS, arrays, ledger `Value`). |
 | CLI v1 | `nash check`, `nash build`, `nash test`, `nash format` (alias `fmt`), `nash docs`, `nash lsp`. |
-| Optimizations | Inline single-use lets / small lambdas; builtin force caching; DCE + unused params; case-of-known-constructor + constant folding (via CEK). |
+| Optimizations | Plan 08 candidates: inlining (including small multi-use functions), builtin sharing, DCE + unused params, known cases, inverse conversions/force-delay cleanup, CEK constant folding and measured pair projections. Review one chunk/rewrite at a time; decide flags after selecting passes. Performance regressions run only through a separate explicit runner. |
 
 ## Kinds and representation in one page
 

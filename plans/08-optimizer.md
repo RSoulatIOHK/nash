@@ -1,885 +1,382 @@
 # Plan 08 — Core -> Core optimizer
 
-## Goal
+## Status and accepted scope
 
-The four optimizations named in [docs/overview.md](../docs/overview.md)
-as Core -> Core passes in `crates/nash-ir`, beginning with A-normal form (ANF).
-Give binders unique names, normalize evaluation into explicit bindings, then run
-ANF-preserving optimizations while `LetRec` is explicit. Then rewrite recursion,
-normalize the generated code, and run cleanup passes before lowering. Use temporary
-cost measurements to compare candidate implementations.
-Remove measurement code and fixtures after each experiment; keep findings in docs
-and functional snapshot coverage in the test suite.
+Pending implementation. Current assembly in `nash-codegen/src/program.rs`
+rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
+Reuse its existing Core, Builder, traversal and free-variable facilities.
 
-Passes (after hygiene and ANF normalization):
+Accepted decisions (26 September 2026):
 
-1. Inline single-use `Let`s and small lambdas.
-2. Builtin force caching (and constant-argument currying).
-3. Dead code elimination and unused-parameter removal.
-4. Case-of-known-constructor and constant folding (via the CEK machine),
-   including inverse builtin simplification and `Force(Delay)` removal.
+- Start with binder hygiene and A-normal form (ANF), using existing Core nodes.
+- Optimize while recursive functions remain explicit `LetRec`, then rewrite
+  recursion once, normalize the generated code and run cleanup.
+- Consider inlining small functions even when used multiple times. This is a
+  candidate to measure, not blanket permission to duplicate code.
+- Evaluate optimizations one chunk or one individual rewrite at a time. Review
+  the result with the user and keep, revise or discard it before proceeding.
+- Keep permanent performance regression tests and temporary per-chunk
+  experiments, on an explicit performance-only execution path. Ordinary
+  `cargo test` and `cargo nextest run` must not run either category.
+- Decide CPU, memory and serialized-size tradeoffs case by case. There is no
+  universal priority order or requirement that every metric improve.
+- Decide the accepted optimizations before deciding flags or optimization levels.
+  Previous O1/O2 assignments and numerical thresholds are not accepted policy.
+- Preserve O0 as the existing pre-optimizer semantics baseline. Do not replace its
+  snapshots with optimized output.
 
-Specification: [docs/codegen.md](../docs/codegen.md), section
-"6. Optimizations".
+Specification: [docs/codegen.md](../docs/codegen.md), section 6.
+Progress is tracked in [SPEC.md](../SPEC.md); listing a candidate here does not
+mean it is implemented or accepted for the final optimizer.
 
-## Prerequisites
+## Execution and review contract
 
-- Plan 07 through chunk 11 (`assemble` calls `nash_ir::optimize::run`,
-  which is the identity until this plan lands) and chunk 12 (the
-  `Vesting` baseline).
-- `Core::walk` / `Core::map` from plan 07 chunk 8.
+For each chunk, or each independently reviewable optimization within a chunk:
 
-## Crates touched
+1. State the exact rewrite, its preconditions, and the expected benefit.
+2. Add ordinary semantic tests and before/after Core and UPLC snapshots first.
+3. Implement the smallest candidate; use temporary internal harness wiring to
+   exercise it without enabling a public optimization mode.
+4. Compare against the unchanged baseline: results, traces, errors, termination,
+   CPU, memory, and serialized size. Record inputs, target version, cost model,
+   baseline revision and candidate revision. Include favorable and adverse cases.
+5. Present the concrete code, snapshots and measurements to the user. A passing
+   test suite alone does not approve a candidate. Wait for the keep/revise/discard
+   decision before advancing to the next chunk or optimization.
+6. If kept, retain functional coverage and meaningful performance regressions,
+   record the decision and make a focused local jj commit. If rejected, remove
+   candidate code and candidate-only fixtures; retain a concise finding and any
+   independently useful semantic coverage. Delete disposable experiment code
+   after review unless promoted into the permanent performance suite.
 
-`crates/nash-ir` (all passes), `crates/nash-codegen` (harness, `assemble`
-wiring, `Case(Bool)` lowering tweak), `crates/nash-plutus` (nothing new;
-`flat::encode` and `Program::eval` are used as they are).
+A shared chunk may contain multiple candidates, but do not implement the whole
+plan before review. The candidate review is the user-requested stopping point,
+not a request to reauthorize routine implementation or testing within that chunk.
 
-## Reference files
-
-Aiken `crates/uplc/src/optimize.rs`: `optimize_repeatedly`,
-`aiken_optimize_and_intern` (the pass order and fixed-point loop).
-
-Aiken `crates/uplc/src/optimize/shrinker.rs`:
-
-- `OccurrenceTracker`, `VarLookup`, `var_occurrences` — occurrence
-  counting with delay awareness.
-- `lambda_reducer`, `inline_reducer`, `identity_reducer`,
-  `substitute_var`, `substitute_single_var`, `is_a_builtin_wrapper`.
-- `builtin_force_reducer`, `forceable_wrapped_names`,
-  `builtin_curry_reducer`, `CurriedBuiltin`, `BuiltinArgs`,
-  `try_curry_builtin`, `can_curry_builtin`, `is_order_agnostic_builtin`.
-- `builtin_eval_reducer`, `is_error_safe`, `cast_data_reducer`,
-  `force_delay_reducer`, `case_constr_apply_reducer`,
-  `convert_arithmetic_ops`, `flip_constants`.
-- `Scope`, `ScopePath` — the common-ancestor logic reused for hoisting.
-
-Aiken `crates/uplc/src/optimize/interner.rs` — `CodeGenInterner` (the
-uniquifier).
-
-Elm `elm/compiler/src/Optimize/Expression.hs` — Elm's optimizer is a
-different target but shows the shape of a tree-walking `Optimize` pass over
-`Can.Expr`.
-
-## Conventions
-
-- Every pass has the signature `fn(&Builder<'a>, &'a Core<'a>) -> &'a Core<'a>`
-  and is pure: input untouched, output freshly allocated where changed
-  (`Core::map` rebuilds only the spine above a change).
-- Every pass is an `insta` snapshot test on pretty `Core` (before/after)
-  and a budget test on the CEK machine.
-- Correctness bar: a pass may only change a program to one with the same
-  result, logs, and error behaviour. "Cannot throw" is the one analysis
-  every pass shares.
-
----
-
-## Chunk 1 — Traversals, hygiene, occurrence analysis
-
-**Files**
-
-- `crates/nash-ir/src/core.rs` (`walk`, `map`, `free_vars`)
-- `crates/nash-ir/src/uniquify.rs` (new)
-- `crates/nash-ir/src/occurrences.rs` (new)
-- `crates/nash-ir/src/analysis.rs` (new: `cannot_throw`, `size`)
-- `crates/nash-ir/src/lib.rs`
-
-**Change**
-
-Add the shared machinery. `uniquify` renumbers every binder so that no two
-binders in the program share a `unique` (codegen already tries; this pass
-is the guarantee and runs first and last so a bug in a pass shows up as
-an assertion, not as capture). `Occurrences` counts uses of each binder
-with the delay/lambda context Aiken's `VarLookup` tracks.
-
-**Code**
-
-```rust
-// core.rs
-impl<'a> Core<'a> {
-    pub fn walk(&self, f: &mut impl FnMut(&Core<'a>)) { ... }
-}
-
-/// Rebuild-on-change traversal: `f` returns `Some(new)` to replace a node
-/// (children of `new` are not revisited), `None` to recurse into it.
-pub fn map<'a>(build: &Builder<'a>, core: &'a Core<'a>, f: &mut impl FnMut(&'a Core<'a>) -> Option<&'a Core<'a>>) -> &'a Core<'a>;
-
-/// Capture-free because every binder is unique (uniquify.rs).
-pub fn substitute<'a>(build: &Builder<'a>, core: &'a Core<'a>, name: Name<'a>, with: &'a Core<'a>) -> &'a Core<'a>;
-```
-
-```rust
-// uniquify.rs
-//! Assign a fresh `unique` to every binder, in one pass, so substitution
-//! never captures. Port of Aiken's CodeGenInterner in spirit; Nash names
-//! are already `text + unique`, so this only renumbers.
-
-pub fn uniquify<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a>;
-
-/// Panics if two binders share a unique or a variable is unbound.
-pub fn check_hygiene(core: &Core<'_>);
-```
-
-```rust
-// occurrences.rs
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Occurrence {
-    pub count: u32,
-    /// Some use sits under a `Lam` or `Delay` relative to the binder, so the
-    /// bound value may be evaluated zero or many times there.
-    pub under_lambda: bool,
-}
-
-pub struct Occurrences<'a> {
-    map: HashMap<Name<'a>, Occurrence>,
-}
-
-impl<'a> Occurrences<'a> {
-    pub fn of(core: &Core<'a>) -> Self;
-    pub fn get(&self, name: Name<'a>) -> Occurrence { self.map.get(&name).copied().unwrap_or_default() }
-}
-```
-
-```rust
-// analysis.rs
-/// Evaluating this term can neither fail nor loop nor log.
-pub fn cannot_throw(core: &Core<'_>) -> bool {
-    match core {
-        Core::Var(_) | Core::Lit(_) | Core::Lam { .. } | Core::Delay(_) => true,
-        Core::Builtin { func, args } => args.len() < func.arity() && args.iter().all(|a| cannot_throw(a)),
-        Core::Constr { fields, .. } => fields.iter().all(|f| cannot_throw(f)),
-        _ => false,
-    }
-}
-
-/// Approximate flat-encoded size in bytes; the inliner's currency.
-pub fn size(core: &Core<'_>) -> usize {
-    let mut n = 0;
-    core.walk(&mut |c| n += match c {
-        Core::Var(_) => 1,
-        Core::Lit(k) => literal_size(k),
-        Core::Lam { params, .. } => params.len(),
-        Core::App { args, .. } => args.len(),
-        Core::Let { .. } => 2,
-        Core::Builtin { func, args } => 1 + func.force_count() + args.len(),
-        Core::Case { branches, .. } => 1 + branches.len(),
-        Core::Constr { fields, .. } => 1 + fields.len(),
-        Core::Field { arity, .. } => 1 + *arity as usize,
-        Core::Trace { .. } => 3,
-        Core::Delay(_) | Core::Force(_) | Core::Error => 1,
-        Core::LetRec { .. } => unreachable!("rewritten before optimization"),
-    });
-    n
-}
-```
-
-**Aiken reference**: `OccurrenceTracker::new`, `var_occurrences`,
-`VarLookup::delay_if_found`, `substitute_var`, `CodeGenInterner`.
-
-**Tests**
-
-- `uniquify_renumbers_shadowing`: `let x = 1 in let x = x in x` gets two
-  uniques; `check_hygiene` passes after, panics on a hand-built duplicate.
-- `occurrences_under_lambda`: `let x = 1 in \y -> x` reports
-  `under_lambda`.
-- `cannot_throw_partial_builtin`: `headList` with zero args is safe, with
-  one is not.
-- `size_monotone`: `size(App(f, [a]))` > `size(f)`.
-
-**Done when**: unit tests pass; `assemble` calls `uniquify` then
-`check_hygiene` at the start and end of `optimize::run`.
-
----
-
-## Chunk 1a — A-normal form before optimization
-
-**Accepted decision: ANF is the first transformation after binder hygiene.**
-This is pending implementation, like the rest of Plan 08. Reuse existing Core
-Let/LetRec/Case/Lam/Delay nodes rather than adding a parallel optimizer IR.
-
-Pipeline:
+## Pipeline and invariants
 
 ```text
-Core with LetRec -> unique names -> ANF -> main optimization passes
-                 -> recursion rewrite -> ANF for generated code
-                 -> cleanup passes -> UPLC lowering
+O0: Core -> recursion rewrite -> UPLC lowering
+
+Candidate optimized pipeline:
+Core with LetRec -> unique names -> ANF -> accepted main passes
+  -> refresh recursive groups and static-parameter metadata
+  -> recursion rewrite once -> ANF -> accepted cleanup passes -> UPLC lowering
 ```
 
-Current assembly rewrites recursion immediately before lowering; the optimizer is
-not installed yet. For `O1`/`O2`, assembly must run the main optimizer before that
-rewrite and cleanup afterward. `O0` keeps the current path: recursion rewrite
-then lowering, without optimizer normalization or reduction.
+Assembly coordinates the phases. Passes belong in `nash-ir`; recursion rewriting,
+lowering and the evaluation adapter remain in `nash-codegen`. Do not introduce
+an IR-to-codegen dependency. Reuse the existing nash-plutus evaluator and encoder.
 
-**Recursion boundary**
+Every rewrite must preserve values, trace content/order, failures and termination.
+An unused computation can still be strict and observable. Conservative safety
+analysis must cover logging and divergence as well as throwing. Allocation and
+execution budgets can change; report those changes separately from semantics.
 
-- Normalize and optimize `LetRec` function bodies inside their parameter scopes;
-  retain the group's simultaneous binding scope and its continuation. Do not
-  evaluate a recursive body while creating the group.
-- Simplify bodies and calls while function identities and recursive groups are
-  explicit. Remove unreachable group members by reachability from the continuation
-  (including escaping function references), not by counting internal self uses.
-- Do not unfold recursive calls in the fixed-point inliner. Ordinary nonrecursive
-  helpers may still be inlined into recursive bodies. Post-rewrite cleanup must
-  likewise avoid repeatedly expanding generated self-application or dispatchers.
-- Remove unused recursive parameters only when all affected uses are known and
-  rewritable, including calls within the group. Preserve argument evaluation and
-  application staging; keep signatures for escaping/partial uses when unsafe to
-  rewrite. Keep at least one parameter where removing all would create an
-  unsupported zero-parameter recursive value.
-- Recompute recursive groups and static-parameter metadata after changes to calls,
-  parameter positions, or reachability, immediately before recursion rewrite.
-  Rechecking stale hints alone is insufficient: newly proven static parameters
-  must be discovered. For example, deleting a dead call that changes `config`
-  can let the worker capture `config` instead of forwarding it on each call.
-- Recursion rewrite remains in `nash-codegen`; optimization remains in `nash-ir`.
-  Assembly coordinates the two phases without introducing an IR-to-codegen
-  dependency. Rewrite recursion once, using a collision-free fresh-name supply.
-- Normalize generated wrappers, self-applications, constructor packets and cases
-  back into ANF. Then simplify safe applications, aliases, unused bindings and
-  force/delay pairs; at O2 also fold known cases and constants. Reuse the same
-  pass implementations and semantic checks, rather than adding another optimizer.
-  Preserve selected-branch execution, strict arguments and delayed worker bodies.
+### ANF and evaluation order
 
-**Representation invariant**
+- Define one atom predicate shared by normalization, invariant checking and
+  passes. Variables and literals are atoms; lambda/delay bodies normalize in
+  their own scopes. Decide precisely how values and bare builtin references fit.
+- Name non-atomic operands of applications, builtins, constructors, projections,
+  forces and case subjects. Let RHSs and tail positions may be computations.
+  Reassociate administrative lets without capture or pointless literal aliases.
+- Fresh binders must carry accurate types. Establish intermediate application
+  types through the existing type/representation machinery; do not invent fake
+  types or erase representation merely to manufacture a binding.
+- Keep work inside its original case branch, lambda or delay unless movement
+  has a separate semantic proof. Preserve strict subject evaluation exactly once.
+- Preserve staged application: applying an earlier argument can fail before a
+  later argument is evaluated. Do not hoist all arguments ahead of those stages.
+- Preserve trace order: evaluate the message, emit it, then evaluate the body.
+- Preserve strict constructor fields, including ignored fields of a folded case.
+  Big field extraction and shared wildcard helpers retain their selected scopes.
+- Each pass preserves ANF. Inline atoms or splice binding sequences at call sites;
+  do not substitute a compound expression into an atomic operand. Avoid cycles
+  between substitution and reintroducing identical administrative bindings.
 
-- Variables and literals are atoms. Lambdas and delays are values whose bodies
-  are normalized recursively within their own scopes; a zero-argument builtin
-  reference can remain atomic. The exact atom predicate must be shared by the
-  normalizer, invariant checker, and optimization passes.
-- Name non-atomic intermediate computations when used as operands. Bindings
-  make evaluation order explicit; they do not eagerly evaluate lambda/delay bodies.
-- Application operands, builtin arguments, constructor fields, projections,
-  force operands, and case subjects use atoms. Let right-hand sides and tail
-  positions can contain computations; case branches have their own ANF bodies.
-- Normalize existing let right-hand sides and reassociate administrative lets
-  without capture. Do not bind every literal or introduce pointless alias lets.
-- Supply fresh binder identities and accurate operand/result types through the
-  existing type/representation machinery. Do not invent a fake type or erase
-  representation merely to manufacture a binder; establish how intermediate
-  application types are obtained before wiring normalization into assembly.
+### Recursion boundary
 
-Example (schematic Core):
+- Traverse `LetRec` bodies under their parameter scopes, retaining simultaneous
+  group scope and the continuation. Creating a group does not execute its bodies.
+- Remove dead members by reachability from the continuation, including escaping
+  references, rather than counting internal self uses.
+- Do not unfold recursive calls in the inliner or repeatedly expand generated
+  self-application/dispatchers during cleanup. Nonrecursive helpers may inline
+  into recursive bodies.
+- Remove recursive parameters only when all affected uses can be safely rewritten,
+  including group-internal calls. Preserve strict argument evaluation and staging;
+  keep unsafe partial/escaping signatures. Do not create unsupported zero-parameter
+  recursive values.
+- Recompute groups and static-parameter metadata immediately before rewriting.
+  Discover newly static arguments as well as rejecting stale indices. Deleting a
+  dead call which changes `config` may make `config` capturable by a worker.
+- Restore ANF after rewriting wrappers, self-applications, packets and cases.
+  Cleanup reuses accepted passes and semantic checks; it is not another optimizer.
+
+## Chunk 1 — Shared analysis and hygiene
+
+Audit and reuse existing `nash-ir/src/traverse.rs`, Core/Builder and codegen name
+supply facilities. Add only missing capture-free substitution, binder hygiene,
+occurrence analysis, safe-to-discard analysis and size estimation.
+
+Occurrences must track execution scope and lambda/delay boundaries, not just use
+counts. Size analysis must support `LetRec`: recursion has not been rewritten yet.
+Estimated Core size guides candidates; actual Flat size judges the emitted result.
+Check name uniqueness and binding scope after transformations; renaming alone is
+not evidence that a faulty substitution preserved semantics.
+
+Tests: shadowed binders, unbound/duplicate names, recursive groups, branch-local
+uses, delayed uses, partial builtins and strict fields. Safe-to-discard must reject
+tracing, failing and potentially diverging computations.
+
+**Done when:** shared analyses are tested and reviewed; no optimization is enabled.
+
+## Chunk 2 — ANF normalization
+
+Implement `anf::normalize` and an invariant checker using the contract above.
+Normalize at main-phase entry and after recursion rewriting. Add temporary harness
+access to inspect phases without choosing public optimizer flags.
+
+Tests cover nested applications/builtins, lets, fields, constructors, case subjects,
+force/delay, explicit recursion and rewritten recursion. Differential evaluation
+covers trace-before-body, subject once, ignored strict fields, partial and
+oversaturated calls, intermediate failure, and unselected/unforced/uncalled bodies.
+Reuse Big/little wildcard fixtures, captured/function-valued fallback results,
+shared helpers and `Logic` short-circuit/selected-Lift fixtures. Test normalization
+idempotence and valid types/names, not just pretty output.
+
+**Done when:** normalization preserves semantics and its invariant, with separate
+ANF snapshots alongside unchanged O0 snapshots; review binding overhead in UPLC.
+
+## Chunk 3 — Explicit performance-only test path
+
+Keep two categories:
+
+- **Permanent regression cases:** retained representative inputs and reviewed
+  CPU/memory/serialized-size baselines or limits for accepted optimizations.
+- **Temporary experiments:** per-chunk exploration, alternative implementations,
+  threshold sweeps and adverse examples; delete after recording the decision.
+
+Use an isolated package such as `tools/optimizer-perf/`, with its own workspace
+boundary and explicit exclusion from the root workspace where needed. Neither
+category belongs in automatically discovered root integration tests. A dedicated
+runner can execute regression checks and experiments through explicit commands,
+for example `cargo run --manifest-path tools/optimizer-perf/Cargo.toml --release
+-- check`. Final runner names/arguments are implementation details, not optimizer
+level decisions. Keep the harness small and reuse existing evaluation/encoding.
+
+Do not rely solely on ignored tests or a root `required-features` gate: broader
+root test commands can enable those. Verify root `cargo test`, `cargo test
+--workspace --all-features`, and `cargo nextest run --workspace --all-features`
+do not execute or discover the performance workload. Ordinary semantic tests
+still run normally. New optimizer semantic fixtures assert behavior and code
+shape, not performance thresholds. Preserve historical O0 snapshots, including
+any incidental budget output already present; new dedicated performance workloads
+and regression limits belong only to the explicit runner.
+
+Require explicit baseline updates; never accept changed budgets automatically as
+part of ordinary snapshot acceptance. A dedicated CI performance job may be added
+only by an explicit later decision; normal CI test jobs remain unaffected.
+
+Record versions, cost models, inputs and before/after figures. Evaluate tradeoffs
+case by case with the user; no unconditional memory-first or size-first policy.
+Include vesting paths, list traversal, static recursion, Data matching, validation,
+decoding and boolean helper compositions. Guard experiments against unbounded
+compilation/evaluation. Verify that an intentional regression fails the explicit
+regression command while ordinary test discovery remains unaffected.
+
+**Done when:** both permanent and temporary workflows work only through the
+special path, isolation is verified, and initial measurements are reproducible.
+
+## Chunk 4 — Inlining and binding cleanup
+
+Review these independently: atom/alias propagation; direct lambda application;
+safe single-use bindings; small functions with multiple call sites.
+
+Bind strict arguments before substitution and preserve application staging. Single
+use is not proof that moving work into a conditional branch is safe. Respect
+recursive and escaping/partial-call restrictions. Keep large literals and strings
+from being duplicated indiscriminately. Consider builtin wrappers as candidates,
+not an unconditional exception to code-size and ANF rules.
+
+Multiple-use small-function inlining is approved for consideration. Measure call
+savings against duplicated body/constant size, including recursive callers and
+cold branches. Choose a simple deterministic threshold only from reviewed
+findings; the old size constant of 12 is not a decision. Do not add per-program
+search/tuning machinery.
+
+Tests: builtin wrappers, repeated small helpers, identity/Lift/Logic wrappers,
+strict argument failure/trace order, single uses in unselected branches or delays,
+strings, escaping functions and nonrecursive helpers within `LetRec`.
+
+**Done when:** each retained rule has semantic coverage, measured tradeoffs and a
+keep decision; rejected rules are removed.
+
+## Chunk 5 — Builtin sharing
+
+Treat force caching and constant currying as separate review units.
+
+- Share forced builtin references when repeated use justifies the binding cost.
+  Compare standalone calls, loops and branch-local uses; preserve evaluation.
+- Share repeated constant partial applications at a safe common scope. Only hoist
+  safe partial applications; never pre-evaluate a failing saturated call.
+  Move a constant across operands only when the operation and evaluation order
+  permit it. Equality/addition examples do not justify reordering subtraction or
+  comparisons indiscriminately.
+
+Preserve ANF and correct types. Measure cached forces together with pair projections
+later. The old minimum-use constant of two is a candidate to test, not a fixed
+policy. Ensure cleanup does not inline away intentional sharing and recreate it
+indefinitely.
+
+**Done when:** each accepted sharing rule has measurements and regressions for
+profitable and unfavorable cases, including lazy scopes.
+
+## Chunk 6 — Dead bindings, functions and parameters
+
+Remove unused bindings only when their evaluation is safe to discard. Remove
+unreachable recursive members by continuation reachability. Remove unused
+parameters only for rewritable uses; keep strict evaluation of dropped arguments
+at the correct call stage, even if that needs an unused let.
+
+Test tracing/failing/diverging unused RHSs, strict ignored arguments, saturated
+and partial/escaping calls, self/mutual recursion and all-static workers. Check
+that dead-call elimination exposes newly static parameters and parameter removal
+does not leave stale static indices.
+
+**Done when:** each retained rule preserves semantics and demonstrates a reviewed
+benefit; refresh recursion metadata before rewriting.
+
+## Chunk 7 — Known-case and field simplification
+
+Fold cases on known native constructors, booleans, integers, bytes, lists and Data
+shapes using their actual branch tests, binders and defaults. Keep strict subject
+and constructor-field evaluation in the original order. An ignored failing field
+must still fail. Preserve out-of-range/malformed-case errors; do not assume every
+hand-built Core case has a matching branch.
+
+Simplify fields of known constructors without dropping observable evaluation of
+other fields. ANF often makes that evaluation explicit; do not mistake a selected
+field alone for the original strict construction.
+
+Tests: selected/default branches, empty/nonempty lists, each Data shape, field
+ordering, ignored failing/traced fields, returned functions/delays, and Big/little
+wildcard fixtures. Cover known conditions produced by `Logic` helpers.
+
+**Done when:** retained rewrites have before/after Core and UPLC snapshots,
+equivalence tests, measurements and a keep decision.
+
+## Chunk 8 — Representation and force/delay cleanup
+
+Cancel `force (delay x)` and valid inverse builtin pairs such as
+`unIData (iData x)`. Establish preconditions per direction and representation;
+`iData (unIData d)` is not an unconditional replacement for arbitrary Data.
+Preserve shape-check failures, traces and strictness. Simplify administrative
+applications/aliases only under the ANF and application-staging contract.
+
+List and map Eq selection is already library work, not an optimizer rewrite:
+Big-element lists use structural Eq through `listData`; Little-element lists use
+selected element Eq. `Primitive.map` is a Storable pair-list alias: Big/Big Eq
+uses `mapData`, while mixed/Little maps use selected element Eq. Big `Map` has
+structural Eq. Do not recognize Eq impl names to replace arbitrary user behavior,
+or introduce an Ord/Show change. Reuse selected-Lift and custom-Eq trace tests.
+
+**Done when:** each accepted cancellation has explicit preconditions, malformed
+input tests and measured output; no trait-selection magic is added.
+
+## Chunk 9 — Constant builtin evaluation
+
+Use a callback supplied by codegen around its existing closed-term evaluator;
+keep `nash-ir` independent of codegen. Evaluate only supported, saturated,
+constant-argument builtin calls under an explicit compile-time budget. Review
+per-builtin input-shape and error-safety rules against the current runtime.
+
+On unsupported results, budget exhaustion or runtime failure, leave the original
+expression. A runtime failure must not become a compile error. Account for result
+literal size: a computation that produces a huge constant is not automatically a
+win. This is optimizer folding, separate from explicit user `comptime` semantics.
+
+Tests: arithmetic, byte/string/Data/container operations, nonzero/zero division,
+empty/nonempty head/tail, malformed data, oversized results and exhausted budgets.
+
+**Done when:** supported folds are reviewed for semantics and cost/size tradeoffs;
+unsupported/failing computations retain runtime behavior.
+
+## Chunk 10 — Single-field native pair projection
+
+Compare `CaseKind::Pair` with `fstPair`/`sndPair` when exactly one branch binder
+is used, for a valid one-branch case without a default:
 
 ```text
-addInteger (multiplyInteger a b) (subtractInteger c d)
-
-let product = multiplyInteger a b in
-let difference = subtractInteger c d in
-addInteger product difference
+case p of pair a _ -> body a  => let a = fstPair p in body a
+case p of pair _ b -> body b  => let b = sndPair p in body b
 ```
 
-**Strictness and lazy boundaries**
-
-- Preserve the actual Core/UPLC evaluation order, failure, termination, and logs.
-  ANF exposes order; it does not grant permission to reorder computations.
-- Keep branch-local bindings inside their branches and lambda/delay bindings
-  inside their bodies. Never hoist work from an unselected or uncalled body.
-- Preserve trace timing: evaluate the message, emit the trace, then evaluate its
-  body as current lowering does. Do not pull body computations before the trace.
-- Preserve application staging. N-ary App lowers to successive applications;
-  applying an earlier argument may fail before a later argument is evaluated.
-  Normalize with explicit intermediate applications where necessary, rather than
-  hoisting every argument computation ahead of the entire application. Test
-  partial/over-application and intermediate failure.
-- Preserve strict constructor-field evaluation even when later case folding
-  selects a body that ignores fields. Big field extraction and shared wildcard
-  helpers stay in their existing selected/delayed scopes.
-
-**Pass contract**
-
-Add `anf::normalize` and `anf::check` in `nash-ir` (or its existing traversal
-organization). Normalize at entry and again after recursion rewrite; each
-optimizer pass must preserve ANF, using local normalization/reassociation when a
-rewrite introduces computations.
-Check the invariant after each pass in tests/debug builds.
-
-Inlining must not substitute a non-atomic computation into an atomic operand.
-It can propagate atoms, splice an inlined function's binding sequence at its call
-site, and simplify/reassociate lets while keeping evaluation order. Single use
-alone does not justify moving a strict binding into a conditional branch or past
-an effect/failure. Update chunk 3's historical tree-substitution sketch to this
-contract; don't repeatedly inline out of ANF and normalize back into identical
-bindings. Recompute occurrence/effect information after relevant rewrites.
-
-Case/constant folding, force caching, currying, and dead-binding removal must
-also preserve the invariant. Administrative bindings are an optimizer structure,
-not evidence of a speedup: measure emitted UPLC as well as Core and ensure binding
-introduction does not hide regressions. No new backend or speculative optimizer
-framework is required for ANF.
-
-**Acceptance checklist**
-
-- [ ] Implement normalization and structural invariant checking with fresh names
-  and valid types; reuse existing Core traversal/substitution facilities.
-- [ ] Snapshot nested applications/builtins, existing let nesting, case subjects,
-  constructor fields, projections, force/delay, both explicit `LetRec` and
-  recursion-rewritten Core.
-- [ ] Differentially evaluate before/after ANF: values, traces, failures, subject
-  once, left-to-right evaluation, trace-before-body, partial application, and
-  unselected branch/unforced delay/uncalled lambda behavior.
-- [ ] Reuse the Big/little wildcard regression fixtures, including shared helpers,
-  ignored fields, and function-valued results. ANF must not force helpers early.
-- [ ] Test idempotence of normalization and hygiene/ANF preservation after every
-  optimization pass. Include no-op and same-size rewrites in convergence tests.
-- [ ] Test dead recursive members, self/mutual recursion, escaping and partial
-  recursive calls, safe unused-parameter removal, and all-static workers.
-- [ ] Test that dead-branch removal exposes a newly static argument, and parameter
-  removal cannot leave stale static indices. Verify recursion is rewritten once
-  and neither phase repeatedly unfolds recursive calls.
-- [ ] Preserve raw O0 snapshots; add separate ANF and optimized snapshots. Record
-  temporary CPU/memory/serialized-size findings, then remove experiment code.
-
-**Done when:** ANF invariants and semantic equivalence are tested, and every later
-pass explicitly consumes/preserves ANF before enabling the optimizer.
-
----
-
-## Chunk 2 — Temporary performance experiments
-
-Measure CPU, memory and serialized size for representative programs while choosing
-optimizations. Use the existing evaluator and codegen helpers in temporary code.
-Compare vesting paths, list traversal, static recursion, Data matching, validation
-and decoding. Prefer memory when costs are close, then CPU.
-
-Record the inputs, cost model and findings in the implementation notes. Remove
-experiment code and fixtures when the comparison is complete. Do not add benchmark
-targets, committed budget baselines or CI performance gates. Keep functional
-snapshots that show the selected lowering and its results.
-
-**Done when**: findings are recorded and temporary experiment code is removed.
-
----
-
-## Chunk 3 — Inliner
-
-**Files**
-
-- `crates/nash-ir/src/inline.rs` (new)
-- `crates/nash-ir/src/optimize.rs` (new: `run` with the pass list)
-
-**Change**
-
-Adapt the historical sketch below to the ANF contract in chunk 1a. Never insert
-a compound expression into an atomic operand; keep strict evaluation at its
-original execution point unless a separate safety proof permits movement.
-
-Traverse `LetRec` bodies without unfolding recursive calls, as specified in
-chunk 1a. The rules below also apply inside those bodies.
-
-One pass, three rules:
-
-1. **Value bindings.** `Let x = v in b` where `v` is a `Var`, `Lit`
-   (except `string` constants, which stay hoisted), zero-argument
-   `Builtin`, or a lambda that is a "builtin wrapper" (`\a b -> Builtin(f, [a, b])`)
-   is substituted everywhere. (Aiken `lambda_reducer`.)
-2. **Single-use bindings.** `Let x = v in b` with `count == 1` is
-   simplified only when ANF and evaluation semantics are preserved. A use outside
-   a lambda can still be inside an unselected branch or after a failing operation.
-   Track execution scope/order rather than using `under_lambda` alone as proof.
-   The pseudocode below is historical and must be updated accordingly.
-3. **Small lambdas.** `App(Lam(ps, body), args)` and
-   `Let f = Lam(ps, body) in b` where `size(body) <= INLINE_LAMBDA_SIZE`
-   are beta-reduced at every saturated call site, binding each argument
-   with a `Let` (so rules 1–2 decide whether it is substituted). Unused
-   bindings are left for chunk 5.
-
-**Code**
-
-```rust
-pub const INLINE_LAMBDA_SIZE: usize = 12;
-
-pub fn inline<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
-    let occ = Occurrences::of(core);
-    map(build, core, &mut |node| match node {
-        Core::Let { binder, value, body } => {
-            let o = occ.get(binder.name);
-            let value = inline(build, value);
-            if is_value_binding(value) || (o.count == 1 && (!o.under_lambda || cannot_throw(value))) {
-                Some(inline(build, substitute(build, body, binder.name, value)))
-            } else if let Core::Lam { params, body: lam_body } = value && size(lam_body) <= INLINE_LAMBDA_SIZE && all_uses_saturated(body, binder.name, params.len()) {
-                Some(inline(build, beta_at_calls(build, body, binder.name, params, lam_body)))
-            } else {
-                None
-            }
-        }
-        Core::App { func: Core::Lam { params, body }, args } if args.len() == params.len() => {
-            Some(params.iter().zip(args.iter()).rev().fold(*body, |b, (p, a)| build.let_(*p, a, b)))
-        }
-        _ => None,
-    })
-}
-
-fn is_value_binding(value: &Core<'_>) -> bool {
-    match value {
-        Core::Var(_) => true,
-        Core::Lit(Constant::String(_)) => false,
-        Core::Lit(_) => true,
-        Core::Builtin { args, .. } => args.is_empty(),
-        Core::Lam { params, body } => is_builtin_wrapper(params, body),
-        _ => false,
-    }
-}
-
-/// `\a b -> Builtin(f, [a, b])` or the same with literal arguments mixed in.
-fn is_builtin_wrapper(params: &[Binder<'_>], body: &Core<'_>) -> bool {
-    matches!(body, Core::Builtin { args, .. } if args.iter().all(|a| matches!(a, Core::Var(v) if params.iter().any(|p| p.name == *v)) || matches!(a, Core::Lit(_))))
-}
-```
-
-The size heuristic is the only tunable. `INLINE_LAMBDA_SIZE = 12` is
-about one builtin call with three arguments plus a `case`; it is chosen so
-that `Field` selectors, Data builtin wrappers and decision-tree leaves
-used twice inline, and a recursive decoder does not.
-
-**Aiken reference**: `lambda_reducer` (1753), `inline_reducer` (2316),
-`is_a_builtin_wrapper` (2797), `substitute_single_var` (1461),
-`identity_reducer` (2252; Nash's rule 1 covers `\x -> x`).
-
-**Tests** (`inline.rs`, `assert_pass_snapshot!(inline, src)` prints
-`Core` before and after):
-
-- `inline_single_use_let`: `let x = f 1 in g x` -> `g (f 1)`.
-- `keep_single_use_under_lambda`: `let x = f 1 in \y -> x` unchanged.
-- `inline_single_use_under_lambda_when_safe`: `let x = 1 in \y -> x` ->
-  `\y -> 1`.
-- `inline_multi_use_var`: `let x = y in (x, x)` -> `(y, y)`.
-- `keep_string_constant`: `let m = "hello" in (trace m 1, trace m 2)`
-  unchanged.
-- `beta_reduce_small_lambda`: `let sel = \a b c -> b in sel 1 2 3` -> `2`
-  (after chunk 5 removes the dead lets).
-- `keep_large_lambda`: a `validate#Datum`-sized lambda used twice is
-  not inlined.
-- budgets: `vesting_*`, `data_match`, `decoder_datum` must improve;
-  record the temporary comparison.
-
-**Done when**: snapshots accepted; temporary measurements confirm the intended
-improvement and experiment code is removed.
-
----
-
-## Chunk 4 — Builtin force caching and constant currying
-
-**Files**
-
-- `crates/nash-ir/src/builtins.rs` (new)
-
-**Change**
-
-Two rewrites over the whole program, run once (not in the fixed-point
-loop):
-
-1. **Force caching.** Every `Builtin { func, args }` with
-   `func.force_count() > 0` becomes `App(Var forced_f, args)` where
-   `forced_f` is bound once at the program root to `Builtin { func, args: [] }`
-   (which lowers to `force^k (builtin f)`). Saves a `force` per call;
-   costs one root `Let` per distinct forced builtin. (Aiken
-   `builtin_force_reducer` + `run_once_pass`.)
-2. **Constant currying.** For builtins where the first argument may be
-   a constant that repeats (`equalsInteger 0 _`, `lessThanInteger _ 10`,
-   `appendByteString #"" _`, ...) and which are order-agnostic or take the
-   constant first, `Builtin(f, [Lit k, x])` occurring at least twice
-   becomes `App(Var f_k, [x])` with `f_k = Builtin(f, [Lit k])` bound at
-   the lowest common ancestor scope of the uses. (Aiken
-   `builtin_curry_reducer`, `CurriedBuiltin`, `is_order_agnostic_builtin`,
-   `Scope::common_ancestor`.)
-
-**Code**
-
-```rust
-pub fn cache_forces<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
-    let mut forced: BTreeMap<DefaultFunction, Binder<'a>> = BTreeMap::new();
-    let body = map(build, core, &mut |node| match node {
-        Core::Builtin { func, args } if func.force_count() > 0 => {
-            let b = *forced.entry(*func).or_insert_with(|| build.fresh_binder(forced_name(*func), builtin_ty(*func)));
-            Some(if args.is_empty() { build.var(b.name) } else { build.app(build.var(b.name), args) })
-        }
-        _ => None,
-    });
-    forced.into_iter().rev().fold(body, |body, (func, b)| build.let_(b, build.builtin(func, &[]), body))
-}
-
-pub const CURRY_MIN_USES: usize = 2;
-
-pub fn curry_constants<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a>;
-
-fn can_curry(func: DefaultFunction) -> bool {
-    matches!(func,
-        AddInteger | SubtractInteger | MultiplyInteger | DivideInteger | ModInteger | QuotientInteger | RemainderInteger
-        | EqualsInteger | LessThanInteger | LessThanEqualsInteger
-        | AppendByteString | EqualsByteString | ConsByteString | LessThanByteString | LessThanEqualsByteString
-        | AppendString | EqualsString | EqualsData | ConstrData | MkCons)
-}
-
-fn is_order_agnostic(func: DefaultFunction) -> bool {
-    matches!(func, AddInteger | MultiplyInteger | EqualsInteger | EqualsByteString | EqualsString | EqualsData)
-}
-```
-
-`curry_constants` collects `(func, constant)` pairs with their `Scope`
-paths (a `Vec<u32>` of child indices from the root, as Aiken's
-`ScopePath`), keeps those with `>= CURRY_MIN_USES`, binds each at the
-common ancestor, and rewrites the uses. For order-agnostic builtins a
-constant in second position is moved first.
-
-**Aiken reference**: `builtin_force_reducer` (1813), `run_once_pass`
-(2907), `builtin_curry_reducer` (3084), `BuiltinArgs::args_from_arg_stack`
-(657), `CurriedArgs::merge_node_by_path` (821), `flip_constants` (2753).
-
-**Tests**
-
-- `forces_cached_once`: three `headList` calls -> one root binding, three
-  `App`s.
-- `partial_builtin_becomes_var`: a bare `Builtin(HeadList, [])` becomes the
-  cached var.
-- `curry_equals_zero`: two `equalsInteger n 0` (constant second,
-  order-agnostic) -> one `equalsInteger 0` binding.
-- `no_curry_single_use`.
-- `curry_scope_is_common_ancestor`: uses in two `case` branches bind above
-  the `case`, uses in one branch bind inside it.
-- budgets: `list_length_100`, `data_match`, `validate_datum` must improve
-  (fewer `force`s).
-
-**Done when**: snapshots accepted; measurement findings recorded and experiment
-code removed.
-
----
-
-## Chunk 5 — Dead code elimination and unused parameters
-
-**Files**
-
-- `crates/nash-ir/src/dce.rs` (new)
-
-**Change**
-
-1. **Dead lets.** `Let x = v in b` with `count == 0` and `cannot_throw(v)`
-   becomes `b`. (A binding that can throw is kept: dropping it would turn
-   a failing program into a succeeding one.) Top-level bindings the root
-   does not reach are removed the same way, since `assemble` makes them
-   `Let`s.
-2. **Unused parameters.** For `Let f = Lam(ps, body) in b` where every
-   use of `f` in `b` is the head of a saturated `App`, each parameter with
-   zero occurrences in `body` is removed from `ps` and from every call
-   site, provided every dropped argument `cannot_throw` (otherwise it is
-   kept as a `Let _ = arg` at the call site, which rule 1 then keeps or
-   drops). A parameter is never removed from a function whose `Lam` is the
-   `inner` of a self-application (its first parameter is the function
-   itself; it is used), so plan 07's static-param lifting is preserved.
-
-Before recursion rewrite, also apply the `LetRec` reachability and recursive
-parameter rules in chunk 1a. The historical sketch below covers only ordinary
-`Let`/`Lam`; extend it to recursive groups and refresh affected metadata.
-
-**Code**
-
-```rust
-pub fn dce<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
-    let occ = Occurrences::of(core);
-    map(build, core, &mut |node| match node {
-        Core::Let { binder, value, body } if occ.get(binder.name).count == 0 && cannot_throw(value) => Some(dce(build, body)),
-        Core::Let { binder, value: Core::Lam { params, body: lam }, body } => {
-            let unused: Vec<u16> = params.iter().enumerate()
-                .filter(|(_, p)| occ.get(p.name).count == 0)
-                .map(|(i, _)| i as u16)
-                .collect();
-            if unused.is_empty() || !all_uses_saturated(body, binder.name, params.len()) { return None; }
-            Some(drop_params(build, *binder, params, lam, body, &unused))
-        }
-        _ => None,
-    })
-}
-
-fn drop_params<'a>(build: &Builder<'a>, f: Binder<'a>, params: &[Binder<'a>], lam: &'a Core<'a>, body: &'a Core<'a>, unused: &[u16]) -> &'a Core<'a>;
-```
-
-**Aiken reference**: `inline_reducer`'s "strip out unused terms that can't
-throw" arm (2316), `remove_inlined_ids` (2730). Aiken has no
-unused-parameter pass; Nash needs one because decision-tree leaves are
-hoisted as lambdas over all their pattern variables.
-
-**Tests**
-
-- `drop_unused_safe_let`: `let x = 1 in 2` -> `2`.
-- `keep_unused_throwing_let`: `let x = fail "no" in 2` unchanged.
-- `drop_unreachable_top_level`: a module with an unused helper loses it.
-- `drop_unused_param`: `let f = \a b -> a in f 1 2` -> `let f = \a -> a in f 1`
-  (then chunk 3 inlines).
-- `keep_param_when_arg_throws`: `f 1 (fail "x")` keeps a `let _ = fail`.
-- `keep_self_param`: the chunk 8 `sumTo` program keeps its self parameter.
-- budgets: `decoder_datum`, `vesting_*` must improve.
-
-**Done when**: snapshots accepted; measurement findings recorded and experiment
-code removed.
-
----
-
-## Chunk 6 — Case-of-known-constructor, constant folding, inverse builtin simplification
-
-**Files**
-
-- `crates/nash-ir/src/fold.rs` (new)
-- `crates/nash-codegen/src/comptime.rs` (`eval_closed` reused)
-- `crates/nash-codegen/src/lower.rs` (`Case(Bool)` without delay when
-  both branches are values)
-
-**Change**
-
-One bottom-up pass with these rules:
-
-| Before | After | Condition |
-|---|---|---|
-| `Case(Tag, Constr(i, fs), bs)` | `Let b_j = f_j in body_i` | always |
-| `Case(Bool, Lit true/false, [t, e])` | `t` / `e` | always |
-| `Case(Int, Lit k, bs, d)` | matching branch or `d` | always |
-| `Case(Bytes, Lit k, ..)` | same | always |
-| `Case(List, Lit [], ..)` / `Lit (x :: xs)` | `nil` / `Let h, t in cons` | always |
-| `Case(Data, Lit data, ..)` | the branch for its shape, payload bound to a `Lit` | always |
-| `Field(Constr(_, fs), i)` | `f_i` | every other `f_j` `cannot_throw` |
-| `Builtin(f, lits)` saturated | `Lit(result)` | `is_error_safe(f, lits)` |
-| `Builtin(UnIData, [Builtin(IData, [x])])` and the other three pairs | `x` | always |
-| `Force(Delay(x))` | `x` | always |
-| `App(App(f, as), bs)` | `App(f, as ++ bs)` | always |
-| `Case(Bool, Builtin(IfThenElse, [c, Lit true, Lit false]), ..)` | `Case(Bool, c, ..)` | always |
-
-Big-element native list equality is implemented in the base library through
-disjoint Big/Little element implementations of `Eq (list ...)`. The Big-element
-implementation compares `listData` results using structural Big Eq; no optimizer
-recognition of Eq impl identities or specialized list-equality pass is needed.
-Little-element lists retain elementwise equality. Native map-shaped lists still
-use that Little-element implementation because builtin pairs are Little; a
-map-specific list impl would overlap it. The distinct Primitive alias `map`
-has its own Eq using `mapData`, without an optimizer rewrite or runtime wrapper.
-Big `Map` already has structural Eq.
-
-**Single-field pair projection**
-
-Compare native `CaseKind::Pair` with `FstPair`/`SndPair` when exactly one
-branch binder is used. For a valid one-branch pair case with no default:
-
-```text
-case p of pair a _ -> body a   => let a = fstPair p in body a
-case p of pair _ b -> body b   => let b = sndPair p in body b
-```
-
-A body that directly returns the selected field reduces to the projection itself.
-Use binder identities/occurrence analysis, retain accurate field types, and
-preserve ANF and subject evaluation exactly once. Keep the projection strict at
-the original case point, including when its result is only used inside a returned
-lambda or delay. Do not discard evaluation of either field when simplifying a
-known pair construction. Both fields used keeps the pair case; neither field
-used is outside this rewrite and must retain required evaluation/shape checks.
-This applies to native builtin pairs, including `unConstrData`'s tag/fields pair,
-not arbitrary two-field ADTs.
-
-Measure emitted UPLC CPU, memory and serialized size for both forms, including
-builtin forces and branch-lambda applications. Cover direct projection and a
-larger branch body, and compare standalone versus cached builtin forces. Record
-which form wins and any tradeoff before choosing a deterministic lowering rule;
-do not add per-program tuning machinery. Keep O0 pair-case snapshots unchanged.
-
-Constant folding evaluates the saturated builtin on the CEK machine
-through plan 07's `eval_closed` (which needs no bindings for a
-literal-only term). `is_error_safe` is ported from Aiken and lists, per
-builtin, the argument shapes under which evaluation cannot fail
-(division by a non-zero literal, `headList` of a non-empty literal list,
-integer arithmetic on integer literals, `iData` on an integer, ...).
-Everything not listed is not folded: `fail`s must stay `fail`s at
-runtime, not become compile errors.
-
-**Code**
-
-```rust
-pub struct Folder<'a, F: FnMut(&'a Core<'a>) -> Option<&'a Constant<'a>>> {
-    pub build: &'a Builder<'a>,
-    /// Evaluates a closed, error-safe builtin application; `None` when the
-    /// evaluator declines (budget, unsupported constant).
-    pub eval: F,
-}
-
-pub fn fold<'a>(build: &Builder<'a>, eval: &mut impl FnMut(&'a Core<'a>) -> Option<&'a Constant<'a>>, core: &'a Core<'a>) -> &'a Core<'a>;
-
-pub fn is_error_safe(func: DefaultFunction, args: &[&Core<'_>]) -> bool {
-    let all_ints = || args.iter().all(|a| matches!(a, Core::Lit(Constant::Integer(_))));
-    match func {
-        AddInteger | SubtractInteger | MultiplyInteger | EqualsInteger | LessThanInteger | LessThanEqualsInteger | IData => all_ints(),
-        DivideInteger | ModInteger | QuotientInteger | RemainderInteger =>
-            all_ints() && !matches!(args[1], Core::Lit(Constant::Integer(i)) if i.is_zero()),
-        AppendByteString | EqualsByteString | LessThanByteString | LessThanEqualsByteString | LengthOfByteString | BData | Sha2_256 | Sha3_256 | Blake2b_256 | Blake2b_224 | Keccak_256 =>
-            args.iter().all(|a| matches!(a, Core::Lit(Constant::ByteString(_)))),
-        ConsByteString => matches!(args[0], Core::Lit(Constant::Integer(i)) if (0..=255).contains(i)) && matches!(args[1], Core::Lit(Constant::ByteString(_))),
-        AppendString | EqualsString | EncodeUtf8 => args.iter().all(|a| matches!(a, Core::Lit(Constant::String(_)))),
-        HeadList | TailList => matches!(args[0], Core::Lit(Constant::ProtoList(_, xs)) if !xs.is_empty()),
-        NullList => matches!(args[0], Core::Lit(Constant::ProtoList(..))),
-        FstPair | SndPair => matches!(args[0], Core::Lit(Constant::ProtoPair(..))),
-        UnIData => matches!(args[0], Core::Lit(Constant::Data(PlutusData::Integer(_)))),
-        UnBData => matches!(args[0], Core::Lit(Constant::Data(PlutusData::ByteString(_)))),
-        UnListData => matches!(args[0], Core::Lit(Constant::Data(PlutusData::List(_)))),
-        UnMapData => matches!(args[0], Core::Lit(Constant::Data(PlutusData::Map(_)))),
-        UnConstrData => matches!(args[0], Core::Lit(Constant::Data(PlutusData::Constr { .. }))),
-        ConstrData | ListData | MapData | MkCons | MkPairData | EqualsData | SerialiseData => args.iter().all(|a| matches!(a, Core::Lit(_))),
-        _ => false,
-    }
-}
-```
-
-The `eval` closure in `assemble` is
-`|core| nash_codegen::comptime::eval_closed(arena, &[], core).ok()`.
-
-Protocol 11 lowering already uses native `case` for `Case(Bool)`, preserving
-lazy branches without `delay`/`force`. The earlier proposed eager
-`ifThenElse` lowering is superseded; Plan 08 remains deferred.
-
-**Aiken reference**: `builtin_eval_reducer` (2674), `is_error_safe`
-(412), `cast_data_reducer` (2522), `force_delay_reducer` (2448),
-`case_constr_apply_reducer` (2058), `convert_arithmetic_ops` (2652),
-`inline_constr_ops` (2490).
-
-**Tests**
-
-- `case_known_constr`: `case Some 3 of Some x -> x; None -> 0` -> `3`
-  after chunks 3+5.
-- `case_known_bool`, `case_known_int_default`, `case_known_data`.
-- `field_of_constr`: `Field(Constr 0 [a, fail], 0)` is not simplified;
-  `Field(Constr 0 [a, b], 0)` is.
-- `pair_first_only`, `pair_second_only`: direct return and larger body; snapshot
-  baseline case and candidate projection UPLC and verify equivalent evaluation.
-- `pair_both_used`, `pair_neither_used`: do not apply the single-field rewrite.
-- `pair_projection_strict`: traced/failing subject, failure in an ignored field
-  of a strict pair construction, and field captured in a returned function/delay;
-  preserve result, logs, failure and evaluation count.
-- `pair_from_unconstr`: tag-only and fields-only access retain malformed-Data
-  failures and do not duplicate `unConstrData`.
-- `fold_add`: `addInteger 40 2` -> `Lit 42`.
-- `no_fold_div_zero`: `divideInteger 1 0` stays.
-- `no_fold_head_nil`: `headList []` stays.
-- `cancel_un_i_data_i_data`.
-- `force_delay`.
-- `flatten_apps`.
-- `if_of_values_is_strict` (lowering snapshot).
-- budgets: `sum_static`, `data_match`, `validate_datum`, `decoder_datum`
-  must improve.
-
-**Done when**: snapshots accepted; measurement findings recorded and experiment
-code removed.
-
----
-
-## Chunk 7 — Driver loop and regression gate
-
-**Files**
-
-- `crates/nash-ir/src/optimize.rs`
-- `crates/nash-codegen/src/program.rs` (`assemble` wiring)
-
-**Change**
-
-Assembly runs two optimizer phases around the existing recursion rewrite:
-
-```text
-O0: recursion::rewrite -> lower
-O1/O2: optimize::run -> refresh recursive groups/static metadata
-       -> recursion::rewrite -> optimize::cleanup -> lower
-```
-
-`run` consumes explicit `LetRec`; `cleanup` consumes the rewritten Core and
-normalizes its generated code before reductions. Both use shared pass functions
-and fresh names. The sketch below describes the main phase; cleanup reuses its
-inlining/DCE loop and, at O2, folding. It need not repeat whole-program force
-caching/currying unless generated code exposes new eligible sites. Test the
-complete assembly pipeline as well as each phase separately.
-
-Main-phase order and fixed point, following `aiken_optimize_and_intern`:
-
-```rust
-/// `--optimize 0|1|2` (docs/cli.md, docs/validators.md); `Options.optimize: u8`
-/// in plan 07 maps onto it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Level {
-    /// No optimization passes; assembly still performs required recursion rewrite.
-    O0,
-    /// Inlining, DCE, builtin force caching and currying.
-    O1,
-    /// `O1` plus case-of-known-constructor and CEK constant folding.
-    O2,
-}
-
-impl Level {
-    pub fn from_flag(n: u8) -> Level {
-        match n { 0 => Level::O0, 1 => Level::O1, _ => Level::O2 }
-    }
-}
-
-pub fn run<'a>(build: &Builder<'a>, eval: &mut impl FnMut(&'a Core<'a>) -> Option<&'a Constant<'a>>, core: &'a Core<'a>, level: Level) -> &'a Core<'a> {
-    if level == Level::O0 { return core; }
-    let core = uniquify(build, core);
-    check_hygiene(core);
-    let core = anf::normalize(build, core);
-    anf::check(core);
-
-    let core = repeat(build, core, |b, c| {
-        let c = inline(b, c);
-        let c = dce(b, c);
-        if level == Level::O2 { fold(b, eval, c) } else { c }
-    });
-    let core = cache_forces(build, core);
-    let core = curry_constants(build, core);
-    let core = repeat(build, core, |b, c| dce(b, inline(b, c)));
-
-    check_hygiene(core);
-    anf::check(core);
-    core
-}
-
-// repeat must detect unchanged structure (or use accurate rewrite-progress
-// reporting), not merely equal node counts. Each pass preserves/checks ANF.
-// Keep generated-name handling deterministic so normalization cannot create
-// spurious progress. Detect and resolve rewrite cycles; do not oscillate between
-// substitution and reintroducing the same administrative bindings.
-```
-
-Convergence tests must include same-size rewrites and a second optimizer run.
-A size metric is useful for inlining decisions, not proof of a fixed point.
-
-
-`assemble` passes `Level::from_flag(build.options.optimize)` to both phases;
-recursion rewriting remains required at every level. The plan 07 test macros
-gain a variant `assert_eval_snapshot_unoptimized!` so front-end tests keep
-readable output, and every existing `Core` snapshot in plan 07 is
-re-accepted once with the optimizer on (their evaluation results must not
-change; the test asserts that separately by running both).
-
-**Aiken reference**: `optimize.rs` `aiken_optimize_and_intern` (25),
-`optimize_repeatedly` (9), `multi_pass` (2965), `afterwards` (3049).
-
-**Tests**
-
-- `run_is_idempotent`: `run(run(x)) == run(x)` on every fixture (pretty
-  `Core` equality).
-- `cleanup_is_idempotent`: cleanup of recursion-rewritten fixtures reaches a
-  fixed point without expanding recursion indefinitely.
-- `phase_snapshots`: retain explicit recursive Core, optimized recursive Core,
-  rewritten Core, and cleaned Core snapshots for self and mutual recursion.
-- `results_unchanged`: every plan 07 evaluation snapshot has the same
-  `result` and `logs` with and without the optimizer (a loop over the
-  fixtures).
-- Temporary measurements compare representative programs before and after the
-  optimizer; retain a summary of the findings, then delete experiment code.
-
-**Done when**: idempotence and result snapshots pass in CI; temporary measurement
-code is removed.
-
----
-
-## Open questions
-
-1. **Strictness of dropped arguments.** Chunk 5 keeps arguments that may
-   throw. A future strictness analysis could drop more; the conservative
-   rule is chosen because a validator that fails must keep failing.
-2. **`INLINE_LAMBDA_SIZE` and `CURRY_MIN_USES`** are constants. Making
-   them `Options` fields is trivial if a project needs a size/cost
-   trade-off knob.
-3. **Fusion of source decoding functions** (docs/data.md) is not in this
-   plan. It would be a fifth pass after chunk 6, recognizing the
-   monomorphized stdlib names.
-4. **Cost-model changes.** Historical measurements apply to their recorded model.
-   Run a temporary comparison when a new performance decision needs current data.
+A direct field return can become the projection itself. Keep subject evaluation
+exactly once and the projection strict at the original case point, including a
+field captured by a returned lambda/delay. Keep accurate field types. Both fields
+used retains the case. Neither used is outside this rewrite: preserve necessary
+evaluation/shape checks. Do not drop strict fields of known pair constructions.
+
+Applies to native builtin pairs, including the tag/fields pair from `unConstrData`,
+not arbitrary two-field ADTs. Test malformed input, traced/failing subjects,
+ignored failing fields, direct return and larger bodies. Measure CPU, memory and
+Flat size, standalone and with builtin-force caching, then review a deterministic
+rule. No assumption that projection wins, and no per-program tuning engine.
+
+**Done when:** keep or discard is decided from measurements; O0 stays unchanged.
+
+## Chunk 11 — Composition, convergence and final configuration
+
+Compose only the accepted passes. Establish their actual order from interactions:
+inlining exposes dead code and known cases, sharing can conflict with inlining,
+and recursion rewriting creates cleanup opportunities. Reuse the same accepted
+passes in cleanup where applicable; do not blindly repeat whole-program sharing.
+
+Detect actual structural progress or accurate rewrite reports, not equal node
+counts. Keep generated names deterministic. Test same-size rewrites, cycles,
+optimizer and cleanup idempotence, and hygiene/ANF after every pass.
+
+Retain separate snapshots for raw Core, ANF, optimized recursive Core, rewritten
+Core and cleaned/lowered output. Differentially evaluate baseline and optimized
+programs, including selected traits, Logic laziness and Big/little case fixtures.
+Keep O0 snapshots; never mass-replace them with optimized ones. Run ordinary
+semantic checks separately from the explicit performance regression command.
+
+Only after reviewing the accepted set, decide whether there is one optimized mode
+or several, their flags/configuration, defaults and pass assignments. Do not
+implement the old `Level::O1/O2` sketch or expose arbitrary tuning knobs first.
+Existing CLI/config optimizer rejection remains until a reviewed mode is wired.
+
+**Done when:** the accepted combination is semantically equivalent, convergent,
+measured and reviewed; final configuration is decided and documented. Mark
+SPEC.md complete only when the retained scope is implemented and validated.
+
+## Boundaries and deferred work
+
+- Integer dispatch is explicit in [Plan 11](11-macros-comptime.md), via an AST/Core
+  operation. Ordinary integer literal case remains equality-based. Do not add
+  density/max-index thresholds, automatic dispatch selection, guards or table
+  filling. Optimizing a known explicit dispatch must preserve its failure and
+  branch behavior.
+- Explicit Big constructor tags are a separate representation feature; they are
+  not permission to renumber tags or treat wildcards as arbitrary runtime tags.
+- Source decoder fusion is outside this plan. It needs its own design/review;
+  do not sneak in recognition of stdlib function names during folding.
+- Native boolean case lowering already exists. Remove no delays on the assumption
+  that it still lowers through eager `ifThenElse`; test the actual current backend.
+- Cost-model changes require deliberate review/rebaselining of performance tests,
+  not silent acceptance. Record rejected candidates as well as retained ones.
+
+## References
+
+Use these as references for individual reviewed rules, not an implementation to
+copy wholesale:
+
+- Aiken `crates/uplc/src/optimize.rs`: pass composition and fixed points.
+- Aiken `optimize/shrinker.rs`: occurrence analysis, inlining, force caching,
+  currying, safe builtin evaluation, inverse conversions and common scopes.
+- Aiken `optimize/interner.rs`: binder hygiene.
+- Elm `elm/compiler/src/Optimize/Expression.hs`: traversal organization for a
+  different target.
