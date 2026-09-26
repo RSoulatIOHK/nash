@@ -3,13 +3,14 @@
 ## Goal
 
 The four optimizations named in [docs/overview.md](../docs/overview.md)
-as Core -> Core passes in `crates/nash-ir`, plus the two things they need:
-a hygiene pass that makes every `Name` unique so substitution is
-capture-free, and temporary cost measurements to compare candidate implementations.
+as Core -> Core passes in `crates/nash-ir`, beginning with A-normal form (ANF).
+Give binders unique names, normalize evaluation into explicit bindings, then run
+ANF-preserving optimizations. Use temporary cost measurements to compare candidate
+implementations.
 Remove measurement code and fixtures after each experiment; keep findings in docs
 and functional snapshot coverage in the test suite.
 
-Passes:
+Passes (after hygiene and ANF normalization):
 
 1. Inline single-use `Let`s and small lambdas.
 2. Builtin force caching (and constant-argument currying).
@@ -189,6 +190,109 @@ pub fn size(core: &Core<'_>) -> usize {
 
 ---
 
+## Chunk 1a — A-normal form before optimization
+
+**Accepted decision: ANF is the first transformation after binder hygiene.**
+This is pending implementation, like the rest of Plan 08. Reuse existing Core
+Let/Case/Lam/Delay nodes rather than adding a parallel optimizer IR.
+
+Pipeline:
+
+```text
+existing Core -> recursion rewrite -> unique names -> ANF
+             -> ANF-preserving optimization passes -> UPLC lowering
+```
+
+Recursion rewriting already precedes optimization in assembly. `O0` remains the
+unchanged pre-optimizer baseline; `O1`/`O2` normalize before their reduction passes.
+
+**Representation invariant**
+
+- Variables and literals are atoms. Lambdas and delays are values whose bodies
+  are normalized recursively within their own scopes; a zero-argument builtin
+  reference can remain atomic. The exact atom predicate must be shared by the
+  normalizer, invariant checker, and optimization passes.
+- Name non-atomic intermediate computations when used as operands. Bindings
+  make evaluation order explicit; they do not eagerly evaluate lambda/delay bodies.
+- Application operands, builtin arguments, constructor fields, projections,
+  force operands, and case subjects use atoms. Let right-hand sides and tail
+  positions can contain computations; case branches have their own ANF bodies.
+- Normalize existing let right-hand sides and reassociate administrative lets
+  without capture. Do not bind every literal or introduce pointless alias lets.
+- Supply fresh binder identities and accurate operand/result types through the
+  existing type/representation machinery. Do not invent a fake type or erase
+  representation merely to manufacture a binder; establish how intermediate
+  application types are obtained before wiring normalization into assembly.
+
+Example (schematic Core):
+
+```text
+addInteger (multiplyInteger a b) (subtractInteger c d)
+
+let product = multiplyInteger a b in
+let difference = subtractInteger c d in
+addInteger product difference
+```
+
+**Strictness and lazy boundaries**
+
+- Preserve the actual Core/UPLC evaluation order, failure, termination, and logs.
+  ANF exposes order; it does not grant permission to reorder computations.
+- Keep branch-local bindings inside their branches and lambda/delay bindings
+  inside their bodies. Never hoist work from an unselected or uncalled body.
+- Preserve trace timing: evaluate the message, emit the trace, then evaluate its
+  body as current lowering does. Do not pull body computations before the trace.
+- Preserve application staging. N-ary App lowers to successive applications;
+  applying an earlier argument may fail before a later argument is evaluated.
+  Normalize with explicit intermediate applications where necessary, rather than
+  hoisting every argument computation ahead of the entire application. Test
+  partial/over-application and intermediate failure.
+- Preserve strict constructor-field evaluation even when later case folding
+  selects a body that ignores fields. Big field extraction and shared wildcard
+  helpers stay in their existing selected/delayed scopes.
+
+**Pass contract**
+
+Add `anf::normalize` and `anf::check` in `nash-ir` (or its existing traversal
+organization). Normalize once at entry; each optimizer pass must preserve ANF,
+using local normalization/reassociation when a rewrite introduces computations.
+Check the invariant after each pass in tests/debug builds.
+
+Inlining must not substitute a non-atomic computation into an atomic operand.
+It can propagate atoms, splice an inlined function's binding sequence at its call
+site, and simplify/reassociate lets while keeping evaluation order. Single use
+alone does not justify moving a strict binding into a conditional branch or past
+an effect/failure. Update chunk 3's historical tree-substitution sketch to this
+contract; don't repeatedly inline out of ANF and normalize back into identical
+bindings. Recompute occurrence/effect information after relevant rewrites.
+
+Case/constant folding, force caching, currying, and dead-binding removal must
+also preserve the invariant. Administrative bindings are an optimizer structure,
+not evidence of a speedup: measure emitted UPLC as well as Core and ensure binding
+introduction does not hide regressions. No new backend or speculative optimizer
+framework is required for ANF.
+
+**Acceptance checklist**
+
+- [ ] Implement normalization and structural invariant checking with fresh names
+  and valid types; reuse existing Core traversal/substitution facilities.
+- [ ] Snapshot nested applications/builtins, existing let nesting, case subjects,
+  constructor fields, projections, force/delay, and recursive rewritten Core.
+- [ ] Differentially evaluate before/after ANF: values, traces, failures, subject
+  once, left-to-right evaluation, trace-before-body, partial application, and
+  unselected branch/unforced delay/uncalled lambda behavior.
+- [ ] Reuse the Big/little wildcard regression fixtures, including shared helpers,
+  ignored fields, and function-valued results. ANF must not force helpers early.
+- [ ] Test idempotence of normalization and hygiene/ANF preservation after every
+  optimization pass. Include no-op and same-size rewrites in convergence tests.
+- [ ] Preserve raw O0 snapshots; add separate ANF and optimized snapshots. Record
+  temporary CPU/memory/serialized-size findings, then remove experiment code.
+
+**Done when:** ANF invariants and semantic equivalence are tested, and every later
+pass explicitly consumes/preserves ANF before enabling the optimizer.
+
+---
+
 ## Chunk 2 — Temporary performance experiments
 
 Measure CPU, memory and serialized size for representative programs while choosing
@@ -214,17 +318,21 @@ snapshots that show the selected lowering and its results.
 
 **Change**
 
-One pass, three rules, applied bottom-up with `map`:
+Adapt the historical sketch below to the ANF contract in chunk 1a. Never insert
+a compound expression into an atomic operand; keep strict evaluation at its
+original execution point unless a separate safety proof permits movement.
+
+One pass, three rules:
 
 1. **Value bindings.** `Let x = v in b` where `v` is a `Var`, `Lit`
    (except `string` constants, which stay hoisted), zero-argument
    `Builtin`, or a lambda that is a "builtin wrapper" (`\a b -> Builtin(f, [a, b])`)
    is substituted everywhere. (Aiken `lambda_reducer`.)
 2. **Single-use bindings.** `Let x = v in b` with `count == 1` is
-   substituted when either the use is not `under_lambda` (the value is
-   evaluated exactly once either way) or `cannot_throw(v)` (moving it
-   under a lambda can only make it run fewer times). (Aiken
-   `inline_reducer`.)
+   simplified only when ANF and evaluation semantics are preserved. A use outside
+   a lambda can still be inside an unselected branch or after a failing operation.
+   Track execution scope/order rather than using `under_lambda` alone as proof.
+   The pseudocode below is historical and must be updated accordingly.
 3. **Small lambdas.** `App(Lam(ps, body), args)` and
    `Let f = Lam(ps, body) in b` where `size(body) <= INLINE_LAMBDA_SIZE`
    are beta-reduced at every saturated call site, binding each argument
@@ -605,6 +713,8 @@ pub fn run<'a>(build: &Builder<'a>, eval: &mut impl FnMut(&'a Core<'a>) -> Optio
     if level == Level::O0 { return core; }
     let core = uniquify(build, core);
     check_hygiene(core);
+    let core = anf::normalize(build, core);
+    anf::check(core);
 
     let core = repeat(build, core, |b, c| {
         let c = inline(b, c);
@@ -616,25 +726,20 @@ pub fn run<'a>(build: &Builder<'a>, eval: &mut impl FnMut(&'a Core<'a>) -> Optio
     let core = repeat(build, core, |b, c| dce(b, inline(b, c)));
 
     check_hygiene(core);
+    anf::check(core);
     core
 }
 
-/// Apply `pass` until the node count stops changing (Aiken `optimize_repeatedly`).
-fn repeat<'a>(build: &Builder<'a>, mut core: &'a Core<'a>, mut pass: impl FnMut(&Builder<'a>, &'a Core<'a>) -> &'a Core<'a>) -> &'a Core<'a> {
-    let mut count = size(core);
-    loop {
-        core = pass(build, core);
-        let next = size(core);
-        if next == count { return core; }
-        count = next;
-    }
-}
+// repeat must detect unchanged structure (or use accurate rewrite-progress
+// reporting), not merely equal node counts. Each pass preserves/checks ANF.
+// Keep generated-name handling deterministic so normalization cannot create
+// spurious progress. Detect and resolve rewrite cycles; do not oscillate between
+// substitution and reintroducing the same administrative bindings.
 ```
 
-`repeat` terminates because every rule either removes nodes or is applied
-at most once per node per iteration and the loop stops when the size is
-stable; the `assert` in `check_hygiene` catches a pass that duplicates a
-binder.
+Convergence tests must include same-size rewrites and a second optimizer run.
+A size metric is useful for inlining decisions, not proof of a fixed point.
+
 
 `assemble` passes `Level::from_flag(build.options.optimize)`; the plan 07 test macros
 gain a variant `assert_eval_snapshot_unoptimized!` so front-end tests keep

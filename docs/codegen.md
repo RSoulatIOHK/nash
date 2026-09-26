@@ -335,6 +335,16 @@ No Y combinator is ever emitted.
 
 ### 6. Optimizations
 
+Plan 08 is deferred. Its accepted pipeline now begins with binder hygiene and
+A-normal form (ANF), after recursion rewriting and before reduction passes.
+Non-atomic intermediate operands receive explicit bindings; variables/literals
+can stay inline. Existing Core nodes are reused. Later passes preserve ANF and
+strict evaluation order, including application staging and trace timing; they
+must not move work across case-branch, lambda, or delay boundaries without a
+separate semantic justification. O0 remains the unnormalized baseline. See
+[Plan 08 chunk 1a](../plans/08-optimizer.md#chunk-1a--a-normal-form-before-optimization).
+
+
 Specified in `plans/08-optimizer.md`:
 
 - **Inline** single-use `Let`s and small lambdas (Aiken `inline_reducer`,
@@ -352,8 +362,8 @@ Specified in `plans/08-optimizer.md`:
   (Aiken `builtin_eval_reducer`, `is_error_safe`). Adjacent inverse builtin calls
   (`unIData (iData x)`) cancel (Aiken `cast_data_reducer`).
 
-The passes run to a fixed point on node count (Aiken
-`optimize_repeatedly`, `crates/uplc/src/optimize.rs:9`).
+The passes preserve ANF and run until no structural rewrite remains. Equal node
+counts alone do not establish a fixed point; convergence and idempotence are tested.
 
 ### 7. Lowering to UPLC
 
