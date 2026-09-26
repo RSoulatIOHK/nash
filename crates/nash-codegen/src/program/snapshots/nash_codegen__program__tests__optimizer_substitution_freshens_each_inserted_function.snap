@@ -1,0 +1,11 @@
+---
+source: crates/nash-codegen/src/program/tests.rs
+expression: "(pretty::term(changed.term.unwrap()), changed.info.logs)"
+---
+(
+    "(constr 0 (con integer 21) (con integer 22))",
+    [
+        "called",
+        "called",
+    ],
+)

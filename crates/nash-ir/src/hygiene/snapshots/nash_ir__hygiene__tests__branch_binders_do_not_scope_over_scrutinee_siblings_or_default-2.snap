@@ -1,0 +1,8 @@
+---
+source: crates/nash-ir/src/hygiene/tests.rs
+expression: pretty(result)
+---
+case@Tag 42 of
+  0 x#2 -> x#2
+  1 -> 42
+  _ -> 42

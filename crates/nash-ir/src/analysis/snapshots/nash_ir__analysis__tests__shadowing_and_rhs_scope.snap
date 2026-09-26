@@ -1,0 +1,64 @@
+---
+source: crates/nash-ir/src/analysis/tests.rs
+assertion_line: 31
+expression: uses
+---
+Occurrences {
+    bindings: [
+        Binding {
+            name: Name {
+                text: "x",
+                unique: 1,
+            },
+            execution_scope: [],
+        },
+        Binding {
+            name: Name {
+                text: "x",
+                unique: 1,
+            },
+            execution_scope: [],
+        },
+    ],
+    uses: [
+        Occurrence {
+            name: Name {
+                text: "x",
+                unique: 1,
+            },
+            binding: None,
+            node: 1,
+            scope: [],
+            execution_scope: [],
+        },
+        Occurrence {
+            name: Name {
+                text: "x",
+                unique: 1,
+            },
+            binding: Some(
+                0,
+            ),
+            node: 3,
+            scope: [
+                0,
+            ],
+            execution_scope: [],
+        },
+        Occurrence {
+            name: Name {
+                text: "x",
+                unique: 1,
+            },
+            binding: Some(
+                1,
+            ),
+            node: 4,
+            scope: [
+                0,
+                1,
+            ],
+            execution_scope: [],
+        },
+    ],
+}

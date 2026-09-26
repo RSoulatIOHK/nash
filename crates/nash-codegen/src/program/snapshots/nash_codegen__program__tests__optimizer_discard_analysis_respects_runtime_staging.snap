@@ -1,0 +1,58 @@
+---
+source: crates/nash-codegen/src/program/tests.rs
+expression: results
+---
+[
+    (
+        "partial builtin",
+        true,
+        Ok(
+            "(con integer 42)",
+        ),
+        [],
+    ),
+    (
+        "strict partial argument",
+        false,
+        Ok(
+            "(con integer 42)",
+        ),
+        [
+            "strict",
+        ],
+    ),
+    (
+        "delayed failure",
+        true,
+        Ok(
+            "(con integer 42)",
+        ),
+        [],
+    ),
+    (
+        "empty lambda",
+        false,
+        Err(
+            "ExplicitErrorTerm",
+        ),
+        [],
+    ),
+    (
+        "strict constructor field",
+        false,
+        Ok(
+            "(con integer 42)",
+        ),
+        [
+            "strict",
+        ],
+    ),
+    (
+        "failing constructor field",
+        false,
+        Err(
+            "ExplicitErrorTerm",
+        ),
+        [],
+    ),
+]

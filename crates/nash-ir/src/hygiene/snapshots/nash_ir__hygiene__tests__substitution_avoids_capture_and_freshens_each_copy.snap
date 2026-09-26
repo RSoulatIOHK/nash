@@ -1,0 +1,5 @@
+---
+source: crates/nash-ir/src/hygiene/tests.rs
+expression: pretty(result)
+---
+\y#4 : 'erased -> constr 0 (\z#5 : 'erased -> constr 0 y#2 z#5) (\z#6 : 'erased -> constr 0 y#2 z#6)

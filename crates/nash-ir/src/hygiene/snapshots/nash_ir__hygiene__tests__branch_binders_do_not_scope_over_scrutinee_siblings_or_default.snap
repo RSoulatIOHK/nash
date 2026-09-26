@@ -1,0 +1,26 @@
+---
+source: crates/nash-ir/src/hygiene/tests.rs
+expression: "validate(tree, &[])"
+---
+Err(
+    [
+        UnboundVariable(
+            Name {
+                text: "x",
+                unique: 1,
+            },
+        ),
+        UnboundVariable(
+            Name {
+                text: "x",
+                unique: 1,
+            },
+        ),
+        UnboundVariable(
+            Name {
+                text: "x",
+                unique: 1,
+            },
+        ),
+    ],
+)

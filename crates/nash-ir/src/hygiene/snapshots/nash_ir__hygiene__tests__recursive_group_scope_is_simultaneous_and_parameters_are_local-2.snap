@@ -1,0 +1,20 @@
+---
+source: crates/nash-ir/src/hygiene/tests.rs
+expression: "validate(leaking, &[])"
+---
+Err(
+    [
+        UnboundVariable(
+            Name {
+                text: "p",
+                unique: 3,
+            },
+        ),
+        UnboundVariable(
+            Name {
+                text: "p",
+                unique: 3,
+            },
+        ),
+    ],
+)

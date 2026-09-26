@@ -336,7 +336,15 @@ No Y combinator is ever emitted.
 
 ### 6. Optimizations
 
-Plan 08 is deferred. Its accepted pipeline now begins with binder hygiene and
+Plan 08's accepted shared-analysis infrastructure lives in `nash-ir::analysis` and
+`nash-ir::hygiene`; assembly enables no new transformation. Occurrence reports
+resolve lexical bindings by numeric name ID and record execution boundaries.
+Hygiene checks diagnose duplicate IDs and out-of-scope uses; substitution renames
+binders in the recipient and each inserted copy to avoid capture. Callers must
+still prove that a proposed rewrite preserves evaluation and effects. Structural
+size counts nodes/binders, not literal payload or serialized bytes.
+
+The accepted pipeline begins with binder hygiene and
 A-normal form (ANF) while recursive groups remain explicit as `LetRec`. Main
 optimization runs before recursion rewriting; generated code is normalized again
 and cleaned up afterward. Assembly coordinates these phases. Before recursion

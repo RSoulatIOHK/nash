@@ -1,0 +1,112 @@
+---
+source: crates/nash-ir/src/analysis/tests.rs
+assertion_line: 116
+expression: found
+---
+Occurrences {
+    bindings: [
+        Binding {
+            name: Name {
+                text: "f",
+                unique: 1,
+            },
+            execution_scope: [],
+        },
+        Binding {
+            name: Name {
+                text: "g",
+                unique: 2,
+            },
+            execution_scope: [],
+        },
+        Binding {
+            name: Name {
+                text: "x",
+                unique: 3,
+            },
+            execution_scope: [
+                RecursiveBody {
+                    node: 0,
+                    index: 0,
+                },
+            ],
+        },
+    ],
+    uses: [
+        Occurrence {
+            name: Name {
+                text: "g",
+                unique: 2,
+            },
+            binding: Some(
+                1,
+            ),
+            node: 2,
+            scope: [
+                0,
+                1,
+                2,
+            ],
+            execution_scope: [
+                RecursiveBody {
+                    node: 0,
+                    index: 0,
+                },
+            ],
+        },
+        Occurrence {
+            name: Name {
+                text: "x",
+                unique: 3,
+            },
+            binding: Some(
+                2,
+            ),
+            node: 3,
+            scope: [
+                0,
+                1,
+                2,
+            ],
+            execution_scope: [
+                RecursiveBody {
+                    node: 0,
+                    index: 0,
+                },
+            ],
+        },
+        Occurrence {
+            name: Name {
+                text: "f",
+                unique: 1,
+            },
+            binding: Some(
+                0,
+            ),
+            node: 4,
+            scope: [
+                0,
+                1,
+            ],
+            execution_scope: [
+                RecursiveBody {
+                    node: 0,
+                    index: 1,
+                },
+            ],
+        },
+        Occurrence {
+            name: Name {
+                text: "x",
+                unique: 3,
+            },
+            binding: None,
+            node: 5,
+            scope: [
+                0,
+                1,
+            ],
+            execution_scope: [],
+        },
+    ],
+}

@@ -2,7 +2,8 @@
 
 ## Status and accepted scope
 
-Pending implementation. Current assembly in `nash-codegen/src/program.rs`
+Chunk 1 accepted and complete; later chunks remain pending. Current assembly in
+`nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
 Reuse its existing Core, Builder, traversal and free-variable facilities.
 
@@ -115,6 +116,29 @@ execution budgets can change; report those changes separately from semantics.
   Cleanup reuses accepted passes and semantic checks; it is not another optimizer.
 
 ## Chunk 1 — Shared analysis and hygiene
+
+**Complete — kept by user review (26 September 2026).**
+`nash-ir::analysis` provides lexical occurrence reports, free variables,
+conservative discard safety and structural size. `nash-ir::hygiene` provides
+scope/uniqueness checks, alpha-renaming and capture-free substitution. Existing
+Builder/name supply and traversal are reused; codegen re-exports the existing
+free-variable algorithm from IR. Assembly does not call any new transformation.
+
+Occurrence reports distinguish branch, lambda, delay and recursive-body scopes;
+empty-parameter lambdas add no execution boundary. Substitution freshens each
+inserted copy and preserves free names, but does not by itself justify inlining
+an effectful or strict expression. Discard safety assumes variables already
+denote values and conservatively rejects calls, saturated builtins, forces,
+cases, projections and recursive groups. Size counts nodes and binders, including
+repeated occurrences; it excludes literal payload and is not a Flat-size estimate.
+Semantic tests belong to normal Cargo discovery; this chunk adds no
+performance experiments or performance baselines.
+
+Validation: 17 new semantic tests cover the analyses and transformations,
+including evaluated capture avoidance and strict-effect fixtures. Core/UPLC and
+analysis snapshots were reviewed. `cargo fmt --all`, Clippy with all targets and
+features and warnings denied, and `cargo test` pass. Existing O0 snapshots are
+unchanged. No performance claim is made for this infrastructure-only chunk.
 
 Audit and reuse existing `nash-ir/src/traverse.rs`, Core/Builder and codegen name
 supply facilities. Add only missing capture-free substitution, binder hygiene,

@@ -1,0 +1,20 @@
+---
+source: crates/nash-ir/src/hygiene/tests.rs
+expression: "validate(tree, &[x.name])"
+---
+Err(
+    [
+        DuplicateBinder(
+            Name {
+                text: "x",
+                unique: 1,
+            },
+        ),
+        DuplicateBinder(
+            Name {
+                text: "y",
+                unique: 1,
+            },
+        ),
+    ],
+)

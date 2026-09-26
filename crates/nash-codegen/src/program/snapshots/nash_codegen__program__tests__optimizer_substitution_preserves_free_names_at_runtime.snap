@@ -1,0 +1,10 @@
+---
+source: crates/nash-codegen/src/program/tests.rs
+expression: "(nash_ir::pretty::pretty(reference), nash_ir::pretty::pretty(candidate),\npretty::term(original_program.named), pretty::term(changed_program.named),)"
+---
+(
+    "let y#1 : int = 20 in\nlet target#2 : int = y#1 in\nlet y#1 : int = 10 in\naddInteger target#2 y#1",
+    "let y#1 : int = 20 in\nlet y#3 : int = 10 in\naddInteger y#1 y#3",
+    "[(lam y_1\n  [(lam target_2\n    [(lam y_1 [[(builtin addInteger) target_2] y_1]) (con integer 10)])\n    y_1])\n  (con integer 20)]",
+    "[(lam y_1 [(lam y_3 [[(builtin addInteger) y_1] y_3]) (con integer 10)])\n  (con integer 20)]",
+)

@@ -6,6 +6,118 @@ use nash_ir::{
 };
 use nash_plutus::{builtin::DefaultFunction as F, constant::Constant, pretty};
 
+#[test]
+fn optimizer_substitution_preserves_free_names_at_runtime() {
+    use nash_ir::hygiene;
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let y = binder(&b, "y");
+    let target = binder(&b, "target");
+    // The replacement's free y must remain outside the recipient's local y.
+    let recipient = b.let_(
+        y,
+        b.int(10),
+        b.builtin(F::AddInteger, &[b.var(target.name), b.var(y.name)]),
+    );
+    let replaced = hygiene::substitute(&b, recipient, target.name.unique, b.var(y.name));
+    let candidate = b.let_(y, b.int(20), replaced);
+    hygiene::validate(candidate, &[]).unwrap();
+    let reference = b.let_(y, b.int(20), b.let_(target, b.var(y.name), recipient));
+    let original_program = assemble_core(&arena, reference).unwrap();
+    let changed_program = assemble_core(&arena, candidate).unwrap();
+    insta::assert_debug_snapshot!((
+        nash_ir::pretty::pretty(reference),
+        nash_ir::pretty::pretty(candidate),
+        pretty::term(original_program.named),
+        pretty::term(changed_program.named),
+    ));
+    let original = original_program.program.eval(&arena);
+    let changed = changed_program.program.eval(&arena);
+    assert_eq!(
+        pretty::term(original.term.as_ref().unwrap()),
+        pretty::term(changed.term.as_ref().unwrap())
+    );
+    insta::assert_snapshot!(pretty::term(changed.term.unwrap()), @"(con integer 30)");
+    assert_eq!(original.info.logs, changed.info.logs);
+}
+
+#[test]
+fn optimizer_substitution_freshens_each_inserted_function() {
+    use nash_ir::hygiene;
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let target = function(&b, "target");
+    let x = binder(&b, "x");
+    let replacement = b.lam(
+        &[x],
+        b.trace(
+            b.lit(Constant::string(&arena, "called")),
+            b.builtin(F::AddInteger, &[b.var(x.name), b.int(1)]),
+        ),
+    );
+    let recipient = b.constr(
+        0,
+        &[
+            b.app(b.var(target.name), &[b.int(20)]),
+            b.app(b.var(target.name), &[b.int(21)]),
+        ],
+    );
+    let candidate = hygiene::substitute(&b, recipient, target.name.unique, replacement);
+    hygiene::validate(candidate, &[]).unwrap();
+    let reference = b.let_(target, replacement, recipient);
+    let original = assemble_core(&arena, reference)
+        .unwrap()
+        .program
+        .eval(&arena);
+    let changed = assemble_core(&arena, candidate)
+        .unwrap()
+        .program
+        .eval(&arena);
+    assert_eq!(
+        pretty::term(original.term.as_ref().unwrap()),
+        pretty::term(changed.term.as_ref().unwrap())
+    );
+    assert_eq!(original.info.logs, changed.info.logs);
+    insta::assert_debug_snapshot!((pretty::term(changed.term.unwrap()), changed.info.logs));
+}
+
+#[test]
+fn optimizer_discard_analysis_respects_runtime_staging() {
+    use nash_ir::analysis::safe_to_discard;
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let unused = binder(&b, "unused");
+    let traced = b.trace(b.lit(Constant::string(&arena, "strict")), b.int(1));
+    let fixtures = [
+        ("partial builtin", b.builtin(F::AddInteger, &[b.int(1)])),
+        (
+            "strict partial argument",
+            b.builtin(F::AddInteger, &[traced]),
+        ),
+        ("delayed failure", b.delay(b.error())),
+        ("empty lambda", b.lam(&[], b.error())),
+        ("strict constructor field", b.constr(0, &[traced])),
+        ("failing constructor field", b.constr(0, &[b.error()])),
+    ];
+    let mut results = Vec::new();
+    for (label, value) in fixtures {
+        let evaluated = assemble_core(&arena, b.let_(unused, value, b.int(42)))
+            .unwrap()
+            .program
+            .eval(&arena);
+        let result = evaluated
+            .term
+            .map(pretty::term)
+            .map_err(|e| format!("{e:?}"));
+        if safe_to_discard(value) {
+            assert_eq!(result.as_deref(), Ok("(con integer 42)"));
+            assert!(evaluated.info.logs.is_empty());
+        }
+        results.push((label, safe_to_discard(value), result, evaluated.info.logs));
+    }
+    insta::assert_debug_snapshot!(results);
+}
+
 fn binder<'a>(b: &Builder<'a>, text: &'a str) -> Binder<'a> {
     Binder {
         name: b.fresh(text),
