@@ -212,6 +212,37 @@ predicateAll p xs =
     List.foldr (\x acc -> p x && acc) True xs
 ```
 
+### Explicit positional integer dispatch (planned)
+
+Plan 11 chunk 13 adds an explicit `IntegerDispatch` AST operation and an ordinary
+library macro:
+
+```nash
+dispatch!(n, [branch0, branch1, branch2])
+```
+
+The macro requires two syntax arguments, extracts branch expressions from the
+second argument's `ListLit` node, and returns
+`Ast.integerDispatch subject branches`. It never constructs a runtime list and
+is not recognized specially by the compiler. A runtime list variable is rejected
+by the macro. The compiler type-checks the resulting operation: native `int`
+subject, a common branch result type, and no dispatch-specific trait constraints.
+The syntax list must not impose a surviving Storable constraint on the expanded
+branches; Term and function results are supported through the ordinary macro
+lenient-typing/recheck contract.
+
+The operation lowers directly to `(case subject branch0 branch1 branch2)`.
+The subject is evaluated once; only its selected branch executes. Negative or
+out-of-range indices fail. An empty branch sequence evaluates its subject then
+fails, with an unconstrained result type. There are no inserted guards, fallback,
+decoding, branch-count heuristics, or runtime thunk wrappers. To dispatch on Big
+Int, the caller explicitly supplies `Builtin.unIData x`; to handle out-of-range
+values, the caller explicitly writes a guard.
+
+The AST operation survives reification, hygiene, strict typing, and Core lowering;
+it is distinct from ordinary literal `case` and from Core's equality-chain
+`CaseKind::Int`. This feature is pending, not available source functionality yet.
+
 ## What the macro sees: the `Ast` module
 
 `nash/base` ships an `Ast` module. Every type in it is a **little** ADT
@@ -276,6 +307,7 @@ type exprNode
     | Tuple (cons expr)                -- length >= 2
     | MacroCall name (cons expr)       -- output may contain new invocations
     | Comptime expr
+    | IntegerDispatch expr (cons expr) -- explicit native integer UPLC case
 
 type def
     = Define name (cons pattern) expr (option typ)
@@ -395,6 +427,7 @@ str : string -> expr
 call : expr -> cons expr -> expr
 lambda : cons pattern -> expr -> expr
 case_ : expr -> cons arm -> expr
+integerDispatch : expr -> cons expr -> expr -- positional branches, native int subject
 tuple : cons expr -> expr
 arm : pattern -> expr -> arm
 pvar : name -> pattern

@@ -4,7 +4,7 @@ Goal: implement [docs/macros.md](../docs/macros.md): `macro` declarations,
 `@attr` and `name!()` invocations, `quote`/`~`, the `Ast` reification in a
 new `nash-macro` crate, the expansion loop in `nash-driver`, hygiene,
 `comptime`, `@derive` in `nash/base`, diagnostics, and expansion snapshot
-tests.
+tests, and explicit native integer dispatch through a library macro.
 
 Prerequisites:
 
@@ -26,7 +26,7 @@ Prerequisites:
   together.
 
 Crates touched: `nash-source`, `nash-parse`, `nash-ast`, `nash-can`,
-`nash-constrain`, `nash-solve`, `nash-codegen`, `nash-driver`, `nash-report`,
+`nash-constrain`, `nash-solve`, `nash-ir`, `nash-codegen`, `nash-driver`, `nash-report`,
 new `nash-macro`, `crates/nash-driver/base/`.
 
 References:
@@ -735,7 +735,7 @@ pub mod expr {
     pub const LAMBDA: u64 = 8; pub const CALL: u64 = 9; pub const IF: u64 = 10; pub const LET: u64 = 11;
     pub const CASE: u64 = 12; pub const ACCESSOR: u64 = 13; pub const ACCESS: u64 = 14; pub const UPDATE: u64 = 15;
     pub const RECORD: u64 = 16; pub const UNIT: u64 = 17; pub const TUPLE: u64 = 18; pub const MACRO_CALL: u64 = 19;
-    pub const COMPTIME: u64 = 20;
+    pub const COMPTIME: u64 = 20; pub const INTEGER_DISPATCH: u64 = 21;
 }
 pub mod def { pub const DEFINE: u64 = 0; pub const DESTRUCT: u64 = 1; }
 pub mod pattern {
@@ -772,6 +772,7 @@ type exprNode
     | If expr expr expr | Let (cons def) expr | Case expr (cons arm) | Accessor string
     | Access expr string | Update name (cons fieldAssign) | Record (cons fieldAssign)
     | UnitLit | Tuple (cons expr) | MacroCall name (cons expr) | Comptime expr
+    | IntegerDispatch expr (cons expr)
 type def = Define name (cons pattern) expr (option typ) | Destruct pattern expr
 type patternNode
     = PAny | PVar name | PRecord (cons name) | PAlias pattern name | PUnit | PTuple (cons pattern)
@@ -1854,6 +1855,92 @@ returns `print::module` of the named module after the final round.
 
 ---
 
+## Chunk 13: explicit integer dispatch AST and positional library macro
+
+**Decision (26 September 2026): pending implementation.** Integer dispatch is an
+explicit AST operation. The user chooses it through an ordinary library macro;
+there is no automatic dispatch selection for literal patterns.
+
+Public invocation:
+
+```nash
+dispatch!(n, [branch0, branch1, branch2])
+```
+
+The macro receives two expression ASTs, requires its second argument to be a
+`ListLit`, and returns `Ast.integerDispatch subject branches`. The list brackets
+are syntax consumed at expansion time, never an emitted runtime list. The macro
+is an ordinary exported expression macro (`cons Ast.expr -> Ast.expr`), imported
+from a library module; the compiler does not recognize the name `dispatch`.
+Wrong argument count and a nonliteral branch list are library macro errors.
+Other macros may construct the same AST node directly.
+
+**AST and typing contract**
+
+- Add `IntegerDispatch expr (cons expr)` to `Ast.exprNode` and builder
+  `integerDispatch : expr -> cons expr -> expr`. Append its reification tag;
+  update `Ast.nash` and the host tag table together.
+- Add matching subject/branch expression nodes to source and canonical ASTs.
+  The source node is a macro-output form; no new keyword or direct parser syntax
+  is required. Reification/unreification validates its node shape and traverses
+  both children. Hygiene and source metadata preserve caller bindings/locations.
+- Require native `int` for the subject and one common result type for branches.
+  No Eq, FromInt, Big conversion, or Storable constraint belongs to dispatch
+  itself. Ordinary branch expressions still generate their own constraints.
+- Pre-expansion typing of the list-shaped macro argument must not leak a
+  runtime-list Storable requirement into the expanded program. Verify the
+  existing lenient-predicate/recheck path with Term- and function-valued branches;
+  do not add a special case keyed to this macro's name.
+- An empty branch sequence is allowed: it has a fresh result type and always
+  fails at runtime after subject evaluation, matching raw UPLC case semantics.
+
+**Core and lowering contract**
+
+- Preserve an explicit integer-dispatch operation through Core and its walkers,
+  substitutions, free-name analysis, pretty printing, and optimizer handling.
+  Do not reuse `CaseKind::Int`, whose current contract is equality-chain lowering.
+- Emit exactly a native `Term::Case` on the subject with the positional branch
+  terms. Evaluate the subject once and execute only the selected branch.
+- Negative and out-of-range subjects fail according to UPLC. No generated bounds
+  or shape guard, fallback, decoding, filling, shifting, density test, maximum
+  table policy, cost model, or automatic equality fallback.
+- Big Int callers explicitly write `Builtin.unIData x` when they want decoding.
+  Wrong-shape decoding fails normally. Arbitrary sparse Big constructor tags
+  from Plan 14 are a separate feature, not implicit dispatch inputs.
+- Do not add runtime list construction, thunk wrappers, or lambda/application
+  pairs merely to implement dispatch. A user-written branch may itself be a
+  function or contain any ordinary expression.
+- General optimizations may preserve/simplify this operation under their usual
+  semantic rules; they must not treat all branch bodies as eagerly evaluated.
+  This chunk does not require the deferred Plan 08 optimizer.
+
+**Implementation and acceptance checklist**
+
+- [ ] Extend ASTs, `Ast.nash`, builders, host tag table, reifier/unreifier, hygiene,
+  typing, Core traversal/printing, and direct lowering as one coherent feature.
+- [ ] Implement the ordinary library `dispatch` macro and document its import.
+  Keep the interface positional; numbered arms and wildcard syntax are not part
+  of this chunk.
+- [ ] Add expansion snapshots proving the list becomes an IntegerDispatch node,
+  including source locations and hygienic references from caller scope.
+- [ ] Test first/last branch selection; subject evaluation exactly once; trace
+  order; selected failure; unselected trace/failure; negative, out-of-range, and
+  huge integers; empty branches; explicit Big decoding and wrong-shape failure.
+- [ ] Test native, Big, Term, and function result types; mismatched branch types;
+  non-int subject; wrong macro arity; runtime branch-list variable rejection;
+  generated dispatch from a differently named macro; nested macro expansion.
+- [ ] Snapshot actual UPLC: one direct positional case, no list construction or
+  added guards/wrappers. Keep ordinary literal case equality snapshots unchanged.
+- [ ] Run supported-target evaluator tests, formatting, strict Clippy, workspace
+  tests, and update affected crate changesets when implementation lands.
+
+This chunk depends on chunks 2–8 for the macro path and coordinates with Plan 12's
+Ast module. Include it in chunk 12's expansion/debug coverage; it can land without
+waiting for deriving. The older AST/code sketches above must carry the new node
+through every exhaustive match when implemented.
+
+---
+
 ## Order and dependencies
 
 ```
@@ -1866,3 +1953,5 @@ returns `print::module` of the named module after the final round.
 
 Chunks 1–6 can land before plans/07; chunks 7–10 need it. Chunk 11 can
 land any time after 8; chunk 12 after 10.
+
+Chunk 13 requires chunks 2–8 and Plan 12 Ast coordination, not Plan 08 or deriving.

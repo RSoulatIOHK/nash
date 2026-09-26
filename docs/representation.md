@@ -46,6 +46,13 @@ A `case` on `bool` lowers to native UPLC `case`; a `case` on `unit` has one bran
 
 ## Big types
 
+Planned extension: user-defined Big ADTs will support explicit constructor Data
+tags, including sparse values such as `59`, `65`, and `122`. Untagged declarations
+retain declaration-order tags; little ADTs continue to use consecutive zero-based
+tags and will reject explicit tags. This is not implemented yet; syntax and
+implementation are tracked in [Plan 14](../plans/14-explicit-big-constructor-tags.md).
+The encodings below describe current behavior.
+
 A `Big` value is a `Data` constant, `Constant::Data(&PlutusData)`, UPLC
 `Type::Data`. Its Nash type says which `PlutusData` shape it has:
 
