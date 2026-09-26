@@ -66,7 +66,7 @@ Implementation plans (Plan 08 is deferred; Plans 09 and 10 are complete):
 - [ ] 08 Optimizer: inlining, builtin force caching, DCE, case-of-known-ctor/constant folding — [plans/08-optimizer.md](plans/08-optimizer.md) (deferred)
 - [x] 09 Validators + `nash build` — [plans/09-validators-build.md](plans/09-validators-build.md)
 - [x] 10 Testing: `tests` block, props, generators, shrinking, power-assert, `nash test` — [plans/10-testing.md](plans/10-testing.md)
-- [ ] 11 Macros + comptime — [plans/11-macros-comptime.md](plans/11-macros-comptime.md); includes explicit integer-dispatch AST and positional library macro (chunk 13)
+- [ ] 11 Macros + comptime — [plans/11-macros-comptime.md](plans/11-macros-comptime.md); includes explicit integer-dispatch AST and positional library macro (chunk 13), with pattern-library interfaces proposed in chunk 14
 - [ ] 12 Stdlib `nash/base` — [plans/12-stdlib.md](plans/12-stdlib.md) (chunks 1–9 and 11–13 complete; chunk 10 Ast/Derive deferred)
 - [x] 13 `nash format` (`fmt`), `nash docs` — [plans/13-fmt-docs.md](plans/13-fmt-docs.md) (chunks 1–7 complete)
 - [x] Representation-classed impl heads: `Big`/`Little` blankets and concrete little impls coexist — [plans/repr-classed-impl-heads.md](plans/repr-classed-impl-heads.md)

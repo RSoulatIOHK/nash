@@ -1,7 +1,7 @@
 # Macros and compile-time evaluation
 
-Nash has procedural macros and a `comptime` expression form. Both run Nash
-code on the CEK machine inside the compiler. Macros transform *typed*
+Procedural macros are planned in Plan 11; the `comptime` expression already
+works. Both use Nash code on the CEK machine inside the compiler. Macros transform *typed*
 canonical AST into *surface* AST that is spliced back into the module and
 re-checked. `comptime` evaluates a closed expression to a UPLC constant.
 
@@ -383,8 +383,9 @@ that reads them.
 
 Input conventions (reification, `nash-macro`):
 
-- Every `expr` and `pattern` has `span = Some` and `typ = Some` (the
-  solved type). `Union`/`Alias` and their parameters carry closed inferred
+- Input `expr` and `pattern` nodes retain source spans and available solved
+  types. Resolved nodes have `typ = Some`; provisional unresolved nodes may have
+  `typ = None` rather than invented concrete type information. `Union`/`Alias` and their parameters carry closed inferred
   `kind = Some`. `representation` is `Some` where known, independently of
   the kind. A transparent alias uses its substituted body. Parameter
   `repr` preserves the source representation annotation, if present.
@@ -444,6 +445,42 @@ nameText : name -> string
 exprName : expr -> option string           -- `Some "Eq"` for `Var (Raw "Eq")`
 ```
 
+## Proposed pattern-library macros
+
+Plan 11 chunk 14 recommends lambda ASTs as pattern/body input, using existing
+expression syntax:
+
+```nash
+expect!(value, \(Some x) -> use x)
+matchOr!(value, \(Some x) -> use x, fallback)
+inspect = clauses!(\None -> 0, \(Some x) -> x)
+```
+
+These are proposed library interfaces, not implemented or reserved compiler
+forms. The macros extract the lambda pattern/body instead of calling the lambda.
+`expect` emits an ordinary case with failure fallback; `matchOr` uses the supplied
+fallback. `clauses` builds one lambda and an ordered case, matching a tuple for
+multiple arguments. No new pattern/assert/decode compiler node is needed.
+
+Use builders for patterns/arms/declarations and quote for expression fragments.
+Refutable carrier patterns are checked for coverage after expansion; generated
+cases and any remaining runtime lambdas receive normal coverage checking. Preserve
+scopes when moving each pattern/body together. A fallback stays outside its
+success-pattern bindings. Function clause matching runs after all arguments have
+arrived, with ordinary strict argument evaluation and partial application.
+
+Public names and treatment of irrefutable success patterns remain decisions in
+chunk 14. Appending a wildcard to an irrefutable pattern creates a redundant arm;
+either retain that ordinary error initially or expose generic reliable
+irrefutability metadata so the library can omit the fallback. Never suppress
+coverage errors based on a macro name. Grouped declaration syntax and additional
+quote/splice shorthand are optional alternatives, not required machinery.
+
+A match-or-else expansion does not imply recursive Data validation; `matchOr` is
+therefore clearer than `decode` for this behavior. A boolean assert macro can emit
+an ordinary if/fail, but replacing current power-assert reporting requires a
+separate explicit migration contract.
+
 ## `quote` and splices
 
 Building trees by hand is verbose. `quote (e)` is parser sugar that turns
@@ -479,8 +516,8 @@ Semantics:
 - `quote` has type `Ast.expr`. It is only useful in modules that import
   `Ast`; using it elsewhere is a normal "unknown type" error.
 
-`quote type (t)`, `quote pattern (p)`, and `quote decl (d)` are planned
-later chunks with the same shape.
+`quote type (t)`, `quote pattern (p)`, and `quote decl (d)` are deferred
+shorthand extensions, not prerequisites for constructing those AST values.
 
 ## Hygiene
 
@@ -511,6 +548,12 @@ Consequences:
 The gensym pass runs on the decoded surface AST before canonicalization,
 see plan chunk "Hygiene".
 
+Moving an input pattern/body pair into a generated arm must preserve that
+pattern's bound references and all caller free references. Separate clauses and
+nested scopes remain separate even when names have the same spelling. Preserve
+binding identity or consistently freshen the binder and its references; a global
+text replacement is not sufficient hygiene for combining input fragments.
+
 ## Expansion algorithm
 
 Per module, in `nash-driver`:
@@ -524,6 +567,8 @@ loop
     uses     = collect_macro_uses(can)
     if uses is empty:
         can, types = canonicalize + solve(surface, mode = Strict)   -- normal errors
+        check_main_parameters(can, types)
+        nitpick.check(can)       -- exhaustiveness and redundancy on final output
         break
     round += 1
     if round > limit:
@@ -556,8 +601,12 @@ Details:
     checked as written.
   Unification errors are still real errors and stop the module (they do
   not depend on missing declarations, because holes unify with anything).
-- **Strict mode** is the normal Elm behaviour and runs exactly once, on
-  the fully expanded module.
+- **Strict mode** runs on the fully expanded module, followed by ordinary
+  exhaustiveness/redundancy checking. Provisional rounds do not reject refutable
+  lambda patterns carried as macro syntax. A refutable lambda left in runtime
+  output is still rejected. This is generic phase ordering, not a macro-name
+  exception. Final recanonicalization and solving rebuild ordinary recursive
+  dependencies and types from the expanded definitions.
 - **Order**: attributes on one declaration run top to bottom, each seeing
   the previous one's output for that declaration (re-encoded without
   types; a later attribute that needs types sees `None`). Expression
@@ -669,7 +718,7 @@ Semantics:
   standalone program and runs it on the CEK machine with the
   `comptimeBudget` (default 10x the mainnet transaction budget, settable
   in `nash.jsonc` and by `--comptime-budget`).
-- The resulting `Constant` is spliced as a `Core::Const` node. Failures
+- The resulting `Constant` is spliced as a `Core::Lit` node. Failures
   are `ComptimeFailed` with the machine error and the last trace line.
 - Traces emitted during comptime are printed at compile time only with
   `--trace-comptime`.
@@ -802,12 +851,12 @@ Notes on the sketch:
   interface (`InterfaceMacro { name, shape }`) so importers can check
   `MacroWrongKind` without the body.
 - **Solver**: lenient mode for predicates; per-node type map for the
-  encoder (`NodeTypes`).
+  encoder (the existing `nash_solve::SolvedTypes`).
 - **Kinds and representation**: closed `Union.kind` and separate
   `Union.representation` in the reified AST; `comptime` requires a
   representation that can be returned as a UPLC constant.
 - **Codegen**: compiles macro programs and comptime programs; consumes
-  `Core::Const` splices.
+  `Core::Lit` splices.
 - **Driver**: owns the expansion loop; macro programs are part of a
   module's build artifact so dependents can run them.
 - **Diagnostics**: `nash-report` renders the errors above; generated code

@@ -6,6 +6,49 @@ new `nash-macro` crate, the expansion loop in `nash-driver`, hygiene,
 `comptime`, `@derive` in `nash/base`, diagnostics, and expansion snapshot
 tests, and explicit native integer dispatch through a library macro.
 
+## Current baseline and scope (26 September 2026)
+
+Procedural macros remain pending. "Initial scope" means this plan's first
+implementation, not a language release or Plutus version. This section supersedes
+historical implementation sketches below.
+
+- Plan 01 already parses macro invocations/attributes and comptime; canonical
+  macro-call expansion is not implemented. Macro definitions and quote/splice
+  support remain work here.
+- `nash_solve::SolvedTypes` already records expression/pattern types keyed by
+  `nash_ast::NodeId`. Reuse it, rather than adding another type-recording system.
+- Closed comptime evaluation already works in `can_to_core::Engine::expr` via
+  `closed_dependencies` and `comptime::eval_closed`, producing `Core::Lit`.
+- `nash-fmt` exists. Extend its source syntax support. Expanded AST needs debug
+  output for resolved names and internal-only operations, not a second formatter.
+- Use current Build/Core/program assembly APIs. Do not introduce historical
+  `lower_value(&ModuleSet, ...)` or `Core::Const` APIs merely to match this sketch.
+- Chunks 1–8, 10–13 are pending macro work. Chunk 9 is existing comptime plus
+  integration checks. Chunk 14 proposes concrete pattern-library interfaces.
+
+AST builders construct expressions, patterns, arms, types, functions, and
+declarations. Initial quote/splice shorthand handles expressions only;
+pattern/type/declaration/list-position shorthand stays deferred. Builder
+expressiveness is not limited by that shorthand decision. Macros see supplied
+inputs, not neighboring declarations, filesystem state, or arbitrary type bodies.
+
+**Checking contract:** provisional canonicalization/type inference supplies typed
+inputs. Run coverage and redundancy checking on the fully expanded, strictly
+checked module, before normal codegen. This generic ordering permits refutable
+lambda patterns as macro syntax carriers. It does not permit runtime refutable
+lambdas: if expansion leaves one behind, final coverage checking rejects it.
+Preserve real provisional unification errors; do not make all macro inputs
+untyped. The current driver's `nash_nitpick::check` belongs after final expansion,
+not in a special case for a library macro name. Recanonicalize/re-solve from fresh
+state after expansion, including normal recursive dependency analysis.
+
+**Binding contract:** moving a supplied lambda's pattern/body into a case arm must
+retain bound references and caller free references. Separate clauses have separate
+scopes. Test repeated names, nested shadowing, and generated names. Strengthen the
+historical Local/Raw string sketches where needed: preserve binding identity or
+consistently freshen each moved binder and its references. Do not globally rename
+all equal strings or flatten clause scopes. This is generic chunks 4–6 hygiene.
+
 Prerequisites:
 
 - plans/01 (syntax): `@attr(..)` on declarations, `name!(..)`, `comptime`,
@@ -18,8 +61,8 @@ Prerequisites:
   representation queries and datatype contexts in `nash-can::kinds`.
 - plans/03 (traits): `trait`/`impl` in `nash-source`/`nash-ast`, predicate
   resolution with a hook to defer unresolved predicates.
-- plans/07 (codegen): `nash_codegen::lower_value(&ModuleSet, QualifiedName) -> &Term<DeBruijn>`
-  and `Core::Const`.
+- plans/07 (codegen): current Build specialization, closed Core assembly,
+  `Core::Lit`, and existing CEK evaluation.
 - plans/12 (stdlib) chunk "Ast": `crates/nash-driver/base/src/Ast.nash` is the Nash side of the
   reifier/unreifier in this plan (chunks 4 and 5), and chunk 6 there
   supplies `Cons.cons`. The tag table and `Ast.nash` must be changed
@@ -59,7 +102,7 @@ fields are the UPLC constants `Constant::String`/`Integer`/`ByteString`;
 `option` = `Some` tag 0 / `None` tag 1; `cons` = `Nil` tag 0 /
 `Cons` tag 1 (`core/Cons.nash`). Nothing in the macro path is `Data`.
 `comptime` results (chunk 9) are unchanged: they must be UPLC constants
-(`Const` or `Big` representation) and are spliced as `Core::Const`.
+(`Const` or `Big` representation) and are spliced as `Core::Lit`.
 
 ---
 
@@ -599,103 +642,23 @@ entries follow `addExposedValue`); `Elm/Interface.hs` `fromModule`
 
 ---
 
-## Chunk 3: per-node types and lenient solving
+## Chunk 3: reuse solved node types and add lenient solving
 
-**Files**
+`crates/nash-solve/src/solved.rs` already exposes `SolvedTypes.exprs`, `.patterns`,
+`.instances`, and `.schemes`, keyed by `nash_ast::NodeId`. The driver retains this
+information for codegen. No parallel NodeTypes registry is needed.
 
-- `crates/nash-constrain/src/lib.rs`, `expression.rs`, `pattern.rs`
-- `crates/nash-solve/src/lib.rs`, `solve.rs`, `annotation.rs`
-
-**Change**
-
-The reifier needs the solved type of every expression and pattern. Elm
-only produces top-level annotations. Record, per node, the type variable
-the constraint generator used, then resolve after solving.
-
-**Code**
-
-```rust
-// crates/nash-constrain/src/lib.rs
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NodeId(usize);
-
-impl NodeId {
-    pub fn of<T>(node: &T) -> Self {
-        NodeId(node as *const T as usize)
-    }
-}
-
-#[derive(Default)]
-pub struct NodeTypes<'a> {
-    pub exprs: Vec<(NodeId, &'a Type<'a>)>,
-    pub patterns: Vec<(NodeId, &'a Type<'a>)>,
-}
-
-pub fn constrain<'a>(
-    bump: &'a Bump,
-    uf: &mut UnionFind<'a>,
-    module: &'a CanModule<'a>,
-    nodes: &mut NodeTypes<'a>,
-) -> Constraint<'a>
-```
-
-In `expression.rs` `constrain`, the first line becomes:
-
-```rust
-let region = expr.region;
-nodes.exprs.push((NodeId::of(expr), expected.type_ref()));
-```
-
-`Expected::type_ref` returns the `&'a Type<'a>` inside `NoExpectation` /
-`FromContext` / `FromAnnotation`. Patterns likewise in `pattern.rs`
-`add`. `CanExpr::Hole` and `CanExpr::MacroCall` constrain as
-`Constraint::True` after pushing the node (a `MacroCall` still constrains
-its arguments against fresh variables so they get types).
-
-```rust
-// crates/nash-solve/src/lib.rs
-pub type NodeTypeMap<'a> = BTreeMap<NodeId, &'a nash_ast::Type<'a>>;
-
-/// Resolve recorded node types after `run` succeeded.
-pub fn node_types<'a>(
-    bump: &'a Bump,
-    uf: &mut UnionFind<'a>,
-    nodes: &NodeTypes<'a>,
-) -> NodeTypeMap<'a>
-```
-
-It reuses `annotation::to_annotation`'s variable-to-canonical-type walk
-(`crates/nash-solve/src/annotation.rs:16`) per recorded type; free
-variables become `Type::Var` with the solver's generated names.
-
-Lenient predicates: the solver entry is plans/03 chunk 5's "Solver API",
-`nash_solve::run(bump, uf, constraint, tables, fields, mode)` with
-`mode: nash_can::Mode` (the `Strict | Lenient` enum chunk 2 puts on
-`nash_can::Context`; no separate solver flag type exists), and `run` sets
-`Solver.mode` from it (plans/03 chunk 6, `unresolved` helper in
-`resolve.rs`). In `Lenient`, a predicate that would report
-`nash_constrain::Error::MissingImpl` (or a missing constraint, an
-ambiguous variable, or polymorphic recursion) is detached instead, and
-its use site gets no `Instance.evidence` entry. Dependency: plans/03 chunk
-6 owns the resolver and the helper; this chunk only threads the flag from
-`compile_module`.
-
-**Elm/Aiken reference**
-
-`Type/Constrain/Expression.hs` `constrain` (every case receives
-`expected`); `Type/Solve.hs` `run`; `Type/Solve.hs` `toAnnotation` is
-already `annotation.rs`. Aiken keeps types on every `TypedExpr` node
-(`crates/aiken-lang/src/expr.rs`) which is the information this map
-reproduces.
-
-**Tests** (`crates/nash-solve/src/tests.rs`)
-
-- `main = \x -> x + 1` with an `int` `Num` impl: node map has `Lambda : int -> int`, `x : int`, `1 : int`.
-- `m!(1, "a")` in lenient mode: arguments typed `int` and `string`, call node is a free `Var`.
-- Strict mode with an unresolved predicate still errors; lenient drops it.
-
-**Done when** `compile_module` threads `NodeTypes` and discards it, and
-tests pass.
+- [ ] Feed existing solved types and canonical kind/representation metadata to
+  the reifier; do not introduce a second inference engine.
+- [ ] Add specific lenient-mode allowances for macro-introduced names and impls.
+  Keep ordinary unification errors and strictly recheck output using fresh node
+  identities, not stale input pointers or provisional macro-result types.
+- [ ] Use `None` for genuinely unresolved metadata rather than promising concrete
+  types for every provisional hole. Update the AST input contract accordingly.
+- [ ] Test typed lambda pattern/body input, unresolved evidence, and strict output
+  rechecking against the existing codegen type queries.
+- [ ] Apply the final-only coverage contract above. Test that surviving refutable
+  runtime lambdas and nonexhaustive/redundant generated cases are rejected.
 
 ---
 
@@ -795,14 +758,14 @@ Reifier:
 // crates/nash-macro/src/reify.rs
 use nash_ast::{Expr as CanExpr, Pattern as CanPattern, Type as CanType, ModuleName, QualifiedName};
 use nash_plutus::{arena::Arena, binder::DeBruijn, constant::{Constant, Integer}, term::Term};
-use nash_solve::NodeTypeMap;
+use nash_solve::SolvedTypes;
 use nash_constrain::NodeId;
 
 type T<'p> = &'p Term<'p, DeBruijn>;
 
 pub struct Reifier<'p, 'a> {
     arena: &'p Arena,
-    types: &'a NodeTypeMap<'a>,
+    types: &'a SolvedTypes<'a>,
     bump: &'a bumpalo::Bump,
     type_env: &'a nash_can::kinds::KindEnv<'a>,
 }
@@ -1239,8 +1202,9 @@ chunk 12 (written first as a test helper, promoted in chunk 12).
 
 Rename every `x·` name produced by the unreifier to `x·{round}_{use}` so
 that each expansion's locals are distinct from user names and from other
-expansions. No scope analysis is needed: all `Local "x"` in one
-expansion denote the same binder family by construction (docs/macros.md).
+expansions. Preserve separate binder scopes when combining caller fragments; follow the
+binding contract at the top of this plan. The string-based sketch below only
+illustrates fresh-name rendering, not a complete binding-identity algorithm.
 
 **Code**
 
@@ -1384,7 +1348,8 @@ definition with its dependencies to a `Program`), `crates/aiken-project/src/lib.
 - A macro that `fail "boom"`s returns `Failed { message: Some("boom") }`.
 - Budget exhaustion returns `Failed` with the machine's budget error.
 
-**Done when** the tests pass against plans/07's `lower_value`.
+**Done when** tests pass through current Build specialization and closed Core
+program assembly. Adapt the historical compilation sketch above to those APIs.
 
 ---
 
@@ -1427,7 +1392,7 @@ fn compile_module<'s>(uri: &Url, source: &str, state: &BuildState<'s>) -> Result
     let mut parser = nash_parse::Parser::new(&bump, src.as_bytes());
     let mut module = parser.module().map_err(|e| vec![syntax(e)])?;
 
-    let (can, node_types) = expand::expand(&bump, &mut module, state)?;   // strict result
+    let (can, node_types, annotations) = expand::expand(&bump, &mut module, state)?;   // strict result
     let interface = nash_can::from_module(&bump, &can.module, &annotations);
     let stored = nash_can::deep_copy_interface(state.store, &interface);
     let macros = codegen_macros(&bump, &can.module);                   // chunk 7
@@ -1441,10 +1406,9 @@ pub fn expand<'a, 's>(
     bump: &'a Bump,
     module: &mut SourceModule<'a>,
     state: &BuildState<'s>,
-) -> Result<(CanResult<'a>, NodeTypeMap<'a>, Annotations<'a>), Vec<Diagnostic>> {
-    // `solve` wraps plans/03's Solver API:
-    // `nash_solve::run(bump, &mut uf, &constraint, &can.tables, &can.fields, mode)`
-    // with `mode: nash_can::Mode`, the same value `canonicalize` put on `Context.mode`.
+) -> Result<(CanResult<'a>, SolvedTypes<'a>, Annotations<'a>), Vec<Diagnostic>> {
+    // `solve` adapts the current direct-inference API to the new mode.
+    // Reuse SolvedTypes; do not recreate the old constraint-tree solver API.
     for round in 0..=state.limits.rounds {
         let can = canonicalize(bump, Mode::Lenient, module, state)?;
         let (annotations, node_types) = solve(bump, &can.module, Mode::Lenient)?;
@@ -1452,6 +1416,8 @@ pub fn expand<'a, 's>(
         if can.macro_uses.is_empty() {
             let can = canonicalize(bump, Mode::Strict, module, state)?;
             let (annotations, node_types) = solve(bump, &can.module, Mode::Strict)?;
+            check_main_parameters(&can, &annotations)?; // existing driver check
+            check_patterns(bump, &can.module)?;         // nash_nitpick::check
             return Ok((can, node_types, annotations));
         }
         if round == state.limits.rounds {
@@ -1537,106 +1503,23 @@ macros behaves exactly as before.
 
 ---
 
-## Chunk 9: comptime
+## Chunk 9: integrate existing comptime with expansion
 
-**Files**
+Closed comptime already works. `can_to_core::Engine::expr` compiles
+`Expr::Comptime`, closes over reachable dependencies, calls
+`comptime::eval_closed`, and emits `Core::Lit`. Existing tests cover arithmetic,
+closed local dependencies, runtime capture rejection, and nonconstant results.
 
-- `crates/nash-can/src/expression.rs` (closed-term check)
-- `crates/nash-codegen/src/comptime.rs` (new; post-solve representation check and evaluation)
-- `crates/nash-ir/src/lib.rs` (`Core::Comptime`)
+- [ ] Preserve that implementation and its closure/constant rules.
+- [ ] Test macro output containing comptime: expand first, then use normal
+  comptime evaluation during codegen.
+- [ ] Test comptime within macro code under the same closure rules. Macro
+  parameters are not automatically closed constants for nested comptime merely
+  because the macro itself executes at compile time.
+- [ ] Preserve source locations and useful errors through expansion.
 
-**Change**
-
-1. Canonicalize `Expr::Comptime`; reject free locals.
-2. After solving, require `Big` or `Const` representation for the node's type.
-3. In lowering, compile the body to a program, run it, replace with
-   `Core::Const`.
-
-**Code**
-
-```rust
-// crates/nash-can/src/expression.rs
-SourceExpr::Comptime(inner) => {
-    let inner = self.canonicalize(env, inner)?;
-    if let Some(name) = first_free_local(&inner, env) {
-        return Err(Error::ComptimeNotClosed { region, name });
-    }
-    Ok(CanExpr::Comptime(inner))
-}
-
-/// First local variable (lambda parameter, let binding, pattern variable)
-/// referenced by `expr`. Top-level and foreign references are allowed.
-fn first_free_local<'a>(expr: &Located<CanExpr<'a>>, env: &Env<'a>) -> Option<&'a str>
-```
-
-`first_free_local` walks the tree with a scope stack: locals bound
-*inside* the comptime body are fine; `VarLocal` names not on the stack are
-free. Top-level names canonicalize to `VarTopLevel` so they are not
-`VarLocal` and never trip this.
-
-Use the representation query over the solved type and constructor metadata,
-substituting transparent aliases before lookup. Report `ComptimeNotConstant`
-for a Term result or a result whose constant representation is unresolved;
-do not choose a type merely to make comptime succeed. Kinds remain `Type`
-and arrows. Do not introduce a separate kind engine or representation-kind
-callback. The reifier likewise reads declaration kinds and queries the same
-representation metadata; it never serializes inference variables.
-
-
-```rust
-// crates/nash-ir/src/lib.rs
-pub enum Core<'a> {
-    // ...
-    /// Evaluated during lowering; never reaches UPLC.
-    Comptime { region: Region, body: &'a Core<'a> },
-    Const(&'a Constant<'a>),
-}
-
-// crates/nash-codegen/src/comptime.rs
-pub struct ComptimeFailed { pub region: Region, pub message: Option<String>, pub machine: String }
-
-/// Replace every `Core::Comptime` with a `Core::Const`, bottom-up.
-pub fn evaluate_comptimes<'a>(
-    bump: &'a Bump,
-    core: &'a Core<'a>,
-    budget: ExBudget,
-) -> Result<&'a Core<'a>, ComptimeFailed> {
-    map_bottom_up(bump, core, &|node| match node {
-        Core::Comptime { region, body } => {
-            let arena = Arena::new();
-            let program = Program::new(&arena, Version::plutus_v3(&arena), lower_closed(&arena, body));
-            let result = program.eval_version_budget(&arena, PlutusVersion::V3, budget);
-            match result.term {
-                Ok(Term::Constant(c)) => Ok(Core::Const(copy_constant(bump, c))),
-                Ok(other) => Err(ComptimeFailed { region: *region, message: None, machine: format!("not a constant: {other:?}") }),
-                Err(e) => Err(ComptimeFailed { region: *region, message: result.info.logs.last().cloned(), machine: format!("{e}") }),
-            }
-        }
-        other => Ok(other),
-    })
-}
-```
-
-`copy_constant` deep-copies a `nash_plutus::Constant` from the temporary
-`Arena` into the module bump (the IR's own constant type per plans/07).
-`lower_closed` is plans/07's closed-term lowering (the body has no free
-locals by construction, so it is a closed Core term with its top-level
-dependencies inlined).
-
-**Elm/Aiken reference**
-
-Aiken has no comptime. Its constant folding in
-`crates/aiken-lang/src/gen_uplc/builder.rs` is the nearest analogue for
-"evaluate then splice a constant". Elm: none.
-
-**Tests**
-
-- nash-can: `f x = comptime (x + 1)` → `ComptimeNotClosed { name: "x" }`; `f x = comptime (let y = 1 in y + 1)` ok.
-- representations: `comptime (\y -> y)` → `ComptimeNotConstant`; `comptime (Some 1)` with little `option` → `ComptimeNotConstant`; `comptime (Some 1 : Option Int)` ok.
-- codegen: `x = comptime (List.foldl (+) 0 (List.range 1 100))` lowers to `Const(5050)`; a failing body reports `ComptimeFailed` with the trace.
-
-**Done when** the tests pass and `nash build` of a module using `comptime`
-emits the constant in the UPLC output.
+Do not add a Core comptime node, another evaluator, or earlier rejection of
+closed local dependencies to implement this chunk.
 
 ---
 
@@ -1798,11 +1681,11 @@ One rendered snapshot per variant, using the in-memory driver from chunk 8.
 
 **Change**
 
-A deterministic surface-AST printer (`nash_source::print::module`) that
-emits valid Nash. It is not layout-preserving and has no comments; it is
-the test oracle until `nash-fmt` (plans/13) replaces it. Then a test
-macro that builds an in-memory project, expands one module, and snapshots
-the printed expanded module.
+A deterministic expanded-AST debug renderer and in-memory expansion snapshots.
+`nash-fmt` already formats source; reuse its rendering facilities where suitable
+and extend its macro syntax support. Debug output shows resolved names, hygiene
+identities, and internal-only IntegerDispatch nodes; it is not necessarily
+reparsable Nash. Do not create another general formatter or wait for Plan 13.
 
 **Code**
 
@@ -1941,6 +1824,126 @@ through every exhaustive match when implemented.
 
 ---
 
+## Chunk 14 proposal: ordinary pattern-library macros
+
+**Status: proposed interfaces, not implemented or reserved syntax.** Ordinary
+macros can build ordinary Case/Lambda/declaration AST. No AssertPattern,
+DecodePattern, or MultiClauseFunction compiler node is needed. Confirm the
+recommended public names and input policy before implementing this library.
+
+### Recommended input: existing lambda syntax carries pattern and body
+
+```nash
+expect!(value, \(Some x) -> use x)
+matchOr!(value, \(Some x) -> use x, fallback)
+
+inspect = clauses!(
+    \None -> 0,
+    \(Some x) -> x
+)
+```
+
+The macro receives Lambda AST nodes, not evaluated functions. Extract parameters
+and bodies together, retaining their bindings. Do not call the carrier lambda at
+runtime. A variable holding a function is not inspectable pattern syntax and is
+rejected by these library macros. This is a syntax-shape requirement, like the
+literal branch list required by dispatch, not compiler recognition of the name.
+
+`expect` and `matchOr` require a one-parameter carrier and respectively emit:
+
+```nash
+case value of
+    Some x -> use x
+    _ -> fail
+
+case value of
+    Some x -> use x
+    _ -> fallback
+```
+
+Build with `Ast.case_`, `Ast.arm`, the input pattern/body, and `Ast.wildcard`;
+quote can build `fail`. The subject occurs once. The fallback stays branch syntax,
+not an eagerly evaluated argument. Pattern bindings scope over the success body
+only: in `matchOr!(value, \(Some x) -> x, x)`, the final `x` is the caller's outer
+variable. Result types come from the branches; expect need not return unit.
+
+A boolean `assert!(condition)` can emit `if condition then () else fail`.
+This does not reproduce existing compiler-owned power-assert diagnostics/capture
+reporting. Preserve existing assertion syntax and runner behavior until a separate
+explicit migration covers that contract. Do not claim reporting equivalence.
+
+### Several function clauses
+
+`clauses!` accepts one or more lambda arguments of equal, nonzero arity. It emits
+one lambda with fresh variable parameters and an ordered case. With one argument,
+match it directly; with multiple arguments, match their tuple:
+
+```nash
+combine = clauses!(
+    \None y -> y,
+    \(Some x) _ -> x
+)
+```
+
+becomes conceptually:
+
+```nash
+combine = \arg0 arg1 ->
+    case (arg0, arg1) of
+        (None, y) -> y
+        (Some x, _) -> x
+```
+
+Preserve source clause order. Do not add a catch-all or failure branch; normal
+coverage checking diagnoses missing/redundant clauses. Match after all arguments
+arrive; partial application captures arguments normally without running the case.
+Argument expressions still follow normal strict evaluation. The enclosing ordinary
+definition owns naming, recursion, annotations, exports, and local scope. Final
+recanonicalization/SCC analysis and inference handle recursion; no special
+recursion typing or automatic polymorphic recursion is added. There is no emitted
+runtime list of closures or clause-dispatch framework.
+
+### Options to close before implementation
+
+| Choice | Recommendation | Alternative and consequence |
+|---|---|---|
+| Pattern/body input | Literal lambda AST | Pattern quote/splice sugar can follow later; it requires extra grammar but not extra AST capability |
+| Several clauses | Separate lambda arguments to `clauses!` | Grouped declaration syntax can resemble repeated definitions but needs a grouping contract; attributes cannot inspect neighboring definitions |
+| Match-or-else name | `matchOr!` | `decode!` suggests validation/conversion that this expansion does not provide |
+| Match-or-fail name | `expect!` | `assertMatch!` is more explicit; same expansion |
+| Irrefutable success pattern | Keep ordinary redundancy diagnostics initially; use normal let/destructuring | Generic solved-pattern irrefutability metadata would let the macro omit an unreachable fallback; extra generic API, not a macro-name exception |
+
+Appending a fallback to an irrefutable pattern such as `\x -> body` or a
+single-constructor pattern can produce an ordinary redundant-arm error. Do not
+silently suppress it. If broader support is selected, specify reliable generic
+irrefutability metadata, including nested field patterns; never guess from a
+constructor's spelling/field count. This choice remains open, rather than hiding
+an implementation restriction behind an assertion-specific compiler exemption.
+
+A later `decode!` must specify visible checks/conversions in its ordinary AST
+expansion. Typed Big-constructor matching alone does not recursively validate
+Data; unchecked fromData/coerce behavior remains unchanged.
+
+### Acceptance checklist
+
+- [ ] Confirm names, lambda-carrier syntax, and irrefutable-pattern policy.
+- [ ] Implement imported ordinary library macros without name-based compiler hooks.
+- [ ] Snapshot source → expanded AST → Core → UPLC for match/fail/fallback,
+  boolean assert, and single-/multi-argument clauses.
+- [ ] Execute Big/little matches, selected/unselected effects/failures, subject-once
+  behavior, returned functions, captures, repeated names across clauses, nested
+  shadowing, and caller/fallback name collisions.
+- [ ] Test wrong argument counts, non-lambda carriers, arity mismatch, incompatible
+  types, empty clauses, duplicate binders within one pattern, irrefutable and
+  nested-refutable patterns, and redundant/nonexhaustive generated cases.
+- [ ] Test local/top-level recursion, mutual recursion, annotations, partial
+  application, and a differently named macro producing the same AST. Surviving
+  illegal runtime lambda patterns must fail final checking.
+
+Depends on chunks 1–8 and 11–12, not integer dispatch or Plan 08.
+
+---
+
 ## Order and dependencies
 
 ```
@@ -1955,3 +1958,5 @@ Chunks 1–6 can land before plans/07; chunks 7–10 need it. Chunk 11 can
 land any time after 8; chunk 12 after 10.
 
 Chunk 13 requires chunks 2–8 and Plan 12 Ast coordination, not Plan 08 or deriving.
+Proposed chunk 14 depends on the generic expansion/hygiene/checking work and
+expansion snapshots; it does not depend on dispatch or additional quote syntax.
