@@ -1,0 +1,65 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Two Int Int\nchoose : Choice -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> \\n -> n\n        _ -> trace \"fallback\" (\\n -> addInteger n 1)\nmain = (choose Stop 10, choose (Two 3 4) 20)\n"
+---
+--- core
+let message#19 : string = "subject" in
+let message#20 : string = "fallback" in
+let fromInt#3 : int -> int = \value#16 : int -> value#16 in
+let fromString#8 : string -> string = \value#17 : string -> value#17 in
+let choose#2 : Main.Choice -> int -> int = \subject#7 : Main.Choice -> let match#11 : Main.Choice = trace (fromString#8 message#19) in subject#7 in
+let projection#18 : pair int (list Data) = unConstrData match#11 in
+case@Pair projection#18 of
+  Pair tag#14 fields#15 -> case@Tag tag#14 of
+    0 -> \n#9 : int -> n#9
+    1 -> trace (fromString#8 message#20) in \n#10 : int -> addInteger n#10 (fromInt#3 1) in
+let fromInt#6 : int -> Int = iData in
+let main#1 : (int, int) = constr 0 (choose#2 (constrData 0 (con (list data) [])) (fromInt#3 10)) (choose#2 ((\field#4 : Int field#5 : Int -> constrData 1 (mkCons field#4 (mkCons field#5 (con (list data) [])))) (fromInt#6 3) (fromInt#6 4)) (fromInt#3 20)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_19
+    [(lam message_20
+      [(lam fromInt_3
+        [(lam fromString_8
+          [(lam choose_2
+            [(lam fromInt_6
+              [(lam main_1 main_1)
+                (constr 0
+                  [[choose_2 [[(builtin constrData) (con integer 0)] (con (list data) [])]]
+                    [fromInt_3 (con integer 10)]]
+                  [[choose_2
+                    [[(lam field_4
+                      (lam field_5
+                        [[(builtin constrData) (con integer 1)]
+                          [[(force (builtin mkCons)) field_4]
+                            [[(force (builtin mkCons)) field_5] (con (list data) [])]]]))
+                      [fromInt_6 (con integer 3)]]
+                      [fromInt_6 (con integer 4)]]]
+                    [fromInt_3 (con integer 20)]])])
+              (builtin iData)])
+            (lam subject_7
+              [(lam match_11
+                [(lam projection_18
+                  (case
+                    projection_18
+                    (lam tag_14
+                      (lam fields_15
+                        (case
+                          tag_14
+                          (lam n_9 n_9)
+                          (force
+                            [[(force (builtin trace)) [fromString_8 message_20]]
+                              (delay (lam n_10 [[(builtin addInteger) n_10] [fromInt_3 (con integer 1)]]))]))))))
+                  [(builtin unConstrData) match_11]])
+                (force [[(force (builtin trace)) [fromString_8 message_19]] (delay subject_7)])])])
+          (lam value_17 value_17)])
+        (lam value_16 value_16)])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 10) (con integer 21))
+--- logs
+["subject", "subject", "fallback"]
+--- budget
+cpu: 2708602, memory: 13954

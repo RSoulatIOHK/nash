@@ -1,0 +1,52 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        _ -> trace \"fallback\" fail\nmain = choose (Two 3 4)\n"
+---
+--- core
+let message#18 : string = "subject" in
+let message#19 : string = "fallback" in
+let fromInt#5 : int -> int = \value#16 : int -> value#16 in
+let fromString#7 : string -> string = \value#17 : string -> value#17 in
+let choose#2 : Main.choice -> int = \subject#6 : Main.choice -> let match#8 : Main.choice = trace (fromString#7 message#18) in subject#6 in
+let leaf#12 : 'erased = delay (trace (fromString#7 message#19) in error) in
+case@Tag match#8 of
+  0 -> fromInt#5 1
+  1 -> force leaf#12
+  2 field#13 -> force leaf#12
+  3 field#14 field#15 -> force leaf#12 in
+let main#1 : int = choose#2 ((\field#3 : int field#4 : int -> constr 3 field#3 field#4) (fromInt#5 3) (fromInt#5 4)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_18
+    [(lam message_19
+      [(lam fromInt_5
+        [(lam fromString_7
+          [(lam choose_2
+            [(lam main_1 main_1)
+              [choose_2
+                [[(lam field_3 (lam field_4 (constr 3 field_3 field_4)))
+                  [fromInt_5 (con integer 3)]]
+                  [fromInt_5 (con integer 4)]]]])
+            (lam subject_6
+              [(lam match_8
+                [(lam leaf_12
+                  (case
+                    match_8
+                    [fromInt_5 (con integer 1)]
+                    (force leaf_12)
+                    (lam field_13 (force leaf_12))
+                    (lam field_14 (lam field_15 (force leaf_12)))))
+                  (delay
+                    (force [[(force (builtin trace)) [fromString_7 message_19]] (delay (error))]))])
+                (force [[(force (builtin trace)) [fromString_7 message_18]] (delay subject_6)])])])
+          (lam value_17 value_17)])
+        (lam value_16 value_16)])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["subject", "fallback"]
+--- budget
+cpu: 119096, memory: 164

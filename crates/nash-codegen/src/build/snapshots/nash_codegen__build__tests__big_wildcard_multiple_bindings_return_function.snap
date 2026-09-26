@@ -1,0 +1,109 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : (Choice, int, int) -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _, _) -> \\n -> n\n        (_, z, a) -> trace \"shared\" (\\n -> subtractInteger (addInteger z n) a)\nmain = (choose (Stop, 90, 80) 1, choose (Zero, 21, 3) 1, choose (One 2, 31, 4) 1, choose (Two 3 4, 41, 5) 1)\n"
+---
+--- core
+let message#35 : string = "subject" in
+let message#36 : string = "shared" in
+let fromString#9 : string -> string = \value#33 : string -> value#33 in
+let choose#2 : (Main.Choice, int, int) -> int -> int = \subject#8 : (Main.Choice, int, int) -> let match#14 : (Main.Choice, int, int) = trace (fromString#9 message#35) in subject#8 in
+let leaf#23 : 'erased = \a#12 : int z#11 : int -> trace (fromString#9 message#36) in \n#13 : int -> subtractInteger (addInteger z#11 n#13) a#12 in
+case@Tag match#14 of
+  0 field#24 field#25 field#26 -> let projection#34 : pair int (list Data) = unConstrData field#24 in
+  case@Pair projection#34 of
+    Pair tag#30 fields#31 -> case@Tag tag#30 of
+      0 -> \n#10 : int -> n#10
+      1 -> let z#11 : int = field#25 in
+      let a#12 : int = field#26 in
+      leaf#23 a#12 z#11
+      2 -> let z#11 : int = field#25 in
+      let a#12 : int = field#26 in
+      leaf#23 a#12 z#11
+      3 -> let z#11 : int = field#25 in
+      let a#12 : int = field#26 in
+      leaf#23 a#12 z#11 in
+let fromInt#3 : int -> int = \value#32 : int -> value#32 in
+let fromInt#5 : int -> Int = iData in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (constr 0 (constrData 0 (con (list data) [])) (fromInt#3 90) (fromInt#3 80)) (fromInt#3 1)) (choose#2 (constr 0 (constrData 1 (con (list data) [])) (fromInt#3 21) (fromInt#3 3)) (fromInt#3 1)) (choose#2 (constr 0 ((\field#4 : Int -> constrData 2 (mkCons field#4 (con (list data) []))) (fromInt#5 2)) (fromInt#3 31) (fromInt#3 4)) (fromInt#3 1)) (choose#2 (constr 0 ((\field#6 : Int field#7 : Int -> constrData 3 (mkCons field#6 (mkCons field#7 (con (list data) [])))) (fromInt#5 3) (fromInt#5 4)) (fromInt#3 41) (fromInt#3 5)) (fromInt#3 1)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_35
+    [(lam message_36
+      [(lam fromString_9
+        [(lam choose_2
+          [(lam fromInt_3
+            [(lam fromInt_5
+              [(lam main_1 main_1)
+                (constr 0
+                  [[choose_2
+                    (constr 0
+                      [[(builtin constrData) (con integer 0)] (con (list data) [])]
+                      [fromInt_3 (con integer 90)]
+                      [fromInt_3 (con integer 80)])]
+                    [fromInt_3 (con integer 1)]]
+                  [[choose_2
+                    (constr 0
+                      [[(builtin constrData) (con integer 1)] (con (list data) [])]
+                      [fromInt_3 (con integer 21)]
+                      [fromInt_3 (con integer 3)])]
+                    [fromInt_3 (con integer 1)]]
+                  [[choose_2
+                    (constr 0
+                      [(lam field_4
+                        [[(builtin constrData) (con integer 2)]
+                          [[(force (builtin mkCons)) field_4] (con (list data) [])]])
+                        [fromInt_5 (con integer 2)]]
+                      [fromInt_3 (con integer 31)]
+                      [fromInt_3 (con integer 4)])]
+                    [fromInt_3 (con integer 1)]]
+                  [[choose_2
+                    (constr 0
+                      [[(lam field_6
+                        (lam field_7
+                          [[(builtin constrData) (con integer 3)]
+                            [[(force (builtin mkCons)) field_6]
+                              [[(force (builtin mkCons)) field_7] (con (list data) [])]]]))
+                        [fromInt_5 (con integer 3)]]
+                        [fromInt_5 (con integer 4)]]
+                      [fromInt_3 (con integer 41)]
+                      [fromInt_3 (con integer 5)])]
+                    [fromInt_3 (con integer 1)]])])
+              (builtin iData)])
+            (lam value_32 value_32)])
+          (lam subject_8
+            [(lam match_14
+              [(lam leaf_23
+                (case
+                  match_14
+                  (lam field_24
+                    (lam field_25
+                      (lam field_26
+                        [(lam projection_34
+                          (case
+                            projection_34
+                            (lam tag_30
+                              (lam fields_31
+                                (case
+                                  tag_30
+                                  (lam n_10 n_10)
+                                  [(lam z_11 [(lam a_12 [[leaf_23 a_12] z_11]) field_26]) field_25]
+                                  [(lam z_11 [(lam a_12 [[leaf_23 a_12] z_11]) field_26]) field_25]
+                                  [(lam z_11 [(lam a_12 [[leaf_23 a_12] z_11]) field_26]) field_25])))))
+                          [(builtin unConstrData) field_24]])))))
+                (lam a_12
+                  (lam z_11
+                    (force
+                      [[(force (builtin trace)) [fromString_9 message_36]]
+                        (delay
+                          (lam n_13 [[(builtin subtractInteger) [[(builtin addInteger) z_11] n_13]] a_12]))])))])
+              (force [[(force (builtin trace)) [fromString_9 message_35]] (delay subject_8)])])])
+        (lam value_33 value_33)])
+      (con string "shared")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 1) (con integer 19) (con integer 28) (con integer 37))
+--- logs
+["subject", "subject", "shared", "subject", "shared", "subject", "shared"]
+--- budget
+cpu: 7265773, memory: 36984

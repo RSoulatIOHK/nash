@@ -45,27 +45,27 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
                                                               (lam i28
                                                                 [(lam i29
                                                                   [(lam i30
-                                                                    [(lam i31
-                                                                      [(lam i32
+                                                                    (case
+                                                                      (force [[(force (builtin trace)) [i12 i2]] (delay [i13 (con unit ())])])
+                                                                      [(lam i31
                                                                         (case
                                                                           (case
-                                                                            i32
+                                                                            i31
                                                                             [i11 (con bool False)]
                                                                             [[(builtin equalsInteger) i29]
                                                                               [[(builtin addInteger) i23] [i10 (con integer 1)]]])
                                                                           [[i16 i3]
-                                                                            (lam i33
-                                                                              [(lam i34
-                                                                                [(lam i35
-                                                                                  [(lam i36
-                                                                                    [(lam i37 [[[i17 i6] [i37 i32]] (lam i38 (error))])
-                                                                                      (lam i37 (case i37 [i36 i35] [i36 i34]))])
-                                                                                    (lam i36 i36)])
+                                                                            (lam i32
+                                                                              [(lam i33
+                                                                                [(lam i34
+                                                                                  [(lam i35
+                                                                                    [(lam i36 [[[i17 i6] [i36 i31]] (lam i37 (error))])
+                                                                                      (lam i36 (case i36 [i35 i34] [i35 i33]))])
+                                                                                    (lam i35 i35)])
                                                                                   i5])
                                                                                 i4])]
                                                                           (con unit ())))
-                                                                        i30])
-                                                                      (force [[(force (builtin trace)) [i12 i2]] (delay [i13 (con unit ())])])])
+                                                                        i30]))
                                                                     i28])
                                                                   i27]))))
                                                           i25])
@@ -149,10 +149,7 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
                                                             [(lam i26
                                                               [(lam i27
                                                                 [(lam i28 (constr 0 i28))
-                                                                  (constr 0
-                                                                    i27
-                                                                    (lam i28 [(lam i29 [i19 i26]) i28])
-                                                                    (lam i28 [(lam i29 [i20 i26]) i28]))])
+                                                                  (constr 0 i27 (lam i28 (case i28 [i19 i26])) (lam i28 (case i28 [i20 i26])))])
                                                                 i25])
                                                               i24]))))
                                                     (constr 1)))

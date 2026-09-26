@@ -1,0 +1,66 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" 1\n        _ -> trace \"fallback\" 9\nmain = choose (coerce (constrData 59 []))\n"
+---
+--- core
+let message#22 : string = "subject" in
+let message#23 : string = "fallback" in
+let message#24 : string = "explicit" in
+let fromInt#4 : int -> int = \value#19 : int -> value#19 in
+let fromString#6 : string -> string = \value#20 : string -> value#20 in
+let choose#2 : Main.Choice -> int = \subject#5 : Main.Choice -> let match#7 : Main.Choice = trace (fromString#6 message#22) in subject#5 in
+let leaf#13 : 'erased = delay (trace (fromString#6 message#23) in fromInt#4 9) in
+let projection#21 : pair int (list Data) = unConstrData match#7 in
+case@Pair projection#21 of
+  Pair tag#17 fields#18 -> case@Tag tag#17 of
+    0 -> trace (fromString#6 message#24) in fromInt#4 1
+    1 -> force leaf#13
+    2 -> force leaf#13
+    3 -> force leaf#13 in
+let main#1 : int = choose#2 ((\coerce#3 : 'erased -> coerce#3) (constrData (fromInt#4 59) (con (list data) []))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_22
+    [(lam message_23
+      [(lam message_24
+        [(lam fromInt_4
+          [(lam fromString_6
+            [(lam choose_2
+              [(lam main_1 main_1)
+                [choose_2
+                  [(lam coerce_3 coerce_3)
+                    [[(builtin constrData) [fromInt_4 (con integer 59)]] (con (list data) [])]]]])
+              (lam subject_5
+                [(lam match_7
+                  [(lam leaf_13
+                    [(lam projection_21
+                      (case
+                        projection_21
+                        (lam tag_17
+                          (lam fields_18
+                            (case
+                              tag_17
+                              (force
+                                [[(force (builtin trace)) [fromString_6 message_24]]
+                                  (delay [fromInt_4 (con integer 1)])])
+                              (force leaf_13)
+                              (force leaf_13)
+                              (force leaf_13))))))
+                      [(builtin unConstrData) match_7]])
+                    (delay
+                      (force
+                        [[(force (builtin trace)) [fromString_6 message_23]]
+                          (delay [fromInt_4 (con integer 9)])]))])
+                  (force [[(force (builtin trace)) [fromString_6 message_22]] (delay subject_5)])])])
+            (lam value_20 value_20)])
+          (lam value_19 value_19)])
+        (con string "explicit")])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+error: NonConstrScrutinized(Con(Integer(59)))
+--- logs
+["subject"]
+--- budget
+cpu: 106337, memory: 196

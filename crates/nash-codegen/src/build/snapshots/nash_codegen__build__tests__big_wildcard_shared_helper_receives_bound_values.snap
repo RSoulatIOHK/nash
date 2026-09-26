@@ -1,0 +1,93 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : (Choice, int) -> int\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _) -> 0\n        (_, value) -> trace \"shared\" value\nmain = (choose (Stop, 1), choose (Zero, 11), choose (One 2, 22), choose (Two 3 4, 33))\n"
+---
+--- core
+let message#30 : string = "subject" in
+let message#31 : string = "shared" in
+let fromInt#3 : int -> int = \value#27 : int -> value#27 in
+let fromString#9 : string -> string = \value#28 : string -> value#28 in
+let choose#2 : (Main.Choice, int) -> int = \subject#8 : (Main.Choice, int) -> let match#11 : (Main.Choice, int) = trace (fromString#9 message#30) in subject#8 in
+let leaf#19 : 'erased = \value#10 : int -> trace (fromString#9 message#31) in value#10 in
+case@Tag match#11 of
+  0 field#20 field#21 -> let projection#29 : pair int (list Data) = unConstrData field#20 in
+  case@Pair projection#29 of
+    Pair tag#25 fields#26 -> case@Tag tag#25 of
+      0 -> fromInt#3 0
+      1 -> let value#10 : int = field#21 in
+      leaf#19 value#10
+      2 -> let value#10 : int = field#21 in
+      leaf#19 value#10
+      3 -> let value#10 : int = field#21 in
+      leaf#19 value#10 in
+let fromInt#5 : int -> Int = iData in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (constr 0 (constrData 0 (con (list data) [])) (fromInt#3 1))) (choose#2 (constr 0 (constrData 1 (con (list data) [])) (fromInt#3 11))) (choose#2 (constr 0 ((\field#4 : Int -> constrData 2 (mkCons field#4 (con (list data) []))) (fromInt#5 2)) (fromInt#3 22))) (choose#2 (constr 0 ((\field#6 : Int field#7 : Int -> constrData 3 (mkCons field#6 (mkCons field#7 (con (list data) [])))) (fromInt#5 3) (fromInt#5 4)) (fromInt#3 33))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_30
+    [(lam message_31
+      [(lam fromInt_3
+        [(lam fromString_9
+          [(lam choose_2
+            [(lam fromInt_5
+              [(lam main_1 main_1)
+                (constr 0
+                  [choose_2
+                    (constr 0
+                      [[(builtin constrData) (con integer 0)] (con (list data) [])]
+                      [fromInt_3 (con integer 1)])]
+                  [choose_2
+                    (constr 0
+                      [[(builtin constrData) (con integer 1)] (con (list data) [])]
+                      [fromInt_3 (con integer 11)])]
+                  [choose_2
+                    (constr 0
+                      [(lam field_4
+                        [[(builtin constrData) (con integer 2)]
+                          [[(force (builtin mkCons)) field_4] (con (list data) [])]])
+                        [fromInt_5 (con integer 2)]]
+                      [fromInt_3 (con integer 22)])]
+                  [choose_2
+                    (constr 0
+                      [[(lam field_6
+                        (lam field_7
+                          [[(builtin constrData) (con integer 3)]
+                            [[(force (builtin mkCons)) field_6]
+                              [[(force (builtin mkCons)) field_7] (con (list data) [])]]]))
+                        [fromInt_5 (con integer 3)]]
+                        [fromInt_5 (con integer 4)]]
+                      [fromInt_3 (con integer 33)])])])
+              (builtin iData)])
+            (lam subject_8
+              [(lam match_11
+                [(lam leaf_19
+                  (case
+                    match_11
+                    (lam field_20
+                      (lam field_21
+                        [(lam projection_29
+                          (case
+                            projection_29
+                            (lam tag_25
+                              (lam fields_26
+                                (case
+                                  tag_25
+                                  [fromInt_3 (con integer 0)]
+                                  [(lam value_10 [leaf_19 value_10]) field_21]
+                                  [(lam value_10 [leaf_19 value_10]) field_21]
+                                  [(lam value_10 [leaf_19 value_10]) field_21])))))
+                          [(builtin unConstrData) field_20]]))))
+                  (lam value_10
+                    (force [[(force (builtin trace)) [fromString_9 message_31]] (delay value_10)]))])
+                (force [[(force (builtin trace)) [fromString_9 message_30]] (delay subject_8)])])])
+          (lam value_28 value_28)])
+        (lam value_27 value_27)])
+      (con string "shared")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 0) (con integer 11) (con integer 22) (con integer 33))
+--- logs
+["subject", "subject", "shared", "subject", "shared", "subject", "shared"]
+--- budget
+cpu: 5330525, memory: 28672

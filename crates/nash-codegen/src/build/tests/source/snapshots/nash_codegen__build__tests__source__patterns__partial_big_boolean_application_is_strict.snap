@@ -37,7 +37,7 @@ main#1
               [(builtin unConstrData) match_13]])
             value_12])])
       (lam value_8 value_8)])
-    (lam arg_6 [(lam match_7 (error)) arg_6])])
+    (lam arg_6 (case arg_6 (error)))])
 --- result
 error: ExplicitErrorTerm
 --- logs

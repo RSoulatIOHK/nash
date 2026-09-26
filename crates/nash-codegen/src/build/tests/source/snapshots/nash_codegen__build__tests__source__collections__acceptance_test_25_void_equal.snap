@@ -18,13 +18,11 @@ main#1
         [(lam main_1 main_1)
           [[eq_2 [fromUnit_3 (con unit ())]] [fromUnit_3 (con unit ())]]])
         (lam value_9 value_9)])
-      (lam arg_4
-        (lam arg_5
-          [(lam match_8 [(lam match_7 [fromBool_6 (con bool True)]) arg_5]) arg_4]))])
+      (lam arg_4 (lam arg_5 (case arg_4 (case arg_5 [fromBool_6 (con bool True)]))))])
     (lam value_10 value_10)])
 --- result
 (con bool True)
 --- logs
 []
 --- budget
-cpu: 544100, memory: 3500
+cpu: 512100, memory: 3300

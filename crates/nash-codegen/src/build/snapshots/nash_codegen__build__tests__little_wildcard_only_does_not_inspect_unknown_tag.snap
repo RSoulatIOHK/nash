@@ -1,0 +1,37 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\ntype rogue = R0 | R1 | R2 | R3 | R4\nchoose : choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        _ -> trace \"fallback\" 9\nmain = choose (coerce R4)\n"
+---
+--- core
+let message#10 : string = "subject" in
+let message#11 : string = "fallback" in
+let fromString#5 : string -> string = \value#8 : string -> value#8 in
+let fromInt#6 : int -> int = \value#9 : int -> value#9 in
+let choose#2 : Main.choice -> int = \subject#4 : Main.choice -> let match#7 : Main.choice = trace (fromString#5 message#10) in subject#4 in
+trace (fromString#5 message#11) in fromInt#6 9 in
+let main#1 : int = choose#2 ((\coerce#3 : 'erased -> coerce#3) (constr 4)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_10
+    [(lam message_11
+      [(lam fromString_5
+        [(lam fromInt_6
+          [(lam choose_2
+            [(lam main_1 main_1) [choose_2 [(lam coerce_3 coerce_3) (constr 4)]]])
+            (lam subject_4
+              [(lam match_7
+                (force
+                  [[(force (builtin trace)) [fromString_5 message_11]]
+                    (delay [fromInt_6 (con integer 9)])]))
+                (force [[(force (builtin trace)) [fromString_5 message_10]] (delay subject_4)])])])
+          (lam value_9 value_9)])
+        (lam value_8 value_8)])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(con integer 9)
+--- logs
+["subject", "fallback"]
+--- budget
+cpu: 935096, memory: 5264

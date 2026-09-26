@@ -75,6 +75,7 @@ literals can be built (`crates/nash-plutus/src/typ.rs`).
 | `Lam(ps, b)` | n-ary function | nested `Term::Lambda` |
 | `App(f, as)` | n-ary application | nested `Term::Apply` |
 | `Let(b, v, e)` | strict binding | `(\b -> e) v` |
+| `Let(b : unit, v, e)` with unused `b` | strict native-unit sequencing, including `case v of () -> e` and `let () = v` | `case v [e]`; subject runs before the sole branch, without a lambda/application pair |
 | `LetRec` | recursive function group | self-application, see Recursion |
 | `Case(Tag, s, bs, d)` | exhaustive consecutive tags: a `Term` constr binds its fields; a decoded integer tag binds none | `Term::Case` |
 | `Case(Bool, s, [t, e], _)` | `if` | `case s [e, t]` (false tag 0, true tag 1) |
@@ -221,38 +222,33 @@ names in `Core`.
 ### 3. Pattern matching
 
 `Expr::Case`, `Expr::LetDestruct`, multi-clause function arguments and
-lambda argument patterns all go through one compiler that produces a
-Maranget decision tree, ported from Aiken's
-`crates/aiken-lang/src/gen_uplc/decision_tree.rs`:
+lambda argument patterns go through the ordered pattern matrix in
+`crates/nash-codegen/src/decision_tree.rs`.
 
-- Rows are built by `map_pattern_to_row`; variable and alias patterns are
-  split out as assignments, tuple and record patterns are expanded in place
-  (they are irrefutable), everything else becomes a column keyed by a
-  `Path` (`Tuple(i)`, `Constr(i)`, `BigField(i)`, `ListHead(i)`,
-  `ListTail(i)`, `DataConstrTag`, `DataConstrFields`, ...).
-- `highest_occurrence` picks the column with the most non-wildcard tests
-  before the first wildcard, and `do_build_tree` specializes on it,
-  producing `Switch { path, cases, default }` and `ListSwitch` for list
-  patterns of differing lengths.
-- Leaves are **hoisted**: each right-hand side is emitted once as a
-  `Let`-bound lambda over the variables its pattern binds and placed at the
-  lowest common ancestor scope of its uses (`get_hoist_paths`,
-  `hoist_by_path`). A leaf reached from one place is inlined by the
-  optimizer.
-- Accessor paths are **memoized**: the projection chain that reaches a
-  `Path` (Data unwrapping followed by pair/list cases) is bound to
-  a name once and reused by every test and leaf below it. This ports Aiken's
-  `stick_break_set.rs` (`Builtins::new_from_path`,
-  `TreeSet::diff_union_builtins`) with `Core` `Let`s instead of `AirTree`
-  `let_assignment`s.
+- Bind the subject once, strictly. Variable and alias patterns record bindings.
+- Select the first non-irrefutable pattern in the first remaining row. Literal
+  patterns call the selected trait matcher and preserve source priority.
+- For structural patterns, specialize rows for every known constructor signature.
+  A wildcard contributes an ignored field pattern for each field of that
+  constructor. Compile each specialized matrix recursively.
+- Count how many leaves reach each source branch body. A body used once stays
+  inline. A body reached multiple times becomes a shared helper: no pattern
+  bindings means `delay body` and `force helper`; bindings mean a lambda over
+  those bindings, applied at each leaf. These are generated branch helpers,
+  not source continuations. Bind them inside the strict subject binding so
+  caller captures remain in scope.
+- Big field extraction follows the selected path and only extracts demanded
+  fields. The accessor-sharing pass also reuses projections within their valid
+  scope; it does not move a failing decode out of a lazy branch.
 
-The `Switch` node lowers to the `Case` kind matching the scrutinee's `Ty`:
+Structural dispatch lowers to the `Case` kind matching the scrutinee's `Ty`:
 
 | Scrutinee representation / type | `Case` kind | Test |
 |---|---|---|
 | little ADT (`Term`) | `Tag` | UPLC `case` on the constr |
 | `bool` | `Bool` | native `case` (false 0, true 1) |
-| `int`, `bytes` literals | `Int`, `Bytes` | equality chain |
+| Source literal patterns | `Bool` on the selected trait matcher result | ordered equality tests; no automatic integer dispatch |
+| Internal Core `Int`, `Bytes` cases | `Int`, `Bytes` | equality chain |
 | `list 'a` | `List` | native `case` (cons 0, nil 1) |
 | Big ADT | `Tag` on the integer decoded by `unConstrData` and pair destructuring | native `case`; no dispatch for single-constructor types |
 | `Data` | `Data` | `chooseData` with delayed branches |
@@ -470,6 +466,51 @@ case step [ (\a -> a), (\n a -> a) ]
 Each branch is a lambda over the constructor's fields in declaration order,
 even if the branch ignores them. `Field(r, i)` is `case r [\f0 .. fn -> fi]`
 and is what tuple projection and little-record access compile to.
+
+### Wildcard filling and shared branch helpers
+
+For `type choice = Stop | Zero | One int | Two int int`, a match with
+`Stop -> explicit` and `_ -> fallback` supplies all four native case slots.
+The little branches for `One` and `Two` consume respectively one and two
+constructor fields before executing the fallback. This also holds when the
+fallback returns a function: constructor fields must not accidentally become
+arguments to that returned function.
+
+A repeated fallback without pattern bindings is shared as a delay. With bound
+variables, it is shared as a function receiving those variables. Only the
+selected branch forces or calls the helper. A native case branch that is
+already inline does not need another delay solely for branch laziness.
+
+Big ADTs instead case on the decoded integer tag, whose branches receive no
+implicit fields. Wildcard paths do not extract ignored Data fields, even if an
+unchecked value lacks those fields. Matching is not validation.
+
+An unknown tag fails when constructor dispatch is required: wildcard slots cover
+known constructors only. A wildcard-only match has no dispatch and returns its
+body after strictly evaluating the subject, even for an unchecked unknown tag.
+
+Executed regression snapshots live in `build/tests/wildcard_cases.rs` (under
+`crates/nash-codegen/src`). Every Big/little pair asserts both results and exact
+logs; each snapshot records source, Core, UPLC, result, logs, and budget.
+
+| Fixture suffix (Big and little) | Behavior exercised |
+|---|---|
+| `mixed_arities_trace_order` | Explicit branch and wildcard arities 0/1/2 all execute; subject then exactly one branch trace |
+| `shared_failure_unselected` | Explicit branch does not force the shared failing fallback |
+| `shared_failure_zero/one/two` | Each wildcard arity forces the fallback exactly once and fails |
+| `calls_user_continuation_only_when_selected` | Caller-supplied function executes only on wildcard paths; an unselected failing continuation never runs |
+| `inline_function_result_consumes_fields` | Single-use wildcard stays inline; little branches consume fields before returning the function, while Big branches ignore the payload |
+| `returns_captured_function` | Returned function is applied by the caller, not to ignored constructor fields; captures outer value |
+| `binds_whole_and_captures_outer` | Whole-subject binding reaches the shared helper correctly on every wildcard path |
+| `multiple_bindings_return_function` | Two pattern bindings retain argument order through a shared helper that returns a closure |
+| `shared_helper_receives_bound_values` | Each specialized path passes its own pattern-bound value to the shared helper |
+| `unknown_tag_fails_dispatch` | Unchecked unknown tag cannot select a wildcard slot; fallback trace does not run |
+| `only_does_not_inspect_unknown_tag` | Wildcard-only match evaluates the subject without inspecting its tag |
+
+`big_wildcard_does_not_extract_missing_fields` additionally executes known tags
+with missing ignored fields. The little unknown-tag fixtures explicitly coerce
+another little ADT's out-of-range constructor; they do not use Data as a native
+constructor representation.
 
 ## `if` on `bool`
 

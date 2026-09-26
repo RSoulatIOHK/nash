@@ -51,6 +51,34 @@ fn boolean_case_does_not_evaluate_unselected_failure() {
 }
 
 #[test]
+fn unused_unit_binding_uses_case_and_preserves_sequencing() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let unit = Binder {
+        name: b.fresh("unit"),
+        ty: Ty::Const(&ConstTy::Unit),
+    };
+    let subject = b.trace(
+        b.lit(Constant::string(&arena, "subject")),
+        b.lit(Constant::unit(&arena)),
+    );
+    let body = b.trace(b.lit(Constant::string(&arena, "body")), b.int(42));
+    let core = b.let_(unit, subject, body);
+    assert!(matches!(lower(&arena, core).unwrap(), Term::Case { .. }));
+    let result = evaluate(&arena, core);
+    assert_eq!(result.term.unwrap(), Term::integer_from(&arena, 42));
+    assert_eq!(result.info.logs, ["subject", "body"]);
+
+    let failing = b.let_(unit, b.error(), body);
+    let result = evaluate(&arena, failing);
+    assert!(result.term.is_err());
+    assert!(result.info.logs.is_empty());
+
+    let used = b.let_(unit, subject, b.var(unit.name));
+    assert_eq!(evaluate(&arena, used).term.unwrap(), Term::unit(&arena));
+}
+
+#[test]
 fn trace_precedes_failure() {
     let arena = Arena::new();
     let b = Builder::new(&arena);

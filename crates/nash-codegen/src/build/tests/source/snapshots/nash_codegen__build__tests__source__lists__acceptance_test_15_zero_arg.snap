@@ -27,9 +27,9 @@ main#1
               [(lam field_5 (constr 0 field_5)) (con (list (pair data data)) [])]]])
           (lam value_18 value_18)])
         (lam arg_15
-          [(lam match_17
-            [(lam field_16 (constr 0 field_16)) (con (list (pair data data)) [])])
-            arg_15])])
+          (case
+            arg_15
+            [(lam field_16 (constr 0 field_16)) (con (list (pair data data)) [])]))])
       (lam arg_6
         (lam arg_8
           [(lam match_13
@@ -54,4 +54,4 @@ main#1
 --- logs
 []
 --- budget
-cpu: 2279856, memory: 7265
+cpu: 2263856, memory: 7165

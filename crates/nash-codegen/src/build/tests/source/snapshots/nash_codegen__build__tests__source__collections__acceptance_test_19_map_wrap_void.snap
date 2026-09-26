@@ -71,8 +71,7 @@ main#1
                 (delay [fromBool_10 (con bool False)])])
               (constr 0 a_8 b_9)]))])
       (lam arg_34
-        (lam arg_35
-          [(lam match_37 [(lam match_36 [fromBool_10 (con bool True)]) arg_35]) arg_34]))])
+        (lam arg_35 (case arg_34 (case arg_35 [fromBool_10 (con bool True)]))))])
     (lam value_33 value_33)])
 --- result
 (con bool True)

@@ -62,7 +62,8 @@ main#1
             (lam value_27 value_27)])
           (lam value_26 value_26)])
         (lam arg_18
-          [(lam match_25
+          (case
+            arg_18
             [[(force (builtin mkCons))
               [[(lam field_19
                 (lam field_20
@@ -79,8 +80,7 @@ main#1
                         [[(force (builtin mkCons)) field_24] (con (list data) [])]]]))
                   [fromBytes_21 (con bytestring #aa)]]
                   [fromInt_22 (con integer 0)]]]
-                (con (list data) [])]])
-            arg_18])])
+                (con (list data) [])]]))])
       (builtin iData)])
     (builtin bData)])
 --- result
@@ -88,4 +88,4 @@ main#1
 --- logs
 []
 --- budget
-cpu: 2670160, memory: 13349
+cpu: 2654160, memory: 13249

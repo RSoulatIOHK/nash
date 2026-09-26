@@ -1,0 +1,130 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nread : Choice -> int\nread value =\n    case value of\n        Stop -> 0\n        Zero -> 0\n        One a -> unIData a\n        Two a b -> addInteger (unIData a) (unIData b)\nchoose : int -> Choice -> int\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        whole -> trace \"fallback\" (addInteger outer (read whole))\nmain = (choose 10 Stop, choose 10 Zero, choose 10 (One 20), choose 10 (Two 30 40))\n"
+---
+--- core
+let message#42 : string = "subject" in
+let message#43 : string = "fallback" in
+let fromInt#3 : int -> int = \value#25 : int -> value#25 in
+let fromString#10 : string -> string = \value#26 : string -> value#26 in
+let read#12 : Main.Choice -> int = \value#27 : Main.Choice -> let match#31 : Main.Choice = value#27 in
+let projection#40 : pair int (list Data) = unConstrData match#31 in
+case@Pair projection#40 of
+  Pair tag#35 fields#36 -> case@Tag tag#35 of
+    0 -> fromInt#3 0
+    1 -> fromInt#3 0
+    2 -> case@List fields#36 of
+      Cons field#32 fieldTail#37 -> let a#28 : Int = field#32 in
+      unIData a#28
+    3 -> case@List fields#36 of
+      Cons field#33 fieldTail#38 -> case@List fieldTail#38 of
+        Cons field#34 fieldTail#39 -> let a#29 : Int = field#33 in
+        let b#30 : Int = field#34 in
+        addInteger (unIData a#29) (unIData b#30) in
+let choose#2 : int -> Main.Choice -> int = \outer#8 : int subject#9 : Main.Choice -> let match#13 : Main.Choice = trace (fromString#10 message#42) in subject#9 in
+let leaf#19 : 'erased = \whole#11 : Main.Choice -> trace (fromString#10 message#43) in addInteger outer#8 (read#12 whole#11) in
+let projection#41 : pair int (list Data) = unConstrData match#13 in
+case@Pair projection#41 of
+  Pair tag#23 fields#24 -> case@Tag tag#23 of
+    0 -> fromInt#3 1
+    1 -> let whole#11 : Main.Choice = match#13 in
+    leaf#19 whole#11
+    2 -> let whole#11 : Main.Choice = match#13 in
+    leaf#19 whole#11
+    3 -> let whole#11 : Main.Choice = match#13 in
+    leaf#19 whole#11 in
+let fromInt#5 : int -> Int = iData in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (fromInt#3 10) (constrData 0 (con (list data) []))) (choose#2 (fromInt#3 10) (constrData 1 (con (list data) []))) (choose#2 (fromInt#3 10) ((\field#4 : Int -> constrData 2 (mkCons field#4 (con (list data) []))) (fromInt#5 20))) (choose#2 (fromInt#3 10) ((\field#6 : Int field#7 : Int -> constrData 3 (mkCons field#6 (mkCons field#7 (con (list data) [])))) (fromInt#5 30) (fromInt#5 40))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_42
+    [(lam message_43
+      [(lam fromInt_3
+        [(lam fromString_10
+          [(lam read_12
+            [(lam choose_2
+              [(lam fromInt_5
+                [(lam main_1 main_1)
+                  (constr 0
+                    [[choose_2 [fromInt_3 (con integer 10)]]
+                      [[(builtin constrData) (con integer 0)] (con (list data) [])]]
+                    [[choose_2 [fromInt_3 (con integer 10)]]
+                      [[(builtin constrData) (con integer 1)] (con (list data) [])]]
+                    [[choose_2 [fromInt_3 (con integer 10)]]
+                      [(lam field_4
+                        [[(builtin constrData) (con integer 2)]
+                          [[(force (builtin mkCons)) field_4] (con (list data) [])]])
+                        [fromInt_5 (con integer 20)]]]
+                    [[choose_2 [fromInt_3 (con integer 10)]]
+                      [[(lam field_6
+                        (lam field_7
+                          [[(builtin constrData) (con integer 3)]
+                            [[(force (builtin mkCons)) field_6]
+                              [[(force (builtin mkCons)) field_7] (con (list data) [])]]]))
+                        [fromInt_5 (con integer 30)]]
+                        [fromInt_5 (con integer 40)]]])])
+                (builtin iData)])
+              (lam outer_8
+                (lam subject_9
+                  [(lam match_13
+                    [(lam leaf_19
+                      [(lam projection_41
+                        (case
+                          projection_41
+                          (lam tag_23
+                            (lam fields_24
+                              (case
+                                tag_23
+                                [fromInt_3 (con integer 1)]
+                                [(lam whole_11 [leaf_19 whole_11]) match_13]
+                                [(lam whole_11 [leaf_19 whole_11]) match_13]
+                                [(lam whole_11 [leaf_19 whole_11]) match_13])))))
+                        [(builtin unConstrData) match_13]])
+                      (lam whole_11
+                        (force
+                          [[(force (builtin trace)) [fromString_10 message_43]]
+                            (delay [[(builtin addInteger) outer_8] [read_12 whole_11]])]))])
+                    (force [[(force (builtin trace)) [fromString_10 message_42]] (delay subject_9)])]))])
+            (lam value_27
+              [(lam match_31
+                [(lam projection_40
+                  (case
+                    projection_40
+                    (lam tag_35
+                      (lam fields_36
+                        (case
+                          tag_35
+                          [fromInt_3 (con integer 0)]
+                          [fromInt_3 (con integer 0)]
+                          (case
+                            fields_36
+                            (lam field_32 (lam fieldTail_37 [(lam a_28 [(builtin unIData) a_28]) field_32]))
+                            (error))
+                          (case
+                            fields_36
+                            (lam field_33
+                              (lam fieldTail_38
+                                (case
+                                  fieldTail_38
+                                  (lam field_34
+                                    (lam fieldTail_39
+                                      [(lam a_29
+                                        [(lam b_30
+                                          [[(builtin addInteger) [(builtin unIData) a_29]] [(builtin unIData) b_30]])
+                                          field_34])
+                                        field_33]))
+                                  (error))))
+                            (error)))))))
+                  [(builtin unConstrData) match_31]])
+                value_27])])
+          (lam value_26 value_26)])
+        (lam value_25 value_25)])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 1) (con integer 10) (con integer 30) (con integer 80))
+--- logs
+["subject", "subject", "fallback", "subject", "fallback", "subject", "fallback"]
+--- budget
+cpu: 7279353, memory: 37672

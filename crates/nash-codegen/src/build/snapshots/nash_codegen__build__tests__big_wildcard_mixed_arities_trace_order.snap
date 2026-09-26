@@ -1,0 +1,82 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" 1\n        _ -> trace \"fallback\" 9\nmain = (choose Stop, choose Zero, choose (One 2), choose (Two 3 4))\n"
+---
+--- core
+let message#25 : string = "subject" in
+let message#26 : string = "fallback" in
+let message#27 : string = "explicit" in
+let fromString#8 : string -> string = \value#22 : string -> value#22 in
+let fromInt#9 : int -> int = \value#23 : int -> value#23 in
+let choose#2 : Main.Choice -> int = \subject#7 : Main.Choice -> let match#10 : Main.Choice = trace (fromString#8 message#25) in subject#7 in
+let leaf#16 : 'erased = delay (trace (fromString#8 message#26) in fromInt#9 9) in
+let projection#24 : pair int (list Data) = unConstrData match#10 in
+case@Pair projection#24 of
+  Pair tag#20 fields#21 -> case@Tag tag#20 of
+    0 -> trace (fromString#8 message#27) in fromInt#9 1
+    1 -> force leaf#16
+    2 -> force leaf#16
+    3 -> force leaf#16 in
+let fromInt#4 : int -> Int = iData in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (constrData 0 (con (list data) []))) (choose#2 (constrData 1 (con (list data) []))) (choose#2 ((\field#3 : Int -> constrData 2 (mkCons field#3 (con (list data) []))) (fromInt#4 2))) (choose#2 ((\field#5 : Int field#6 : Int -> constrData 3 (mkCons field#5 (mkCons field#6 (con (list data) [])))) (fromInt#4 3) (fromInt#4 4))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_25
+    [(lam message_26
+      [(lam message_27
+        [(lam fromString_8
+          [(lam fromInt_9
+            [(lam choose_2
+              [(lam fromInt_4
+                [(lam main_1 main_1)
+                  (constr 0
+                    [choose_2 [[(builtin constrData) (con integer 0)] (con (list data) [])]]
+                    [choose_2 [[(builtin constrData) (con integer 1)] (con (list data) [])]]
+                    [choose_2
+                      [(lam field_3
+                        [[(builtin constrData) (con integer 2)]
+                          [[(force (builtin mkCons)) field_3] (con (list data) [])]])
+                        [fromInt_4 (con integer 2)]]]
+                    [choose_2
+                      [[(lam field_5
+                        (lam field_6
+                          [[(builtin constrData) (con integer 3)]
+                            [[(force (builtin mkCons)) field_5]
+                              [[(force (builtin mkCons)) field_6] (con (list data) [])]]]))
+                        [fromInt_4 (con integer 3)]]
+                        [fromInt_4 (con integer 4)]]])])
+                (builtin iData)])
+              (lam subject_7
+                [(lam match_10
+                  [(lam leaf_16
+                    [(lam projection_24
+                      (case
+                        projection_24
+                        (lam tag_20
+                          (lam fields_21
+                            (case
+                              tag_20
+                              (force
+                                [[(force (builtin trace)) [fromString_8 message_27]]
+                                  (delay [fromInt_9 (con integer 1)])])
+                              (force leaf_16)
+                              (force leaf_16)
+                              (force leaf_16))))))
+                      [(builtin unConstrData) match_10]])
+                    (delay
+                      (force
+                        [[(force (builtin trace)) [fromString_8 message_26]]
+                          (delay [fromInt_9 (con integer 9)])]))])
+                  (force [[(force (builtin trace)) [fromString_8 message_25]] (delay subject_7)])])])
+            (lam value_23 value_23)])
+          (lam value_22 value_22)])
+        (con string "explicit")])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 1) (con integer 9) (con integer 9) (con integer 9))
+--- logs
+["subject", "explicit", "subject", "fallback", "subject", "fallback", "subject", "fallback"]
+--- budget
+cpu: 4974023, memory: 26104

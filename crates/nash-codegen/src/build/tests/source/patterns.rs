@@ -1,4 +1,17 @@
 case!(
+    native_unit_case_sequences_subject_before_body,
+    r#"
+    module Main exposing (..)
+    import Primitive exposing (..)
+    main : int
+    main =
+        case trace "subject" () of
+            () -> trace "body" 42
+"#,
+    Ok("(con integer 42)")
+);
+
+case!(
     expect_empty_list_on_filled_list,
     r#"
     module Main exposing (..)

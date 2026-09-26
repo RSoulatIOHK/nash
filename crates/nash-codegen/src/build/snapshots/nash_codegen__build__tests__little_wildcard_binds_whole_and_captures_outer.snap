@@ -1,0 +1,84 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nread : choice -> int\nread value =\n    case value of\n        Stop -> 0\n        Zero -> 0\n        One a -> a\n        Two a b -> addInteger (a) (b)\nchoose : int -> choice -> int\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        whole -> trace \"fallback\" (addInteger outer (read whole))\nmain = (choose 10 Stop, choose 10 Zero, choose 10 (One 20), choose 10 (Two 30 40))\n"
+---
+--- core
+let message#30 : string = "subject" in
+let message#31 : string = "fallback" in
+let fromInt#3 : int -> int = \value#20 : int -> value#20 in
+let fromString#9 : string -> string = \value#21 : string -> value#21 in
+let read#11 : Main.choice -> int = \value#22 : Main.choice -> let match#26 : Main.choice = value#22 in
+case@Tag match#26 of
+  0 -> fromInt#3 0
+  1 -> fromInt#3 0
+  2 field#27 -> let a#23 : int = field#27 in
+  a#23
+  3 field#28 field#29 -> let a#24 : int = field#28 in
+  let b#25 : int = field#29 in
+  addInteger a#24 b#25 in
+let choose#2 : int -> Main.choice -> int = \outer#7 : int subject#8 : Main.choice -> let match#12 : Main.choice = trace (fromString#9 message#30) in subject#8 in
+let leaf#16 : 'erased = \whole#10 : Main.choice -> trace (fromString#9 message#31) in addInteger outer#7 (read#11 whole#10) in
+case@Tag match#12 of
+  0 -> fromInt#3 1
+  1 -> let whole#10 : Main.choice = match#12 in
+  leaf#16 whole#10
+  2 field#17 -> let whole#10 : Main.choice = match#12 in
+  leaf#16 whole#10
+  3 field#18 field#19 -> let whole#10 : Main.choice = match#12 in
+  leaf#16 whole#10 in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (fromInt#3 10) (constr 0)) (choose#2 (fromInt#3 10) (constr 1)) (choose#2 (fromInt#3 10) ((\field#4 : int -> constr 2 field#4) (fromInt#3 20))) (choose#2 (fromInt#3 10) ((\field#5 : int field#6 : int -> constr 3 field#5 field#6) (fromInt#3 30) (fromInt#3 40))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_30
+    [(lam message_31
+      [(lam fromInt_3
+        [(lam fromString_9
+          [(lam read_11
+            [(lam choose_2
+              [(lam main_1 main_1)
+                (constr 0
+                  [[choose_2 [fromInt_3 (con integer 10)]] (constr 0)]
+                  [[choose_2 [fromInt_3 (con integer 10)]] (constr 1)]
+                  [[choose_2 [fromInt_3 (con integer 10)]]
+                    [(lam field_4 (constr 2 field_4)) [fromInt_3 (con integer 20)]]]
+                  [[choose_2 [fromInt_3 (con integer 10)]]
+                    [[(lam field_5 (lam field_6 (constr 3 field_5 field_6)))
+                      [fromInt_3 (con integer 30)]]
+                      [fromInt_3 (con integer 40)]]])])
+              (lam outer_7
+                (lam subject_8
+                  [(lam match_12
+                    [(lam leaf_16
+                      (case
+                        match_12
+                        [fromInt_3 (con integer 1)]
+                        [(lam whole_10 [leaf_16 whole_10]) match_12]
+                        (lam field_17 [(lam whole_10 [leaf_16 whole_10]) match_12])
+                        (lam field_18 (lam field_19 [(lam whole_10 [leaf_16 whole_10]) match_12]))))
+                      (lam whole_10
+                        (force
+                          [[(force (builtin trace)) [fromString_9 message_31]]
+                            (delay [[(builtin addInteger) outer_7] [read_11 whole_10]])]))])
+                    (force [[(force (builtin trace)) [fromString_9 message_30]] (delay subject_8)])]))])
+            (lam value_22
+              [(lam match_26
+                (case
+                  match_26
+                  [fromInt_3 (con integer 0)]
+                  [fromInt_3 (con integer 0)]
+                  (lam field_27 [(lam a_23 a_23) field_27])
+                  (lam field_28
+                    (lam field_29
+                      [(lam a_24 [(lam b_25 [[(builtin addInteger) a_24] b_25]) field_29]) field_28]))))
+                value_22])])
+          (lam value_21 value_21)])
+        (lam value_20 value_20)])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 1) (con integer 10) (con integer 30) (con integer 80))
+--- logs
+["subject", "subject", "fallback", "subject", "fallback", "subject", "fallback"]
+--- budget
+cpu: 5045418, memory: 26732

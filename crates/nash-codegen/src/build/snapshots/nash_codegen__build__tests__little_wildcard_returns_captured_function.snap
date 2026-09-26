@@ -1,0 +1,68 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : int -> choice -> (int -> int)\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" (\\n -> n)\n        _ -> trace \"fallback\" (\\n -> addInteger outer n)\nmain = (choose 10 Stop 5, choose 10 Zero 5, choose 10 (One 2) 5, choose 10 (Two 3 4) 5)\n"
+---
+--- core
+let message#22 : string = "subject" in
+let message#23 : string = "fallback" in
+let message#24 : string = "explicit" in
+let fromString#9 : string -> string = \value#21 : string -> value#21 in
+let choose#2 : int -> Main.choice -> int -> int = \outer#7 : int subject#8 : Main.choice -> let match#12 : Main.choice = trace (fromString#9 message#22) in subject#8 in
+let leaf#16 : 'erased = delay (trace (fromString#9 message#23) in \n#11 : int -> addInteger outer#7 n#11) in
+case@Tag match#12 of
+  0 -> trace (fromString#9 message#24) in \n#10 : int -> n#10
+  1 -> force leaf#16
+  2 field#17 -> force leaf#16
+  3 field#18 field#19 -> force leaf#16 in
+let fromInt#3 : int -> int = \value#20 : int -> value#20 in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (fromInt#3 10) (constr 0) (fromInt#3 5)) (choose#2 (fromInt#3 10) (constr 1) (fromInt#3 5)) (choose#2 (fromInt#3 10) ((\field#4 : int -> constr 2 field#4) (fromInt#3 2)) (fromInt#3 5)) (choose#2 (fromInt#3 10) ((\field#5 : int field#6 : int -> constr 3 field#5 field#6) (fromInt#3 3) (fromInt#3 4)) (fromInt#3 5)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_22
+    [(lam message_23
+      [(lam message_24
+        [(lam fromString_9
+          [(lam choose_2
+            [(lam fromInt_3
+              [(lam main_1 main_1)
+                (constr 0
+                  [[[choose_2 [fromInt_3 (con integer 10)]] (constr 0)]
+                    [fromInt_3 (con integer 5)]]
+                  [[[choose_2 [fromInt_3 (con integer 10)]] (constr 1)]
+                    [fromInt_3 (con integer 5)]]
+                  [[[choose_2 [fromInt_3 (con integer 10)]]
+                    [(lam field_4 (constr 2 field_4)) [fromInt_3 (con integer 2)]]]
+                    [fromInt_3 (con integer 5)]]
+                  [[[choose_2 [fromInt_3 (con integer 10)]]
+                    [[(lam field_5 (lam field_6 (constr 3 field_5 field_6)))
+                      [fromInt_3 (con integer 3)]]
+                      [fromInt_3 (con integer 4)]]]
+                    [fromInt_3 (con integer 5)]])])
+              (lam value_20 value_20)])
+            (lam outer_7
+              (lam subject_8
+                [(lam match_12
+                  [(lam leaf_16
+                    (case
+                      match_12
+                      (force
+                        [[(force (builtin trace)) [fromString_9 message_24]] (delay (lam n_10 n_10))])
+                      (force leaf_16)
+                      (lam field_17 (force leaf_16))
+                      (lam field_18 (lam field_19 (force leaf_16)))))
+                    (delay
+                      (force
+                        [[(force (builtin trace)) [fromString_9 message_23]]
+                          (delay (lam n_11 [[(builtin addInteger) outer_7] n_11]))]))])
+                  (force [[(force (builtin trace)) [fromString_9 message_22]] (delay subject_8)])]))])
+          (lam value_21 value_21)])
+        (con string "explicit")])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 5) (con integer 15) (con integer 15) (con integer 15))
+--- logs
+["subject", "explicit", "subject", "fallback", "subject", "fallback", "subject", "fallback"]
+--- budget
+cpu: 4619708, memory: 24362

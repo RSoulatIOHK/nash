@@ -1,0 +1,51 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Two int int\nchoose : choice -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> \\n -> n\n        _ -> trace \"fallback\" (\\n -> addInteger n 1)\nmain = (choose Stop 10, choose (Two 3 4) 20)\n"
+---
+--- core
+let message#15 : string = "subject" in
+let message#16 : string = "fallback" in
+let fromInt#3 : int -> int = \value#13 : int -> value#13 in
+let fromString#7 : string -> string = \value#14 : string -> value#14 in
+let choose#2 : Main.choice -> int -> int = \subject#6 : Main.choice -> let match#10 : Main.choice = trace (fromString#7 message#15) in subject#6 in
+case@Tag match#10 of
+  0 -> \n#8 : int -> n#8
+  1 field#11 field#12 -> trace (fromString#7 message#16) in \n#9 : int -> addInteger n#9 (fromInt#3 1) in
+let main#1 : (int, int) = constr 0 (choose#2 (constr 0) (fromInt#3 10)) (choose#2 ((\field#4 : int field#5 : int -> constr 1 field#4 field#5) (fromInt#3 3) (fromInt#3 4)) (fromInt#3 20)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_15
+    [(lam message_16
+      [(lam fromInt_3
+        [(lam fromString_7
+          [(lam choose_2
+            [(lam main_1 main_1)
+              (constr 0
+                [[choose_2 (constr 0)] [fromInt_3 (con integer 10)]]
+                [[choose_2
+                  [[(lam field_4 (lam field_5 (constr 1 field_4 field_5)))
+                    [fromInt_3 (con integer 3)]]
+                    [fromInt_3 (con integer 4)]]]
+                  [fromInt_3 (con integer 20)]])])
+            (lam subject_6
+              [(lam match_10
+                (case
+                  match_10
+                  (lam n_8 n_8)
+                  (lam field_11
+                    (lam field_12
+                      (force
+                        [[(force (builtin trace)) [fromString_7 message_16]]
+                          (delay (lam n_9 [[(builtin addInteger) n_9] [fromInt_3 (con integer 1)]]))])))))
+                (force [[(force (builtin trace)) [fromString_7 message_15]] (delay subject_6)])])])
+          (lam value_14 value_14)])
+        (lam value_13 value_13)])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 10) (con integer 21))
+--- logs
+["subject", "subject", "fallback"]
+--- budget
+cpu: 1911802, memory: 10398

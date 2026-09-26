@@ -226,10 +226,7 @@ description: "module Main exposing (..)\nimport Builtin\nimport Prop exposing (r
                                                 [(lam i20
                                                   [(lam i21
                                                     [(lam i22 (constr 0 i22))
-                                                      (constr 0
-                                                        i21
-                                                        (lam i22 [(lam i23 [i13 i20]) i22])
-                                                        (lam i22 [(lam i23 [i14 i20]) i22]))])
+                                                      (constr 0 i21 (lam i22 (case i22 [i13 i20])) (lam i22 (case i22 [i14 i20])))])
                                                     i19])
                                                   i18]))))
                                         (constr 1)))

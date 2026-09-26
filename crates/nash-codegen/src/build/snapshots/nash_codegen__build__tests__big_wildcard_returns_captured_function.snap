@@ -1,0 +1,88 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : int -> Choice -> (int -> int)\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" (\\n -> n)\n        _ -> trace \"fallback\" (\\n -> addInteger outer n)\nmain = (choose 10 Stop 5, choose 10 Zero 5, choose 10 (One 2) 5, choose 10 (Two 3 4) 5)\n"
+---
+--- core
+let message#28 : string = "subject" in
+let message#29 : string = "fallback" in
+let message#30 : string = "explicit" in
+let fromString#10 : string -> string = \value#26 : string -> value#26 in
+let choose#2 : int -> Main.Choice -> int -> int = \outer#8 : int subject#9 : Main.Choice -> let match#13 : Main.Choice = trace (fromString#10 message#28) in subject#9 in
+let leaf#19 : 'erased = delay (trace (fromString#10 message#29) in \n#12 : int -> addInteger outer#8 n#12) in
+let projection#27 : pair int (list Data) = unConstrData match#13 in
+case@Pair projection#27 of
+  Pair tag#23 fields#24 -> case@Tag tag#23 of
+    0 -> trace (fromString#10 message#30) in \n#11 : int -> n#11
+    1 -> force leaf#19
+    2 -> force leaf#19
+    3 -> force leaf#19 in
+let fromInt#3 : int -> int = \value#25 : int -> value#25 in
+let fromInt#5 : int -> Int = iData in
+let main#1 : (int, int, int, int) = constr 0 (choose#2 (fromInt#3 10) (constrData 0 (con (list data) [])) (fromInt#3 5)) (choose#2 (fromInt#3 10) (constrData 1 (con (list data) [])) (fromInt#3 5)) (choose#2 (fromInt#3 10) ((\field#4 : Int -> constrData 2 (mkCons field#4 (con (list data) []))) (fromInt#5 2)) (fromInt#3 5)) (choose#2 (fromInt#3 10) ((\field#6 : Int field#7 : Int -> constrData 3 (mkCons field#6 (mkCons field#7 (con (list data) [])))) (fromInt#5 3) (fromInt#5 4)) (fromInt#3 5)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_28
+    [(lam message_29
+      [(lam message_30
+        [(lam fromString_10
+          [(lam choose_2
+            [(lam fromInt_3
+              [(lam fromInt_5
+                [(lam main_1 main_1)
+                  (constr 0
+                    [[[choose_2 [fromInt_3 (con integer 10)]]
+                      [[(builtin constrData) (con integer 0)] (con (list data) [])]]
+                      [fromInt_3 (con integer 5)]]
+                    [[[choose_2 [fromInt_3 (con integer 10)]]
+                      [[(builtin constrData) (con integer 1)] (con (list data) [])]]
+                      [fromInt_3 (con integer 5)]]
+                    [[[choose_2 [fromInt_3 (con integer 10)]]
+                      [(lam field_4
+                        [[(builtin constrData) (con integer 2)]
+                          [[(force (builtin mkCons)) field_4] (con (list data) [])]])
+                        [fromInt_5 (con integer 2)]]]
+                      [fromInt_3 (con integer 5)]]
+                    [[[choose_2 [fromInt_3 (con integer 10)]]
+                      [[(lam field_6
+                        (lam field_7
+                          [[(builtin constrData) (con integer 3)]
+                            [[(force (builtin mkCons)) field_6]
+                              [[(force (builtin mkCons)) field_7] (con (list data) [])]]]))
+                        [fromInt_5 (con integer 3)]]
+                        [fromInt_5 (con integer 4)]]]
+                      [fromInt_3 (con integer 5)]])])
+                (builtin iData)])
+              (lam value_25 value_25)])
+            (lam outer_8
+              (lam subject_9
+                [(lam match_13
+                  [(lam leaf_19
+                    [(lam projection_27
+                      (case
+                        projection_27
+                        (lam tag_23
+                          (lam fields_24
+                            (case
+                              tag_23
+                              (force
+                                [[(force (builtin trace)) [fromString_10 message_30]] (delay (lam n_11 n_11))])
+                              (force leaf_19)
+                              (force leaf_19)
+                              (force leaf_19))))))
+                      [(builtin unConstrData) match_13]])
+                    (delay
+                      (force
+                        [[(force (builtin trace)) [fromString_10 message_29]]
+                          (delay (lam n_12 [[(builtin addInteger) outer_8] n_12]))]))])
+                  (force [[(force (builtin trace)) [fromString_10 message_28]] (delay subject_9)])]))])
+          (lam value_26 value_26)])
+        (con string "explicit")])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+(constr 0 (con integer 5) (con integer 15) (con integer 15) (con integer 15))
+--- logs
+["subject", "explicit", "subject", "fallback", "subject", "fallback", "subject", "fallback"]
+--- budget
+cpu: 6045647, memory: 30910

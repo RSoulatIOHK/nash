@@ -87,7 +87,7 @@ main#1
                       [(builtin unConstrData) match_26]])
                     value_25])]))])
         (lam value_21 value_21)])
-      (lam arg_19 [(lam match_20 (error)) arg_19])])
+      (lam arg_19 (case arg_19 (error)))])
     (lam value_18 value_18)])
 --- result
 (con bool True)

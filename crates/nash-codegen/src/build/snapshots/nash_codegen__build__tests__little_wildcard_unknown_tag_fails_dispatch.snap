@@ -1,0 +1,55 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\ntype rogue = R0 | R1 | R2 | R3 | R4\nchoose : choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" 1\n        _ -> trace \"fallback\" 9\nmain = choose (coerce R4)\n"
+---
+--- core
+let message#17 : string = "subject" in
+let message#18 : string = "fallback" in
+let message#19 : string = "explicit" in
+let fromString#5 : string -> string = \value#15 : string -> value#15 in
+let fromInt#6 : int -> int = \value#16 : int -> value#16 in
+let choose#2 : Main.choice -> int = \subject#4 : Main.choice -> let match#7 : Main.choice = trace (fromString#5 message#17) in subject#4 in
+let leaf#11 : 'erased = delay (trace (fromString#5 message#18) in fromInt#6 9) in
+case@Tag match#7 of
+  0 -> trace (fromString#5 message#19) in fromInt#6 1
+  1 -> force leaf#11
+  2 field#12 -> force leaf#11
+  3 field#13 field#14 -> force leaf#11 in
+let main#1 : int = choose#2 ((\coerce#3 : 'erased -> coerce#3) (constr 4)) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_17
+    [(lam message_18
+      [(lam message_19
+        [(lam fromString_5
+          [(lam fromInt_6
+            [(lam choose_2
+              [(lam main_1 main_1) [choose_2 [(lam coerce_3 coerce_3) (constr 4)]]])
+              (lam subject_4
+                [(lam match_7
+                  [(lam leaf_11
+                    (case
+                      match_7
+                      (force
+                        [[(force (builtin trace)) [fromString_5 message_19]]
+                          (delay [fromInt_6 (con integer 1)])])
+                      (force leaf_11)
+                      (lam field_12 (force leaf_11))
+                      (lam field_13 (lam field_14 (force leaf_11)))))
+                    (delay
+                      (force
+                        [[(force (builtin trace)) [fromString_5 message_18]]
+                          (delay [fromInt_6 (con integer 9)])]))])
+                  (force [[(force (builtin trace)) [fromString_5 message_17]] (delay subject_4)])])])
+            (lam value_16 value_16)])
+          (lam value_15 value_15)])
+        (con string "explicit")])
+      (con string "fallback")])
+    (con string "subject")])
+--- result
+error: MissingCaseBranch([Force(Apply { function: Apply { function: Force(Builtin(Trace)), argument: Apply { function: Var(DeBruijn(5)), argument: Var(DeBruijn(6)) } }, argument: Delay(Apply { function: Var(DeBruijn(4)), argument: Constant(Integer(1)) }) }), Force(Var(DeBruijn(1))), Lambda { parameter: DeBruijn(0), body: Force(Var(DeBruijn(2))) }, Lambda { parameter: DeBruijn(0), body: Lambda { parameter: DeBruijn(0), body: Force(Var(DeBruijn(3))) } }], Constr(4, []))
+--- logs
+["subject"]
+--- budget
+cpu: 59598, memory: 132

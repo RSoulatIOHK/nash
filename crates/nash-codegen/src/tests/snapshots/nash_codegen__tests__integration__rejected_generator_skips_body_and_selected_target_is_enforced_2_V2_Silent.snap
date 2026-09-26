@@ -175,10 +175,7 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
                                         [(lam i16
                                           [(lam i17
                                             [(lam i18 (constr 0 i18))
-                                              (constr 0
-                                                i17
-                                                (lam i18 [(lam i19 [i9 i16]) i18])
-                                                (lam i18 [(lam i19 [i10 i16]) i18]))])
+                                              (constr 0 i17 (lam i18 (case i18 [i9 i16])) (lam i18 (case i18 [i10 i16])))])
                                             i15])
                                           i14]))))
                                 (constr 1)))

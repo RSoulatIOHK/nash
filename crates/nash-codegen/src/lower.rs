@@ -87,10 +87,17 @@ impl<'a> Lower<'a> {
                 value,
                 body,
             } => {
+                let unit_sequence = binder.ty
+                    == nash_ir::ty::Ty::Const(&nash_ir::ty::ConstTy::Unit)
+                    && !crate::build::names(body).contains(&binder.name.unique);
                 let body = self.term(body)?;
                 let value = self.term(value)?;
-                body.lambda(self.arena, self.name(binder.name))
-                    .apply(self.arena, value)
+                if unit_sequence {
+                    Term::case(self.arena, value, self.arena.alloc_slice_copy(&[body]))
+                } else {
+                    body.lambda(self.arena, self.name(binder.name))
+                        .apply(self.arena, value)
+                }
             }
             Core::Builtin { func, args } => {
                 if args.len() > func.arity() {
@@ -163,41 +170,6 @@ impl<'a> Lower<'a> {
         branches: &'a [Branch<'a>],
         default: Option<&'a Core<'a>>,
     ) -> Result<Uplc<'a>, Error> {
-        if kind == CaseKind::Tag {
-            if default.is_some() {
-                return Err(Error::InvalidCase(
-                    "tag defaults must be expanded using constructor arities",
-                ));
-            }
-            let mut ordered = branches.iter().collect::<Vec<_>>();
-            ordered.sort_by_key(|b| {
-                if let Test::Tag(tag) = b.test {
-                    tag
-                } else {
-                    u16::MAX
-                }
-            });
-            let mut arms = Vec::new();
-            for (i, b) in ordered.into_iter().enumerate() {
-                if b.test
-                    != Test::Tag(
-                        u16::try_from(i)
-                            .map_err(|_| Error::InvalidCase("too many constructors"))?,
-                    )
-                {
-                    return Err(Error::InvalidCase(
-                        "tag branches must cover consecutive unique tags",
-                    ));
-                }
-                let body = self.term(b.body)?;
-                arms.push(self.lambda(b.binders, body));
-            }
-            return Ok(Term::case(
-                self.arena,
-                self.term(scrutinee)?,
-                self.arena.alloc_slice_copy(&arms),
-            ));
-        }
         let scrutinee = self.term(scrutinee)?;
         let fallback = match default {
             Some(c) => self.term(c)?,
@@ -329,7 +301,37 @@ impl<'a> Lower<'a> {
                 .lambda(self.arena, name)
                 .apply(self.arena, scrutinee)
             }
-            CaseKind::Tag => unreachable!("tag case handled above"),
+            CaseKind::Tag => {
+                if default.is_some() {
+                    return Err(Error::InvalidCase(
+                        "tag defaults must be expanded using constructor arities",
+                    ));
+                }
+                let mut ordered = branches.iter().collect::<Vec<_>>();
+                ordered.sort_by_key(|b| {
+                    if let Test::Tag(tag) = b.test {
+                        tag
+                    } else {
+                        u16::MAX
+                    }
+                });
+                let mut arms = Vec::new();
+                for (i, b) in ordered.into_iter().enumerate() {
+                    if b.test
+                        != Test::Tag(
+                            u16::try_from(i)
+                                .map_err(|_| Error::InvalidCase("too many constructors"))?,
+                        )
+                    {
+                        return Err(Error::InvalidCase(
+                            "tag branches must cover consecutive unique tags",
+                        ));
+                    }
+                    let body = self.term(b.body)?;
+                    arms.push(self.lambda(b.binders, body));
+                }
+                Term::case(self.arena, scrutinee, self.arena.alloc_slice_copy(&arms))
+            }
         })
     }
 }

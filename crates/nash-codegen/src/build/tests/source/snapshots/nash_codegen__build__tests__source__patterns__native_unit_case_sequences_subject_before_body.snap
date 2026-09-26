@@ -1,0 +1,39 @@
+---
+source: crates/nash-codegen/src/build/tests/source/patterns.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nmain : int\nmain =\n    case trace \"subject\" () of\n        () -> trace \"body\" 42\n"
+---
+--- core
+let message#9 : string = "subject" in
+let message#10 : string = "body" in
+let fromUnit#2 : unit -> unit = \value#6 : unit -> value#6 in
+let fromString#3 : string -> string = \value#7 : string -> value#7 in
+let fromInt#4 : int -> int = \value#8 : int -> value#8 in
+let match#5 : unit = trace (fromString#3 message#9) in fromUnit#2 () in
+let main#1 : int = trace (fromString#3 message#10) in fromInt#4 42 in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_9
+    [(lam message_10
+      [(lam fromUnit_2
+        [(lam fromString_3
+          [(lam fromInt_4
+            (case
+              (force
+                [[(force (builtin trace)) [fromString_3 message_9]]
+                  (delay [fromUnit_2 (con unit ())])])
+              [(lam main_1 main_1)
+                (force
+                  [[(force (builtin trace)) [fromString_3 message_10]]
+                    (delay [fromInt_4 (con integer 42)])])]))
+            (lam value_8 value_8)])
+          (lam value_7 value_7)])
+        (lam value_6 value_6)])
+      (con string "body")])
+    (con string "subject")])
+--- result
+(con integer 42)
+--- logs
+["subject", "body"]
+--- budget
+cpu: 871096, memory: 4864

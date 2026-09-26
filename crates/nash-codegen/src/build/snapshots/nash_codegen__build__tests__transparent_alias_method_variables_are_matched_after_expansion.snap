@@ -16,10 +16,10 @@ main#1
       [(lam raw_4 [(lam main_1 main_1) [[keep_2 [fromUnit_3 (con unit ())]] raw_4]])
         [fromUnit_3 (con unit ())]])
       (lam value_8 value_8)])
-    (lam arg_5 (lam x_6 [(lam match_7 x_6) arg_5]))])
+    (lam arg_5 (lam x_6 (case arg_5 x_6)))])
 --- result
 (con unit ())
 --- logs
 []
 --- budget
-cpu: 448100, memory: 2900
+cpu: 432100, memory: 2800

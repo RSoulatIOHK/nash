@@ -32,8 +32,7 @@ main#1
                 (lam value_15 value_15)])
               (lam x_11 [(lam same_12 [same_12 x_11]) (lam y_13 [[eq_14 x_11] y_13])])])
             (lam arg_16
-              (lam arg_17
-                [(lam match_20 [(lam match_19 [fromBool_18 (con bool True)]) arg_17]) arg_16]))])
+              (lam arg_17 (case arg_16 (case arg_17 [fromBool_18 (con bool True)]))))])
           (lam value_21 value_21)])
         (lam value_10 value_10)])
       (lam x_6 [(lam same_7 [same_7 x_6]) (lam y_8 [[eq_9 x_6] y_8])])])
@@ -43,4 +42,4 @@ main#1
 --- logs
 []
 --- budget
-cpu: 1172433, memory: 7101
+cpu: 1140433, memory: 6901

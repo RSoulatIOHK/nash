@@ -1,0 +1,56 @@
+---
+source: crates/nash-codegen/src/build/tests.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case subject of\n        Stop -> 1\n        _ -> trace \"fallback\" 9\nmain = (choose (coerce (constrData 1 [])), choose (coerce (constrData 2 [])))\n"
+---
+--- core
+let message#23 : string = "fallback" in
+let fromInt#4 : int -> int = \value#20 : int -> value#20 in
+let fromString#7 : string -> string = \value#21 : string -> value#21 in
+let choose#2 : Main.Choice -> int = \subject#6 : Main.Choice -> let match#8 : Main.Choice = subject#6 in
+let leaf#14 : 'erased = delay (trace (fromString#7 message#23) in fromInt#4 9) in
+let projection#22 : pair int (list Data) = unConstrData match#8 in
+case@Pair projection#22 of
+  Pair tag#18 fields#19 -> case@Tag tag#18 of
+    0 -> fromInt#4 1
+    1 -> force leaf#14
+    2 -> force leaf#14 in
+let main#1 : (int, int) = constr 0 (choose#2 ((\coerce#3 : 'erased -> coerce#3) (constrData (fromInt#4 1) (con (list data) [])))) (choose#2 ((\coerce#5 : 'erased -> coerce#5) (constrData (fromInt#4 2) (con (list data) [])))) in
+main#1
+--- uplc
+(program 1.1.0
+  [(lam message_23
+    [(lam fromInt_4
+      [(lam fromString_7
+        [(lam choose_2
+          [(lam main_1 main_1)
+            (constr 0
+              [choose_2
+                [(lam coerce_3 coerce_3)
+                  [[(builtin constrData) [fromInt_4 (con integer 1)]] (con (list data) [])]]]
+              [choose_2
+                [(lam coerce_5 coerce_5)
+                  [[(builtin constrData) [fromInt_4 (con integer 2)]] (con (list data) [])]]])])
+          (lam subject_6
+            [(lam match_8
+              [(lam leaf_14
+                [(lam projection_22
+                  (case
+                    projection_22
+                    (lam tag_18
+                      (lam fields_19
+                        (case tag_18 [fromInt_4 (con integer 1)] (force leaf_14) (force leaf_14))))))
+                  [(builtin unConstrData) match_8]])
+                (delay
+                  (force
+                    [[(force (builtin trace)) [fromString_7 message_23]]
+                      (delay [fromInt_4 (con integer 9)])]))])
+              subject_6])])
+        (lam value_21 value_21)])
+      (lam value_20 value_20)])
+    (con string "fallback")])
+--- result
+(constr 0 (con integer 9) (con integer 9))
+--- logs
+["fallback", "fallback"]
+--- budget
+cpu: 1940574, memory: 11092
