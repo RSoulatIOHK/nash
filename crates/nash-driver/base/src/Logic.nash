@@ -1,0 +1,47 @@
+module Logic exposing ( not, and, or, xor, (&&), (||) )
+
+
+import Primitive
+import Lift exposing ( Lift )
+
+
+infix right 2 (||) = or
+
+
+infix right 3 (&&) = and
+
+
+{-| Negate a Big or little Boolean, returning bool. -}
+not : Lift bool 'a => 'a -> bool
+not value =
+    if lower value then
+        Primitive.False
+    else
+        Primitive.True
+
+
+{-| Boolean conjunction. Fully applied calls short-circuit; partial and indirect calls are strict. -}
+and : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool
+and a b =
+    if lower a then
+        lower b
+    else
+        Primitive.False
+
+
+{-| Boolean disjunction. Fully applied calls short-circuit; partial and indirect calls are strict. -}
+or : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool
+or a b =
+    if lower a then
+        Primitive.True
+    else
+        lower b
+
+
+{-| Return True when the Boolean operands differ. -}
+xor : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool
+xor a b =
+    if lower a then
+        not b
+    else
+        lower b

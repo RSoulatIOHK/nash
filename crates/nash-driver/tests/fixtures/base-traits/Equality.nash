@@ -18,6 +18,13 @@ mixedMap : map int (list Data)
 mixedMap = [Builtin.unConstrData (Builtin.constrData 7 [])]
 
 tests
+    test "boolean equality and ordering truth tables" = do
+        assert (eq False False && eq True True)
+        assert (neq False True && neq True False)
+        assert (compare False False == EQ)
+        assert (compare False True == LT)
+        assert (compare True False == GT)
+        assert (compare True True == EQ)
     test "native map alias equality" = do
         assert (sameGeneric nativeMap nativeMap)
         assert (nativeMap /= reversedMap)

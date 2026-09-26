@@ -24,7 +24,7 @@ case@List match#18 of
     let restY#13 : list 'erased = field#17 in
     case@Bool eq#14 x#10 y#12 of
       True -> self#31 self#31 restX#11 restY#13
-      False -> fromBool#6 false) in
+      False -> false) in
 let fromInt#21 : int -> int = \value#28 : int -> value#28 in
 let values#3 : list int = mkCons (fromInt#21 1) (mkCons (fromInt#21 2) (con (list integer) [])) in
 let main#1 : bool = eq#2 values#3 values#3 in
@@ -62,7 +62,7 @@ main#1
                                           [(lam restY_13
                                             (case
                                               [[eq_14 x_10] y_12]
-                                              [fromBool_6 (con bool False)]
+                                              (con bool False)
                                               [[[self_31 self_31] restX_11] restY_13]))
                                             field_17])
                                           field_16]))
@@ -94,4 +94,4 @@ main#1
 --- logs
 ["custom"]
 --- budget
-cpu: 1948322, memory: 11096
+cpu: 1900322, memory: 10796

@@ -4,7 +4,6 @@ module Prelude exposing (..)
 import Builtin
 import Function
 import Primitive exposing ( type bool(..) )
-import Bool exposing ( and, or )
 import Eq exposing ( Eq )
 import Ord exposing ( Ord )
 import Ordering exposing ( type ordering(..) )
@@ -27,12 +26,6 @@ infix right 9 (<<) = composeLeft
 
 
 infix right 9 (>>) = composeRight
-
-
-infix right 2 (||) = or
-
-
-infix right 3 (&&) = and
 
 
 infix non 4 (==) = eq

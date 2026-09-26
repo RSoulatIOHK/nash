@@ -16,6 +16,7 @@ module Rational exposing
     )
 
 
+import Logic exposing ( (&&) )
 import Prelude exposing (..)
 import Lift exposing ( Lift )
 import Eq exposing ( Eq )

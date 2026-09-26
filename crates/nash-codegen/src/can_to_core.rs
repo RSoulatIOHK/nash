@@ -670,7 +670,7 @@ impl<'a> Engine<'a, '_, '_> {
 /// Logical operators are identified by their resolved standard-library target.
 /// An unrelated user operator with the same spelling keeps normal call rules.
 pub(crate) fn short_circuit(reference: QualifiedName<'_>) -> Option<bool> {
-    if reference.home.package == Some(primitives::BASE) && reference.home.name == "Bool" {
+    if reference.home.package == Some(primitives::BASE) && reference.home.name == "Logic" {
         match reference.name {
             "and" => Some(true),
             "or" => Some(false),

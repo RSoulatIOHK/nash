@@ -21,6 +21,7 @@ module Prop exposing
     )
 
 
+import Logic exposing ( (||) )
 import Builtin
 import Int
 import Functor

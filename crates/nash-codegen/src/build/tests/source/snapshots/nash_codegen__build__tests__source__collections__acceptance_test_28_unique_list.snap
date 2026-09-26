@@ -5,7 +5,7 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
 --- core
 let fromBool#7 : bool -> bool = \value#32 : bool -> value#32 in
 let eq#15 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#45 : 'erased -> self#45 self#45) (\self#45 : 'erased xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#48 : 'erased -> self#48 self#48) (\self#48 : 'erased xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
 case@List match#19 of
   Nil -> let match#8 : list 'erased = ys#6 in
   case@List match#8 of
@@ -19,25 +19,26 @@ case@List match#19 of
     Cons field#17 field#18 -> let y#13 : 'erased = field#17 in
     let restY#14 : list 'erased = field#18 in
     case@Bool eq#15 x#11 y#13 of
-      True -> self#45 self#45 restX#12 restY#14
-      False -> fromBool#7 false) in
-let filter#25 : list int -> (int -> bool) -> list int = \xs#33 : list int (f#34 : int -> bool) -> (\self#44 : 'erased -> self#44 self#44) (\self#44 : 'erased xs#33 : list int -> let match#37 : list int = xs#33 in
+      True -> self#48 self#48 restX#12 restY#14
+      False -> false) in
+let filter#25 : list int -> (int -> bool) -> list int = \xs#33 : list int (f#34 : int -> bool) -> (\self#47 : 'erased -> self#47 self#47) (\self#47 : 'erased xs#33 : list int -> let match#37 : list int = xs#33 in
 case@List match#37 of
   Nil -> (con (list integer) [])
   Cons field#38 field#39 -> let x#35 : int = field#38 in
   let rest#36 : list int = field#39 in
   case@Bool f#34 x#35 of
-    True -> mkCons x#35 (self#44 self#44 rest#36)
-    False -> self#44 self#44 rest#36) xs#33 in
-let neq#27 : 'erased -> 'erased -> bool = \a#40 : 'erased b#41 : 'erased -> case@Bool eq#15 a#40 b#41 of
-  True -> fromBool#7 false
-  False -> fromBool#7 true in
-let unique#3 : list int -> list int = (\self#42 : 'erased -> self#42 self#42) (\self#42 : 'erased xs#22 : list int -> let match#28 : list int = xs#22 in
+    True -> mkCons x#35 (self#47 self#47 rest#36)
+    False -> self#47 self#47 rest#36) xs#33 in
+let not#42 : 'erased -> bool = \value#43 : 'erased -> case@Bool (\identity#44 : 'erased -> identity#44) value#43 of
+  True -> false
+  False -> true in
+let neq#27 : 'erased -> 'erased -> bool = \a#40 : 'erased b#41 : 'erased -> not#42 (eq#15 a#40 b#41) in
+let unique#3 : list int -> list int = (\self#45 : 'erased -> self#45 self#45) (\self#45 : 'erased xs#22 : list int -> let match#28 : list int = xs#22 in
 case@List match#28 of
   Nil -> (con (list integer) [])
   Cons field#29 field#30 -> let x#23 : int = field#29 in
   let rest#24 : list int = field#30 in
-  mkCons x#23 (self#42 self#42 (filter#25 rest#24 (\y#26 : int -> neq#27 y#26 x#23)))) in
+  mkCons x#23 (self#45 self#45 (filter#25 rest#24 (\y#26 : int -> neq#27 y#26 x#23)))) in
 let fromInt#4 : int -> int = \value#31 : int -> value#31 in
 let main#1 : bool = eq#2 (unique#3 (mkCons (fromInt#4 1) (mkCons (fromInt#4 2) (mkCons (fromInt#4 3) (mkCons (fromInt#4 1) (con (list integer) [])))))) (mkCons (fromInt#4 1) (mkCons (fromInt#4 2) (mkCons (fromInt#4 3) (con (list integer) [])))) in
 main#1
@@ -47,46 +48,44 @@ main#1
     [(lam eq_15
       [(lam eq_2
         [(lam filter_25
-          [(lam neq_27
-            [(lam unique_3
-              [(lam fromInt_4
-                [(lam main_1 main_1)
-                  [[eq_2
-                    [unique_3
+          [(lam not_42
+            [(lam neq_27
+              [(lam unique_3
+                [(lam fromInt_4
+                  [(lam main_1 main_1)
+                    [[eq_2
+                      [unique_3
+                        [[(force (builtin mkCons)) [fromInt_4 (con integer 1)]]
+                          [[(force (builtin mkCons)) [fromInt_4 (con integer 2)]]
+                            [[(force (builtin mkCons)) [fromInt_4 (con integer 3)]]
+                              [[(force (builtin mkCons)) [fromInt_4 (con integer 1)]] (con (list integer) [])]]]]]]
                       [[(force (builtin mkCons)) [fromInt_4 (con integer 1)]]
                         [[(force (builtin mkCons)) [fromInt_4 (con integer 2)]]
-                          [[(force (builtin mkCons)) [fromInt_4 (con integer 3)]]
-                            [[(force (builtin mkCons)) [fromInt_4 (con integer 1)]] (con (list integer) [])]]]]]]
-                    [[(force (builtin mkCons)) [fromInt_4 (con integer 1)]]
-                      [[(force (builtin mkCons)) [fromInt_4 (con integer 2)]]
-                        [[(force (builtin mkCons)) [fromInt_4 (con integer 3)]] (con (list integer) [])]]]]])
-                (lam value_31 value_31)])
-              [(lam self_42 [self_42 self_42])
-                (lam self_42
-                  (lam xs_22
-                    [(lam match_28
-                      (case
-                        match_28
-                        (lam field_29
-                          (lam field_30
-                            [(lam x_23
-                              [(lam rest_24
-                                [[(force (builtin mkCons)) x_23]
-                                  [[self_42 self_42] [[filter_25 rest_24] (lam y_26 [[neq_27 y_26] x_23])]]])
-                                field_30])
-                              field_29]))
-                        (con (list integer) [])))
-                      xs_22]))]])
-            (lam a_40
-              (lam b_41
-                (case
-                  [[eq_15 a_40] b_41]
-                  [fromBool_7 (con bool True)]
-                  [fromBool_7 (con bool False)])))])
+                          [[(force (builtin mkCons)) [fromInt_4 (con integer 3)]] (con (list integer) [])]]]]])
+                  (lam value_31 value_31)])
+                [(lam self_45 [self_45 self_45])
+                  (lam self_45
+                    (lam xs_22
+                      [(lam match_28
+                        (case
+                          match_28
+                          (lam field_29
+                            (lam field_30
+                              [(lam x_23
+                                [(lam rest_24
+                                  [[(force (builtin mkCons)) x_23]
+                                    [[self_45 self_45] [[filter_25 rest_24] (lam y_26 [[neq_27 y_26] x_23])]]])
+                                  field_30])
+                                field_29]))
+                          (con (list integer) [])))
+                        xs_22]))]])
+              (lam a_40 (lam b_41 [not_42 [[eq_15 a_40] b_41]]))])
+            (lam value_43
+              (case [(lam identity_44 identity_44) value_43] (con bool True) (con bool False)))])
           (lam xs_33
             (lam f_34
-              [[(lam self_44 [self_44 self_44])
-                (lam self_44
+              [[(lam self_47 [self_47 self_47])
+                (lam self_47
                   (lam xs_33
                     [(lam match_37
                       (case
@@ -97,15 +96,15 @@ main#1
                               [(lam rest_36
                                 (case
                                   [f_34 x_35]
-                                  [[self_44 self_44] rest_36]
-                                  [[(force (builtin mkCons)) x_35] [[self_44 self_44] rest_36]]))
+                                  [[self_47 self_47] rest_36]
+                                  [[(force (builtin mkCons)) x_35] [[self_47 self_47] rest_36]]))
                                 field_39])
                               field_38]))
                         (con (list integer) [])))
                       xs_33]))]
                 xs_33]))])
-        [(lam self_45 [self_45 self_45])
-          (lam self_45
+        [(lam self_48 [self_48 self_48])
+          (lam self_48
             (lam xs_5
               (lam ys_6
                 [(lam match_19
@@ -124,8 +123,8 @@ main#1
                                       [(lam restY_14
                                         (case
                                           [[eq_15 x_11] y_13]
-                                          [fromBool_7 (con bool False)]
-                                          [[[self_45 self_45] restX_12] restY_14]))
+                                          (con bool False)
+                                          [[[self_48 self_48] restX_12] restY_14]))
                                         field_18])
                                       field_17]))
                                 [fromBool_7 (con bool False)]))
@@ -146,4 +145,4 @@ main#1
 --- logs
 []
 --- budget
-cpu: 10043137, memory: 55123
+cpu: 10283137, memory: 56623

@@ -20,7 +20,7 @@ case@List match#19 of
     let restY#14 : list 'erased = field#18 in
     case@Bool eq#15 x#11 y#13 of
       True -> self#38 self#38 restX#12 restY#14
-      False -> fromBool#7 false) in
+      False -> false) in
 let foldr#24 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#29 : list 'erased (f#30 : 'erased -> 'erased -> 'erased) zero#31 : 'erased -> (\self#37 : 'erased -> self#37 self#37) (\self#37 : 'erased xs#29 : list 'erased -> let match#34 : list 'erased = xs#29 in
 case@List match#34 of
   Nil -> zero#31
@@ -96,7 +96,7 @@ main#1
                                       [(lam restY_14
                                         (case
                                           [[eq_15 x_11] y_13]
-                                          [fromBool_7 (con bool False)]
+                                          (con bool False)
                                           [[[self_38 self_38] restX_12] restY_14]))
                                         field_18])
                                       field_17]))

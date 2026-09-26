@@ -20,7 +20,7 @@ case@List match#51 of
     let restY#46 : list 'erased = field#50 in
     case@Bool eq#47 x#43 y#45 of
       True -> self#25 self#25 restX#44 restY#46
-      False -> fromBool#20 false) in
+      False -> false) in
 let eq#2 : Main.option 'erased -> Main.option 'erased -> bool = \a#18 : Main.option 'erased b#19 : Main.option 'erased -> let match#24 : (Main.option 'erased, Main.option 'erased) = constr 0 a#18 b#19 in
 let leaf#30 : 'erased = delay (fromBool#20 false) in
 case@Tag match#24 of
@@ -124,7 +124,7 @@ main#1
                                       [(lam restY_46
                                         (case
                                           [[eq_47 x_43] y_45]
-                                          [fromBool_20 (con bool False)]
+                                          (con bool False)
                                           [[[self_25 self_25] restX_44] restY_46]))
                                         field_50])
                                       field_49]))

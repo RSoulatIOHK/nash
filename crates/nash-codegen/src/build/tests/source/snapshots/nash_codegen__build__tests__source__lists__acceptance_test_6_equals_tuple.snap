@@ -20,7 +20,7 @@ case@List match#33 of
     let restY#29 : list 'erased = field#32 in
     case@Bool eq#11 x#26 y#28 of
       True -> self#36 self#36 restX#27 restY#29
-      False -> fromBool#10 false) in
+      False -> false) in
 let same#2 : (int, list int) -> (int, list int) -> bool = \arg#4 : (int, list int) arg#7 : (int, list int) -> let match#16 : (int, list int) = arg#4 in
 case@Tag match#16 of
   0 field#17 field#18 -> let a#5 : int = field#17 in
@@ -89,7 +89,7 @@ main#1
                                       [(lam restY_29
                                         (case
                                           [[eq_11 x_26] y_28]
-                                          [fromBool_10 (con bool False)]
+                                          (con bool False)
                                           [[[self_36 self_36] restX_27] restY_29]))
                                         field_32])
                                       field_31]))

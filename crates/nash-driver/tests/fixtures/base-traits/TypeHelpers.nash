@@ -13,19 +13,19 @@ littleOption = Some 7
 none : option int
 none = None
 both : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool
-both a b = Bool.and a b
+both a b = Logic.and a b
 badBig : unit -> Bool
 badBig _ = fail
 
 tests
     test "mixed booleans and ordering" = do
-        assert (Bool.and Bool.True True)
-        assert (Bool.or False Bool.True)
-        assert (not (Bool.xor Bool.True True))
-        assert (not (Bool.not Bool.True))
+        assert (Logic.and Bool.True True)
+        assert (Logic.or False Bool.True)
+        assert (not (Logic.xor Bool.True True))
+        assert (not (Logic.not Bool.True))
     test "mixed booleans and ordering 2" = do
-        assert (Bool.or Bool.True (badBig ()))
-        assert (not (Bool.and False (badBig ())))
+        assert (Logic.or Bool.True (badBig ()))
+        assert (not (Logic.and False (badBig ())))
         assert (Bool.True || badBig ())
         assert (both Bool.True True)
     test "mixed booleans and ordering 3" = do

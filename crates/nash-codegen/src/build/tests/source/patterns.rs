@@ -811,14 +811,15 @@ case!(
     module Main exposing (..)
     import Primitive exposing (type bool(..))
     import Bool
+    import Logic
     import Lift exposing (Lift)
     both : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool
-    both a b = Bool.and a b
+    both a b = Logic.and a b
     bad : unit -> Bool.Bool
     bad _ = fail
     main : bool
     main =
-        if Bool.or Bool.True (bad ()) then
+        if Logic.or Bool.True (bad ()) then
             both Bool.True True
         else False
 "#,
@@ -831,13 +832,14 @@ case!(
     module Main exposing (..)
     import Primitive exposing (type bool(..))
     import Bool
+    import Logic
     bad : unit -> Bool.Bool
     bad _ = fail
     main : bool
     main =
         let
             partial : Bool.Bool -> bool
-            partial = Bool.or Bool.True
+            partial = Logic.or Bool.True
         in
         partial (bad ())
 "#,
@@ -850,6 +852,7 @@ case!(
     module Main exposing (..)
     import Primitive exposing (type bool(..), coerce)
     import Bool
+    import Logic
     import Lift exposing (Lift)
     type alias flag = bool
     impl Lift bool flag where
@@ -858,9 +861,9 @@ case!(
     off : flag
     off = coerce True
     both : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool
-    both a b = Bool.and a b
+    both a b = Logic.and a b
     main : bool
-    main = if Bool.and off True then True else both off True
+    main = if Logic.and off True then True else both off True
 "#,
     Ok("(con bool False)")
 );
@@ -871,6 +874,7 @@ case!(
     module Main exposing (..)
     import Primitive exposing (type bool(..), coerce)
     import Bool
+    import Logic
     import Lift exposing (Lift)
     type alias flag = bool
     impl Lift bool flag where
@@ -879,7 +883,7 @@ case!(
     value : flag
     value = coerce False
     main : bool
-    main = Bool.or True value
+    main = Logic.or True value
 "#,
     Ok("(con bool True)")
 );
@@ -889,6 +893,7 @@ case!(
     r#"
     module Main exposing (..)
     import Bool
+    import Logic
     import Lift exposing (Lift)
     make : bool -> Bool.Bool
     make = lift

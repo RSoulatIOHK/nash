@@ -13,6 +13,7 @@ module Cardano.Time exposing
     )
 
 
+import Logic exposing ( (&&) )
 import Monad exposing ( Monad )
 import Option exposing ( type option(..) )
 import Prelude exposing (..)
@@ -126,7 +127,7 @@ endpointLe left right =
 {-| Test whether an interval contains no times. -}
 isEmpty : Interval -> bool
 isEmpty (Interval lo hi) =
-    Bool.not (endpointLe (inclusiveEndpoint 1 lo) (inclusiveEndpoint (-1) hi))
+    Logic.not (endpointLe (inclusiveEndpoint 1 lo) (inclusiveEndpoint (-1) hi))
 
 
 {-| Test whether the first interval contains the second. -}

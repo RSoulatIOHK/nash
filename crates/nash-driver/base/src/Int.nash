@@ -26,6 +26,7 @@ module Int exposing
     )
 
 
+import Logic exposing ( (&&), (||) )
 import Primitive exposing ( type bool(..) )
 import Prelude exposing (..)
 import Lift exposing ( Lift )

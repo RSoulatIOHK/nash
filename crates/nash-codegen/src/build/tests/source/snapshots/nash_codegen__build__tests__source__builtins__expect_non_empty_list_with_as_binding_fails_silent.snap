@@ -20,7 +20,7 @@ case@List match#19 of
     let restY#14 : list 'erased = field#18 in
     case@Bool eq#15 x#11 y#13 of
       True -> self#28 self#28 restX#12 restY#14
-      False -> fromBool#7 false) in
+      False -> false) in
 let fromAssetList#4 : list int -> list int = \inner#22 : list int -> let match#24 : list int = inner#22 in
 case@List match#24 of
   Nil -> error
@@ -61,7 +61,7 @@ main#1
                                       [(lam restY_14
                                         (case
                                           [[eq_15 x_11] y_13]
-                                          [fromBool_7 (con bool False)]
+                                          (con bool False)
                                           [[[self_28 self_28] restX_12] restY_14]))
                                         field_18])
                                       field_17]))

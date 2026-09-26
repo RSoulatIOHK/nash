@@ -162,6 +162,8 @@ fn with_base_eq(
 ) {
     let modules: Vec<_> = [
         include_str!("../../../nash-driver/base/src/Literal.nash"),
+        include_str!("../../../nash-driver/base/src/Lift.nash"),
+        include_str!("../../../nash-driver/base/src/Logic.nash"),
         eq_source,
     ]
     .into_iter()

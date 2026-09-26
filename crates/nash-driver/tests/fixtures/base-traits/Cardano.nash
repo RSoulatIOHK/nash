@@ -32,7 +32,7 @@ tests
     test "closed interval builders accept Big endpoints" = do
         assert (Time.member bigStart (Time.interval bigStart 20))
         assert (Time.member 20 (Time.interval bigStart 20))
-        assert (Bool.not (Time.member 21 (Time.interval bigStart 20)))
+        assert (Logic.not (Time.member 21 (Time.interval bigStart 20)))
         assert (Time.contains Time.always (Time.interval bigStart 20))
         assert (Time.contains (Time.from bigStart) (Time.to -20) == False)
         assert (Time.contains (Time.interval 0 1) Time.never)

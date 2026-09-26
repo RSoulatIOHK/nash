@@ -105,6 +105,6 @@ check raw encoded =
         _ = assert (Value.lovelace (List.at 0 context.tx.outputs |> Option.unwrap).value == 100)
         _ = assert (Value.quantityOf #"706f6c696379" #"6173736574" context.tx.mint == -2)
         _ = assert (Time.member 11 context.tx.validityRange)
-        _ = assert (Bool.not (Time.member 10 context.tx.validityRange))
+        _ = assert (Logic.not (Time.member 10 context.tx.validityRange))
     in
     ()

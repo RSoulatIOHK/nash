@@ -51,4 +51,4 @@ tests
         assert (checkToken customUnit == 3)
     test "qualified constructors" = do
         assert (booleanPattern Primitive.True == 1)
-        assert (Bool.and Bool.True Primitive.True)
+        assert (Logic.and Bool.True Primitive.True)

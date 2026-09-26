@@ -6,7 +6,7 @@ strictAnd : bool -> bool
 strictAnd = and False
 
 namedAnd = and False (failBool "unselected outside assertion")
-namedOr = Bool.or True (failBool "unselected outside assertion")
+namedOr = Logic.or True (failBool "unselected outside assertion")
 
 failBool : string -> bool
 failBool message = fail message
@@ -30,8 +30,8 @@ tests
         assert (True || (failBool "unselected or"))
         assert (not (and False (failBool "unselected named and")))
         assert (or True (failBool "unselected named or"))
-        assert (not (Bool.and False (failBool "unselected qualified and")))
-        assert (Bool.or True (failBool "unselected qualified or"))
+        assert (not (Logic.and False (failBool "unselected qualified and")))
+        assert (Logic.or True (failBool "unselected qualified or"))
         assert (and True True)
         assert (not (or False False))
     test "trace result" = do

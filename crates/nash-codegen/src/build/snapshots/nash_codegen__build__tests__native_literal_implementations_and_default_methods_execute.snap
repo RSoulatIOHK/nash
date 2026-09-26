@@ -4,12 +4,13 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
 ---
 --- core
 let fromBool#2 : bool -> bool = \value#6 : bool -> value#6 in
-let eq#9 : int -> int -> bool = equalsInteger in
-let neq#3 : 'erased -> 'erased -> bool = \a#7 : 'erased b#8 : 'erased -> case@Bool eq#9 a#7 b#8 of
-  True -> fromBool#2 false
-  False -> fromBool#2 true in
-let fromInt#4 : int -> int = \value#10 : int -> value#10 in
-let same#5 : int -> int -> bool = eq#9 in
+let not#9 : 'erased -> bool = \value#12 : 'erased -> case@Bool (\identity#13 : 'erased -> identity#13) value#12 of
+  True -> false
+  False -> true in
+let eq#10 : int -> int -> bool = equalsInteger in
+let neq#3 : 'erased -> 'erased -> bool = \a#7 : 'erased b#8 : 'erased -> not#9 (eq#10 a#7 b#8) in
+let fromInt#4 : int -> int = \value#11 : int -> value#11 in
+let same#5 : int -> int -> bool = eq#10 in
 let main#1 : bool = case@Bool neq#3 (addInteger (fromInt#4 20) (fromInt#4 21)) (fromInt#4 42) of
   True -> same#5 (fromInt#4 42) (fromInt#4 42)
   False -> fromBool#2 false in
@@ -17,31 +18,29 @@ main#1
 --- uplc
 (program 1.1.0
   [(lam fromBool_2
-    [(lam eq_9
-      [(lam neq_3
-        [(lam fromInt_4
-          [(lam same_5
-            [(lam main_1 main_1)
-              (case
-                [[neq_3
-                  [[(builtin addInteger) [fromInt_4 (con integer 20)]]
-                    [fromInt_4 (con integer 21)]]]
-                  [fromInt_4 (con integer 42)]]
-                [fromBool_2 (con bool False)]
-                [[same_5 [fromInt_4 (con integer 42)]] [fromInt_4 (con integer 42)]])])
-            eq_9])
-          (lam value_10 value_10)])
-        (lam a_7
-          (lam b_8
-            (case
-              [[eq_9 a_7] b_8]
-              [fromBool_2 (con bool True)]
-              [fromBool_2 (con bool False)])))])
-      (builtin equalsInteger)])
+    [(lam not_9
+      [(lam eq_10
+        [(lam neq_3
+          [(lam fromInt_4
+            [(lam same_5
+              [(lam main_1 main_1)
+                (case
+                  [[neq_3
+                    [[(builtin addInteger) [fromInt_4 (con integer 20)]]
+                      [fromInt_4 (con integer 21)]]]
+                    [fromInt_4 (con integer 42)]]
+                  [fromBool_2 (con bool False)]
+                  [[same_5 [fromInt_4 (con integer 42)]] [fromInt_4 (con integer 42)]])])
+              eq_10])
+            (lam value_11 value_11)])
+          (lam a_7 (lam b_8 [not_9 [[eq_10 a_7] b_8]]))])
+        (builtin equalsInteger)])
+      (lam value_12
+        (case [(lam identity_13 identity_13) value_12] (con bool True) (con bool False)))])
     (lam value_6 value_6)])
 --- result
 (con bool True)
 --- logs
 []
 --- budget
-cpu: 1149974, memory: 6004
+cpu: 1245974, memory: 6604

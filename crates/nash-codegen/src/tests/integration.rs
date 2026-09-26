@@ -29,6 +29,10 @@ fn compile_selected(
     let mut modules = Vec::new();
     for (text, package) in crate::harness::dependency_order([
         (
+            include_str!("../../../nash-driver/base/src/Logic.nash"),
+            Some(primitives::BASE),
+        ),
+        (
             include_str!("../../../nash-driver/base/src/Function.nash"),
             Some(primitives::BASE),
         ),
@@ -57,7 +61,7 @@ fn compile_selected(
             Some(primitives::BASE),
         ),
         (
-            "module Logic exposing ((&&), (||), (==))\nimport Bool exposing (and, or)\nimport Builtin\ninfix right 2 (||) = or\ninfix right 3 (&&) = and\ninfix non 4 (==) = equal\nequal : int -> int -> bool\nequal = Builtin.equalsInteger\n",
+            "module TestLogic exposing ((==))\nimport Builtin\ninfix non 4 (==) = equal\nequal : int -> int -> bool\nequal = Builtin.equalsInteger\n",
             Some(primitives::BASE),
         ),
         (
@@ -226,6 +230,7 @@ fn captures_preserve_partial_application_order_and_lazy_branches() {
         import Builtin exposing (..)
         import Literal
         import Logic exposing (..)
+        import TestLogic exposing ((==))
         compare : int -> int -> bool
         compare x = trace "partial" (\y -> Builtin.equalsInteger x y)
         one : int
@@ -329,7 +334,7 @@ fn assertion_json_preserves_nested_call_delimiters_and_string_parentheses() {
         import Primitive exposing (..)
         import Builtin exposing (..)
         import Literal
-        import Logic exposing ((==))
+        import TestLogic exposing ((==))
         one : int
         one = 1
         tests

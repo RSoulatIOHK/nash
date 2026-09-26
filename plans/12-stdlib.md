@@ -160,9 +160,9 @@ The implemented structure and executable coverage are listed below.
 
 - `crates/nash-driver/base/src/Eq.nash`, `Ord.nash`, `Show.nash`, `Num.nash`, `Integral.nash`, `Semigroup.nash`, `Monoid.nash`, `Functor.nash`, `Applicative.nash`, `Monad.nash`, `Lift.nash`, `Data.nash`, `Literal.nash`
 - `crates/nash-driver/base/src/Prelude.nash` (the `infix` table and the tuple impls)
-- `crates/nash-driver/base/src/Bool.nash` (`not`, `and`, `or`, `xor`)
+- `crates/nash-driver/base/src/Logic.nash` (`not`, `and`, `or`, `xor`, `&&`, `||`)
 - `crates/nash-driver/base/src/Option.nash`, `Ordering.nash` (their `Eq`/`Functor`/`Applicative`/`Monad`/`Lift` impls)
-- `crates/nash-codegen/src/can_to_core.rs` (plans/07: `Bool.and`/`or` delay the second argument)
+- `crates/nash-codegen/src/can_to_core.rs` (plans/07: `Logic.and`/`or` delay the second argument)
 
 **Change**
 
@@ -171,7 +171,7 @@ with the impls for compiler-known types listed in docs/stdlib.md "Trait
 modules"; `Lift.nash` holds representation.md's impl table (the reflexive
 `Lift 'a 'a` is compiler-provided and not written); `Prelude`
 gets the `infix` table, the operator helper functions, and the tuple
-impls; `Bool` gets the `bool` functions; tracing and failure use native
+impls; `Logic` gets the `bool` functions; tracing and failure use native
 `trace`, `todo`, and `fail` syntax directly. Impls for the twin types go in
 the twin's module.
 
@@ -183,7 +183,7 @@ Base modules use explicit imports. Preserve the acyclic bootstrap chain:
 `Bool`, `Unit`, and `Ordering` import `Lift`; `Bool` and `Unit` also import
 `Literal` for their literal instances. `Eq` imports `Literal` for its boolean
 expressions. `Ordering` also imports `Eq`. `Prelude` imports its required
-traits and `Bool`; the application default-import catalog independently
+traits; the application default-import catalog independently
 exposes all shipped traits. Later type modules may import `Prelude` for
 operators without adding reverse dependencies.
 
@@ -201,7 +201,7 @@ named `prepend` because `Cons` is the `Cons` module's constructor), and
 `Eq`, `Ord`, `Show` (tuples count as defined in `nash/base` for the orphan
 rule).
 
-Lazy `and`/`or`: codegen recognizes `VarForeign { home: Bool, name: "and" | "or" }`
+Lazy `and`/`or`: codegen recognizes `VarForeign { home: Logic, name: "and" | "or" }`
 in call position with two arguments and emits `if a then b else False`
 for `and`, or `if a then True else b` for `or`,
 directly (the `if` is already lazy). Partial applications of `and` fall
@@ -435,7 +435,7 @@ primitiveModule : modname
 primitiveModule = { package = Some "nash/base", name = "Primitive" }
 
 boolModule : modname
-boolModule = { package = Some "nash/base", name = "Bool" }
+boolModule = { package = Some "nash/base", name = "Logic" }
 
 exprName : expr -> option string
 exprName (Expr _ node) =

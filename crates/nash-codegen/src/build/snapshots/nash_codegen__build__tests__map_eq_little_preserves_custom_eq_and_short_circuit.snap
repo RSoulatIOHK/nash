@@ -28,7 +28,7 @@ case@Pair match#33 of
       let firstB#47 : 'erased = field#39 in
       let secondB#48 : 'erased = field#40 in
       eq#41 secondA#43 secondB#48
-      False -> fromBool#10 false in
+      False -> false in
 let eq#6 : list 'erased -> list 'erased -> bool = (\self#45 : 'erased -> self#45 self#45) (\self#45 : 'erased xs#8 : list 'erased ys#9 : list 'erased -> let match#22 : list 'erased = xs#8 in
 case@List match#22 of
   Nil -> let match#11 : list 'erased = ys#9 in
@@ -44,7 +44,7 @@ case@List match#22 of
     let restY#17 : list 'erased = field#21 in
     case@Bool eq#18 x#14 y#16 of
       True -> self#45 self#45 restX#15 restY#17
-      False -> fromBool#10 false) in
+      False -> false) in
 let eqMapEntries#4 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#6 in
 let eq#2 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#4 in
 let fromInt#5 : int -> int = \value#7 : int -> value#7 in
@@ -102,7 +102,7 @@ main#1
                                               [(lam restY_17
                                                 (case
                                                   [[eq_18 x_14] y_16]
-                                                  [fromBool_10 (con bool False)]
+                                                  (con bool False)
                                                   [[[self_45 self_45] restX_15] restY_17]))
                                                 field_21])
                                               field_20]))
@@ -137,7 +137,7 @@ main#1
                                             [(lam secondB_37
                                               (case
                                                 [[eq_30 firstA_31] firstB_36]
-                                                [fromBool_10 (con bool False)]
+                                                (con bool False)
                                                 [(lam match_44
                                                   [(lam firstA_42
                                                     [(lam secondA_43
@@ -176,4 +176,4 @@ main#1
 --- logs
 ["custom"]
 --- budget
-cpu: 3305800, memory: 19124
+cpu: 3209800, memory: 18524

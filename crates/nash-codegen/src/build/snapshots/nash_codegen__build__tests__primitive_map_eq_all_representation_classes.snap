@@ -27,7 +27,7 @@ case@Pair match#82 of
       let firstB#96 : 'erased = field#88 in
       let secondB#97 : 'erased = field#89 in
       eq#90 secondA#92 secondB#97
-      False -> fromBool#28 false in
+      False -> false in
 let eq#23 : list 'erased -> list 'erased -> bool = (\self#123 : 'erased -> self#123 self#123) (\self#123 : 'erased xs#26 : list 'erased ys#27 : list 'erased -> let match#40 : list 'erased = xs#26 in
 case@List match#40 of
   Nil -> let match#29 : list 'erased = ys#27 in
@@ -43,7 +43,7 @@ case@List match#40 of
     let restY#35 : list 'erased = field#39 in
     case@Bool eq#36 x#32 y#34 of
       True -> self#123 self#123 restX#33 restY#35
-      False -> fromBool#28 false) in
+      False -> false) in
 let eqMapEntries#19 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#23 in
 let eq#13 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#19 in
 let same#4 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#13 in
@@ -66,7 +66,7 @@ case@Pair match#107 of
       let firstB#120 : 'erased = field#113 in
       let secondB#121 : 'erased = field#114 in
       equalsData secondA#116 secondB#121
-      False -> fromBool#28 false in
+      False -> false in
 let eq#24 : list 'erased -> list 'erased -> bool = (\self#100 : 'erased -> self#100 self#100) (\self#100 : 'erased xs#43 : list 'erased ys#44 : list 'erased -> let match#56 : list 'erased = xs#43 in
 case@List match#56 of
   Nil -> let match#45 : list 'erased = ys#44 in
@@ -82,7 +82,7 @@ case@List match#56 of
     let restY#51 : list 'erased = field#55 in
     case@Bool eq#52 x#48 y#50 of
       True -> self#100 self#100 restX#49 restY#51
-      False -> fromBool#28 false) in
+      False -> false) in
 let eqMapEntries#20 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#24 in
 let eq#14 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#20 in
 let same#6 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#14 in
@@ -106,7 +106,7 @@ case@Pair match#131 of
       let firstB#145 : 'erased = field#137 in
       let secondB#146 : 'erased = field#138 in
       eq#139 secondA#141 secondB#146
-      False -> fromBool#28 false in
+      False -> false in
 let eq#25 : list 'erased -> list 'erased -> bool = (\self#94 : 'erased -> self#94 self#94) (\self#94 : 'erased xs#59 : list 'erased ys#60 : list 'erased -> let match#72 : list 'erased = xs#59 in
 case@List match#72 of
   Nil -> let match#61 : list 'erased = ys#60 in
@@ -122,7 +122,7 @@ case@List match#72 of
     let restY#67 : list 'erased = field#71 in
     case@Bool eq#68 x#64 y#66 of
       True -> self#94 self#94 restX#65 restY#67
-      False -> fromBool#28 false) in
+      False -> false) in
 let eqMapEntries#21 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#25 in
 let eq#15 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#21 in
 let same#8 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#15 in
@@ -206,7 +206,7 @@ main#1
                                                                           [(lam restY_67
                                                                             (case
                                                                               [[eq_68 x_64] y_66]
-                                                                              [fromBool_28 (con bool False)]
+                                                                              (con bool False)
                                                                               [[[self_94 self_94] restX_65] restY_67]))
                                                                             field_71])
                                                                           field_70]))
@@ -241,7 +241,7 @@ main#1
                                                                         [(lam secondB_135
                                                                           (case
                                                                             [[eq_90 firstA_129] firstB_134]
-                                                                            [fromBool_28 (con bool False)]
+                                                                            (con bool False)
                                                                             [(lam match_142
                                                                               [(lam firstA_140
                                                                                 [(lam secondA_141
@@ -288,7 +288,7 @@ main#1
                                                             [(lam restY_51
                                                               (case
                                                                 [[eq_52 x_48] y_50]
-                                                                [fromBool_28 (con bool False)]
+                                                                (con bool False)
                                                                 [[[self_100 self_100] restX_49] restY_51]))
                                                               field_55])
                                                             field_54]))
@@ -323,7 +323,7 @@ main#1
                                                           [(lam secondB_111
                                                             (case
                                                               [[eq_90 firstA_105] firstB_110]
-                                                              [fromBool_28 (con bool False)]
+                                                              (con bool False)
                                                               [(lam match_117
                                                                 [(lam firstA_115
                                                                   [(lam secondA_116
@@ -367,7 +367,7 @@ main#1
                                                 [(lam restY_35
                                                   (case
                                                     [[eq_36 x_32] y_34]
-                                                    [fromBool_28 (con bool False)]
+                                                    (con bool False)
                                                     [[[self_123 self_123] restX_33] restY_35]))
                                                   field_39])
                                                 field_38]))
@@ -402,7 +402,7 @@ main#1
                                               [(lam secondB_86
                                                 (case
                                                   [[(builtin equalsData) firstA_80] firstB_85]
-                                                  [fromBool_28 (con bool False)]
+                                                  (con bool False)
                                                   [(lam match_93
                                                     [(lam firstA_91
                                                       [(lam secondA_92
@@ -437,4 +437,4 @@ main#1
 --- logs
 []
 --- budget
-cpu: 6557687, memory: 30086
+cpu: 6461687, memory: 29486

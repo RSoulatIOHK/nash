@@ -26,7 +26,8 @@ The layout includes planned library modules as well as the current foundation.
 crates/nash-driver/base/
   src/
     Function.nash         dependency-free forward and backward application
-    Prelude.nash          infix declarations, basics
+    Prelude.nash          trait operators, basics
+    Logic.nash            boolean helpers and &&/||, below Eq and Ord
     Eq.nash               trait Eq + impls for compiler-known types
     Ord.nash              trait Ord
     Show.nash             trait Show
@@ -40,7 +41,7 @@ crates/nash-driver/base/
     Lift.nash             trait Lift + impls for compiler-known types
     Data.nash             traits ToData/FromData/Validate; functions over Data
     Literal.nash          traits FromInt, FromString, FromBytes, FromBool, FromUnit
-    Bool.nash             bool functions; Big Bool
+    Bool.nash             Big Bool and its implementations
     Unit.nash             Big Unit
     Option.nash           option / Option
     Ordering.nash         ordering / Ordering
@@ -102,7 +103,8 @@ import Monad exposing (Monad)
 import Lift exposing (Lift)
 import Data exposing (ToData, FromData, Validate, Decode)
 import Literal exposing (FromInt, FromString, FromBytes, FromBool, FromUnit)
-import Bool exposing (Bool, not, and, or, xor)
+import Bool exposing (Bool)
+import Logic exposing (..)
 import Unit exposing (Unit)
 import Option exposing (Option, type option(..))
 import Ordering exposing (Ordering, type ordering(..))
@@ -137,8 +139,8 @@ Consequences, matching representation.md "Prelude twins":
   but the Big types are exposed without `(..)`, so the constructors never
   enter the unqualified scope. The Big type names are unqualified
   (`Option`, `Bool`). No resolution by expected type is involved.
-- Operators come from `Prelude` (the `infix` declarations) and the methods
-  they bind to come from the trait modules; both are in scope.
+- Boolean operators `&&` and `||` come from `Logic`; other operators come
+  from `Prelude`. Their target functions and trait methods are also in scope.
 - Modules inside `nash/base` get no defaults and import explicitly (Elm
   does the same for `elm/core`).
 - `Prop` and `Test` are default imports so `tests` blocks can use
@@ -176,7 +178,9 @@ orphan rule needs either the trait or the head type to be local and
 table binds (`|>`, `<|`, `<<`, `>>`, `::` targets, plus
 `identity`/`always`), and the prelude impls: impls for tuples, which
 count as defined in `nash/base` under the orphan rule. Everything else
-lives in the trait modules or the type modules. `Prelude` imports the traits it needs and `Bool` (for `&&`/`||`).
+lives in the trait modules or the type modules. `Prelude` imports the traits it needs and does not own boolean operators. `Logic` owns `not`, `and`, `or`,
+`xor`, `&&`, and `||`, depending only on `Primitive` and `Lift`. Eq and Ord
+can import it without a cycle. `Bool` owns the Big type and its implementations.
 The pipe implementations live in dependency-free `Function`; `Prelude` keeps
 its public pipe operators and application functions. Base modules below
 `Prelude` can import the pipes from `Function` without an import cycle.
@@ -189,6 +193,8 @@ module's constructor) and stays in `Prelude` rather than `List` because
 ```elm
 module Prelude exposing (..)
 
+import Logic exposing ((&&))
+
 import Eq exposing (Eq)
 import Ord exposing (Ord)
 import Show exposing (Show)
@@ -198,7 +204,6 @@ import Semigroup exposing (Semigroup)
 import Functor exposing (Functor)
 import Applicative exposing (Applicative)
 import Monad exposing (Monad)
-import Bool exposing (and, or)
 import Builtin
 import Function
 
@@ -206,8 +211,6 @@ infix left  0 (|>)  = applyForward
 infix right 0 (<|)  = applyBackward
 infix right 9 (<<)  = composeLeft
 infix left  9 (>>)  = composeRight
-infix right 2 (||)  = or
-infix right 3 (&&)  = and
 infix non   4 (==)  = eq
 infix non   4 (/=)  = neq
 infix non   4 (<)   = lt
@@ -253,8 +256,8 @@ impl (Eq 'a, Eq 'b) => Eq ('a, 'b) where
 ```
 
 `/` is `Integral.div`; there is no `Float`. `-x` is `Num.negate x`.
-`not`, `and`, `or`, `xor` are in `Bool` (functions over the little
-`bool`).
+`not`, `and`, `or`, `xor` are in `Logic`; they accept Big or little
+booleans through `Lift` and return little `bool`.
 
 ## Trait modules
 
@@ -509,7 +512,7 @@ returning a little option. `Option.unwrap` fails on None; `withDefault` returns 
 | `Primitive.unit`, `()` | UPLC `unit` constant |
 | `Primitive.Data` and its constructors | pattern-matchable Big type (data.md) |
 | `Primitive.list`, `[..]`, `::` patterns | list literals and patterns; element predicate `Storable` |
-| `Bool.and`, `Bool.or` | second argument delayed (`&&`, `||` are lazy) |
+| `Logic.and`, `Logic.or` | second argument delayed (`&&`, `||` are lazy) |
 | `Literal.FromInt`, `FromString`, `FromBytes`, `FromBool`, `FromUnit` | expression literal desugaring and defaulting to `int`, `string`, `bytes`, `bool`, `unit` |
 | `Eq.Eq` | literal patterns |
 | `Monad.Monad` | `do` desugaring target |
@@ -886,7 +889,7 @@ Byte logic takes the builtin padding flag; shift/rotate and hash functions
 use the corresponding Plutus builtin semantics. Bytes.toHex is lowercase
 without a prefix. String.join inserts separators only between entries.
 
-Bool.and/or and &&/|| short-circuit fully applied calls, including mixed
+Logic.and/or and &&/|| short-circuit fully applied calls, including mixed
 Big/little operands. Partial applications remain strict. A polymorphic failing
 operand needs an annotation to identify its representation.
 

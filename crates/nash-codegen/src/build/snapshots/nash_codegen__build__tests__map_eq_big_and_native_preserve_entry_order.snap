@@ -25,7 +25,7 @@ case@Pair match#30 of
       let firstB#43 : 'erased = field#36 in
       let secondB#44 : 'erased = field#37 in
       equalsData secondA#39 secondB#44
-      False -> fromBool#8 false in
+      False -> false in
 let eq#4 : list 'erased -> list 'erased -> bool = (\self#41 : 'erased -> self#41 self#41) (\self#41 : 'erased xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
 case@List match#20 of
   Nil -> let match#9 : list 'erased = ys#7 in
@@ -41,7 +41,7 @@ case@List match#20 of
     let restY#15 : list 'erased = field#19 in
     case@Bool eq#16 x#12 y#14 of
       True -> self#41 self#41 restX#13 restY#15
-      False -> fromBool#8 false) in
+      False -> false) in
 let main#1 : (bool, bool, bool, bool) = constr 0 (equalsData (mapData entries#2) (mapData entries#2)) (equalsData (mapData entries#2) (mapData reversed#3)) (eq#4 entries#2 entries#2) (eq#4 entries#2 reversed#3) in
 main#1
 --- uplc
@@ -80,7 +80,7 @@ main#1
                                             [(lam restY_15
                                               (case
                                                 [[eq_16 x_12] y_14]
-                                                [fromBool_8 (con bool False)]
+                                                (con bool False)
                                                 [[[self_41 self_41] restX_13] restY_15]))
                                               field_19])
                                             field_18]))
@@ -115,7 +115,7 @@ main#1
                                           [(lam secondB_34
                                             (case
                                               [[(builtin equalsData) firstA_28] firstB_33]
-                                              [fromBool_8 (con bool False)]
+                                              (con bool False)
                                               [(lam match_40
                                                 [(lam firstA_38
                                                   [(lam secondA_39
@@ -152,4 +152,4 @@ main#1
 --- logs
 []
 --- budget
-cpu: 16892054, memory: 43548
+cpu: 16844054, memory: 43248

@@ -20,7 +20,7 @@ case@List match#20 of
     let restY#15 : list 'erased = field#19 in
     case@Bool eq#16 x#12 y#14 of
       True -> self#29 self#29 restX#13 restY#15
-      False -> fromBool#8 false) in
+      False -> false) in
 let fromInt#5 : int -> int = \value#26 : int -> value#26 in
 let repeat#3 : bytes -> int -> list bytes = \x#23 : bytes n#24 : int -> (\self#28 : 'erased -> self#28 self#28) (\self#28 : 'erased n#24 : int -> case@Bool lessThanEqualsInteger n#24 (fromInt#5 0) of
   True -> (con (list bytestring) [])
@@ -77,7 +77,7 @@ main#1
                                       [(lam restY_15
                                         (case
                                           [[eq_16 x_12] y_14]
-                                          [fromBool_8 (con bool False)]
+                                          (con bool False)
                                           [[[self_29 self_29] restX_13] restY_15]))
                                         field_19])
                                       field_18]))

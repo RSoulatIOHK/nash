@@ -2,6 +2,7 @@ module Ord exposing ( Ord )
 
 
 import Builtin
+import Logic exposing ( not, (&&) )
 import Primitive exposing ( type bool(..) )
 import Eq exposing ( Eq )
 import Ordering exposing ( type ordering(..) )
@@ -76,12 +77,9 @@ impl Ord string where
 
 impl Ord bool where
     compare a b =
-        if a then
-            if b then
-                EQ
-            else
-                GT
-        else if b then
+        if a && not b then
+            GT
+        else if b && not a then
             LT
         else
             EQ

@@ -20,7 +20,7 @@ case@List match#62 of
     let restY#57 : list 'erased = field#61 in
     case@Bool eq#58 x#54 y#56 of
       True -> self#87 self#87 restX#55 restY#57
-      False -> fromBool#17 false) in
+      False -> false) in
 let eq#74 : bytes -> bytes -> bool = equalsByteString in
 let eq#19 : list 'erased -> list 'erased -> bool = (\self#84 : 'erased -> self#84 self#84) (\self#84 : 'erased xs#65 : list 'erased ys#66 : list 'erased -> let match#78 : list 'erased = xs#65 in
 case@List match#78 of
@@ -37,7 +37,7 @@ case@List match#78 of
     let restY#73 : list 'erased = field#77 in
     case@Bool eq#74 x#70 y#72 of
       True -> self#84 self#84 restX#71 restY#73
-      False -> fromBool#17 false) in
+      False -> false) in
 let same#2 : ('erased, 'erased) -> ('erased, 'erased) -> bool = \arg#11 : ('erased, 'erased) arg#14 : ('erased, 'erased) -> let match#23 : ('erased, 'erased) = arg#11 in
 case@Tag match#23 of
   0 field#24 field#25 -> let a#12 : 'erased = field#24 in
@@ -181,7 +181,7 @@ main#1
                                           [(lam restY_73
                                             (case
                                               [[eq_74 x_70] y_72]
-                                              [fromBool_17 (con bool False)]
+                                              (con bool False)
                                               [[[self_84 self_84] restX_71] restY_73]))
                                             field_77])
                                           field_76]))
@@ -217,7 +217,7 @@ main#1
                                       [(lam restY_57
                                         (case
                                           [[eq_58 x_54] y_56]
-                                          [fromBool_17 (con bool False)]
+                                          (con bool False)
                                           [[[self_87 self_87] restX_55] restY_57]))
                                         field_61])
                                       field_60]))

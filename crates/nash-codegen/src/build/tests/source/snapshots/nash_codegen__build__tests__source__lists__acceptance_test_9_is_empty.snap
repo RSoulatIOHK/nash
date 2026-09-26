@@ -3,42 +3,49 @@ source: crates/nash-codegen/src/build/tests/source/lists.rs
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nisEmpty bytes = equalsInteger (lengthOfByteString bytes) 0\nmain = eq (isEmpty #\"\") True\n"
 ---
 --- core
-let fromBool#5 : bool -> bool = \value#11 : bool -> value#11 in
-let eq#2 : bool -> bool -> bool = \a#6 : bool b#7 : bool -> case@Bool a#6 of
-  True -> b#7
-  False -> case@Bool b#7 of
-    True -> fromBool#5 false
-    False -> fromBool#5 true in
-let fromInt#9 : int -> int = \value#12 : int -> value#12 in
-let isEmpty#3 : bytes -> bool = \bytes#8 : bytes -> equalsInteger (lengthOfByteString bytes#8) (fromInt#9 0) in
-let fromBytes#4 : bytes -> bytes = \value#10 : bytes -> value#10 in
+let not#8 : 'erased -> bool = \value#14 : 'erased -> case@Bool (\identity#15 : 'erased -> identity#15) value#14 of
+  True -> false
+  False -> true in
+let xor#9 : 'erased -> 'erased -> bool = \a#16 : 'erased b#17 : 'erased -> case@Bool (\identity#19 : 'erased -> identity#19) a#16 of
+  True -> not#8 b#17
+  False -> (\identity#18 : 'erased -> identity#18) b#17 in
+let eq#2 : bool -> bool -> bool = \a#6 : bool b#7 : bool -> not#8 (xor#9 a#6 b#7) in
+let fromInt#11 : int -> int = \value#20 : int -> value#20 in
+let isEmpty#3 : bytes -> bool = \bytes#10 : bytes -> equalsInteger (lengthOfByteString bytes#10) (fromInt#11 0) in
+let fromBytes#4 : bytes -> bytes = \value#12 : bytes -> value#12 in
+let fromBool#5 : bool -> bool = \value#13 : bool -> value#13 in
 let main#1 : bool = eq#2 (isEmpty#3 (fromBytes#4 (con bytestring #))) (fromBool#5 true) in
 main#1
 --- uplc
 (program 1.1.0
-  [(lam fromBool_5
-    [(lam eq_2
-      [(lam fromInt_9
-        [(lam isEmpty_3
-          [(lam fromBytes_4
-            [(lam main_1 main_1)
-              [[eq_2 [isEmpty_3 [fromBytes_4 (con bytestring #)]]]
-                [fromBool_5 (con bool True)]]])
-            (lam value_10 value_10)])
-          (lam bytes_8
-            [[(builtin equalsInteger) [(builtin lengthOfByteString) bytes_8]]
-              [fromInt_9 (con integer 0)]])])
-        (lam value_12 value_12)])
-      (lam a_6
-        (lam b_7
+  [(lam not_8
+    [(lam xor_9
+      [(lam eq_2
+        [(lam fromInt_11
+          [(lam isEmpty_3
+            [(lam fromBytes_4
+              [(lam fromBool_5
+                [(lam main_1 main_1)
+                  [[eq_2 [isEmpty_3 [fromBytes_4 (con bytestring #)]]]
+                    [fromBool_5 (con bool True)]]])
+                (lam value_13 value_13)])
+              (lam value_12 value_12)])
+            (lam bytes_10
+              [[(builtin equalsInteger) [(builtin lengthOfByteString) bytes_10]]
+                [fromInt_11 (con integer 0)]])])
+          (lam value_20 value_20)])
+        (lam a_6 (lam b_7 [not_8 [[xor_9 a_6] b_7]]))])
+      (lam a_16
+        (lam b_17
           (case
-            a_6
-            (case b_7 [fromBool_5 (con bool True)] [fromBool_5 (con bool False)])
-            b_7)))])
-    (lam value_11 value_11)])
+            [(lam identity_19 identity_19) a_16]
+            [(lam identity_18 identity_18) b_17]
+            [not_8 b_17])))])
+    (lam value_14
+      (case [(lam identity_15 identity_15) value_14] (con bool True) (con bool False)))])
 --- result
 (con bool True)
 --- logs
 []
 --- budget
-cpu: 794533, memory: 4611
+cpu: 1290533, memory: 7711
