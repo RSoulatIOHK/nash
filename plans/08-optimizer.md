@@ -648,6 +648,32 @@ One bottom-up pass with these rules:
 | `App(App(f, as), bs)` | `App(f, as ++ bs)` | always |
 | `Case(Bool, Builtin(IfThenElse, [c, Lit true, Lit false]), ..)` | `Case(Bool, c, ..)` | always |
 
+**Single-field pair projection**
+
+Compare native `CaseKind::Pair` with `FstPair`/`SndPair` when exactly one
+branch binder is used. For a valid one-branch pair case with no default:
+
+```text
+case p of pair a _ -> body a   => let a = fstPair p in body a
+case p of pair _ b -> body b   => let b = sndPair p in body b
+```
+
+A body that directly returns the selected field reduces to the projection itself.
+Use binder identities/occurrence analysis, retain accurate field types, and
+preserve ANF and subject evaluation exactly once. Keep the projection strict at
+the original case point, including when its result is only used inside a returned
+lambda or delay. Do not discard evaluation of either field when simplifying a
+known pair construction. Both fields used keeps the pair case; neither field
+used is outside this rewrite and must retain required evaluation/shape checks.
+This applies to native builtin pairs, including `unConstrData`'s tag/fields pair,
+not arbitrary two-field ADTs.
+
+Measure emitted UPLC CPU, memory and serialized size for both forms, including
+builtin forces and branch-lambda applications. Cover direct projection and a
+larger branch body, and compare standalone versus cached builtin forces. Record
+which form wins and any tradeoff before choosing a deterministic lowering rule;
+do not add per-program tuning machinery. Keep O0 pair-case snapshots unchanged.
+
 Constant folding evaluates the saturated builtin on the CEK machine
 through plan 07's `eval_closed` (which needs no bindings for a
 literal-only term). `is_error_safe` is ported from Aiken and lists, per
@@ -712,6 +738,14 @@ lazy branches without `delay`/`force`. The earlier proposed eager
 - `case_known_bool`, `case_known_int_default`, `case_known_data`.
 - `field_of_constr`: `Field(Constr 0 [a, fail], 0)` is not simplified;
   `Field(Constr 0 [a, b], 0)` is.
+- `pair_first_only`, `pair_second_only`: direct return and larger body; snapshot
+  baseline case and candidate projection UPLC and verify equivalent evaluation.
+- `pair_both_used`, `pair_neither_used`: do not apply the single-field rewrite.
+- `pair_projection_strict`: traced/failing subject, failure in an ignored field
+  of a strict pair construction, and field captured in a returned function/delay;
+  preserve result, logs, failure and evaluation count.
+- `pair_from_unconstr`: tag-only and fields-only access retain malformed-Data
+  failures and do not duplicate `unConstrData`.
 - `fold_add`: `addInteger 40 2` -> `Lit 42`.
 - `no_fold_div_zero`: `divideInteger 1 0` stays.
 - `no_fold_head_nil`: `headList []` stays.

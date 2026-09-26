@@ -368,6 +368,10 @@ Specified in `plans/08-optimizer.md`:
   (Aiken `builtin_eval_reducer`, `is_error_safe`). Adjacent inverse builtin calls
   (`unIData (iData x)`) cancel (Aiken `cast_data_reducer`).
 
+Plan 08 also compares native pair case with `fstPair`/`sndPair` when only one
+field is used, using measured CPU, memory and serialized size. The rewrite must
+preserve strict subject/field evaluation and leave O0 as the baseline.
+
 The passes preserve ANF and run until no structural rewrite remains. Equal node
 counts alone do not establish a fixed point; convergence and idempotence are tested.
 
