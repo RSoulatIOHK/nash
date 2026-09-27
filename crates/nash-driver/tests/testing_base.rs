@@ -62,6 +62,7 @@ async fn malformed_replayed_choices_are_rejected() {
 
 #[tokio::test]
 async fn generation_functions_thread_choices() {
+    let mut body = String::new();
     for (generator, choices, expected) in [
         (
             "Prop.tuple2 (Prop.choice 10) (Prop.choice 10)",
@@ -88,25 +89,36 @@ async fn generation_functions_thread_choices() {
         ),
         ("Prop.intBetween 3 3", "Cons.Nil", "3"),
     ] {
-        let output = compile(&format!(
-            r#"    case ({generator}) (replay ({choices})) of
-        Some (value, _) -> assert (value == {expected})
-        None -> (fail "generator exhausted replay")"#
-        ))
-        .await;
-        let arena = Arena::new();
-        let program = syn::parse_program(&arena, &output.uplc).unwrap();
-        let result = program
-            .apply(
-                &arena,
-                Term::data(
-                    &arena,
-                    nash_plutus::data::PlutusData::integer_from(&arena, 0),
-                ),
-            )
-            .eval(&arena);
-        assert!(result.term.is_ok(), "{generator}: {:?}", result.term);
+        body.push_str(&format!(
+            r#"    let
+        _ =
+            case ({generator}) (replay ({choices})) of
+                Some (value, _) ->
+                    if value == {expected} then () else fail "{generator}: unexpected value"
+                None -> fail "{generator}: generator exhausted replay"
+    in
+"#
+        ));
     }
+    body.push_str("    ()");
+    let output = compile(&body).await;
+    let arena = Arena::new();
+    let program = syn::parse_program(&arena, &output.uplc).unwrap();
+    let result = program
+        .apply(
+            &arena,
+            Term::data(
+                &arena,
+                nash_plutus::data::PlutusData::integer_from(&arena, 0),
+            ),
+        )
+        .eval(&arena);
+    assert!(
+        result.term.is_ok(),
+        "{:?}; logs: {:?}",
+        result.term,
+        result.info.logs
+    );
 }
 
 #[tokio::test]
