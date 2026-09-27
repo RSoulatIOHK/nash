@@ -133,3 +133,17 @@ match; CPU, memory and Flat bytes are printed separately. Dead-binding removal i
 already include it, while the direct Core cases isolate its effect. This experiment
 does not update the permanent baseline. It is outside root test
 discovery, like the other explicit experiments.
+
+## Chunk 6 recursive reachability trial
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_recursive
+```
+
+Compares accepted lowering with/without recursive-member pruning before recursion
+rewriting. Includes groups of 1/2/4/8 members with none, one or all reachable;
+countdown loops in groups of 2/8 with 0/1/8/64 recursive calls; live/dead delayed
+workers; and nine source workloads after accepted Core cleanup. Results and
+trace logs must match. CPU, memory and Flat bytes are printed separately. This
+standalone trial is outside root test discovery and leaves the accepted pipeline
+and permanent baseline unchanged.

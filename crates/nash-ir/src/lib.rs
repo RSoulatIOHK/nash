@@ -5,6 +5,7 @@ pub mod beta;
 pub mod build;
 pub mod core;
 pub mod dead_bindings;
+pub mod dead_recursive;
 pub mod hygiene;
 pub mod pretty;
 pub mod propagate;

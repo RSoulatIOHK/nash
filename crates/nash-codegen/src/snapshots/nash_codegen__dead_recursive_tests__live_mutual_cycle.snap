@@ -1,0 +1,76 @@
+---
+source: crates/nash-codegen/src/dead_recursive_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+letrec
+  f#1 : int -> int [static []] = \x#4 : int -> case@Bool equalsInteger x#4 0 of
+    True -> 42
+    False -> g#2 (subtractInteger x#4 1)
+  dead#3 : int -> int [static []] = \z#6 : int -> error
+  g#2 : int -> int [static []] = \y#5 : int -> case@Bool equalsInteger y#5 0 of
+    True -> 42
+    False -> f#1 (subtractInteger y#5 1)
+in
+f#1 4
+--- core after
+letrec
+  f#1 : int -> int [static []] = \x#4 : int -> case@Bool equalsInteger x#4 0 of
+    True -> 42
+    False -> g#2 (subtractInteger x#4 1)
+  g#2 : int -> int [static []] = \y#5 : int -> case@Bool equalsInteger y#5 0 of
+    True -> 42
+    False -> f#1 (subtractInteger y#5 1)
+in
+f#1 4
+--- uplc before
+(program 1.1.0
+  [(lam dispatch_11
+    [(lam f_1
+      [(lam dead_3
+        [(lam g_2 [f_1 (con integer 4)])
+          (lam y_25 [dispatch_11 (constr 2 dispatch_11 y_25)])])
+        (lam z_26 [dispatch_11 (constr 1 dispatch_11 z_26)])])
+      (lam x_27 [dispatch_11 (constr 0 dispatch_11 x_27)])])
+    (lam request_12
+      (case
+        request_12
+        (lam self_13
+          (lam x_4
+            (case
+              [[(builtin equalsInteger) x_4] (con integer 0)]
+              [self_13 (constr 2 self_13 [[(builtin subtractInteger) x_4] (con integer 1)])]
+              (con integer 42))))
+        (lam self_17 (lam z_6 (error)))
+        (lam self_21
+          (lam y_5
+            (case
+              [[(builtin equalsInteger) y_5] (con integer 0)]
+              [self_21 (constr 0 self_21 [[(builtin subtractInteger) y_5] (con integer 1)])]
+              (con integer 42))))))])
+--- uplc after
+(program 1.1.0
+  [(lam dispatch_28
+    [(lam f_1
+      [(lam g_2 [f_1 (con integer 4)])
+        (lam y_36 [dispatch_28 (constr 1 dispatch_28 y_36)])])
+      (lam x_37 [dispatch_28 (constr 0 dispatch_28 x_37)])])
+    (lam request_29
+      (case
+        request_29
+        (lam self_30
+          (lam x_4
+            (case
+              [[(builtin equalsInteger) x_4] (con integer 0)]
+              [self_30 (constr 1 self_30 [[(builtin subtractInteger) x_4] (con integer 1)])]
+              (con integer 42))))
+        (lam self_33
+          (lam y_5
+            (case
+              [[(builtin equalsInteger) y_5] (con integer 0)]
+              [self_33 (constr 0 self_33 [[(builtin subtractInteger) y_5] (con integer 1)])]
+              (con integer 42))))))])
+--- result
+(con integer 42)
+--- logs
+[]

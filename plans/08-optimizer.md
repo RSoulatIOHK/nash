@@ -13,7 +13,9 @@ Broader body-size heuristics, partial/indirect-call expansion and further Rule 4
 experiments are deferred. The retained cases are implemented in `nash-ir::small_inline` and integrated
 with the candidate/performance pipelines. Chunk 5 step 1 adds outermost forced-builtin
 sharing during optimized lowering. Step 2 is accepted with a two-occurrence minimum
-for one leading literal; the retained Chunk 5 scope is complete. Normal build defaults remain O0 pending
+for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
+unused-binding removal is accepted; recursive-member reachability is a standalone
+trial pending review. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
@@ -988,7 +990,8 @@ forced failures, saturated builtin calls and strict partial-call arguments.
 The diverging recursive-call fixture checks exact retained Core without running
 an infinite program. The pass runs inside `small_inline::simplify` alongside
 rules 1–4 until the cleanup loop reaches a fixed point, before recursion rewriting.
-Recursive-member and parameter removal remain separate, unimplemented review units.
+Recursive-member removal is the separate trial below; parameter removal remains
+unimplemented.
 
 Explicit experiment: `cargo run --locked --manifest-path
  tools/optimizer-perf/Cargo.toml --example dead_bindings` (one shell command).
@@ -1003,6 +1006,48 @@ Validation: 489 IR/codegen nextest tests passed. The original 16 semantic
 snapshots are supplemented by paired Core snapshots for safe ignored delayed
 arguments and strict tracing arguments through the accepted cleanup loop. Root
 and isolated strict Clippy and formatting passed.
+
+**Second trial (27 September 2026), pending keep/discard: recursive reachability.**
+`nash_ir::dead_recursive::prune` visits groups bottom-up. It seeds a worklist with
+members referenced anywhere in the continuation, then follows references in
+reachable member bodies. Unreachable cycles do not seed themselves. A member
+counts as used when returned, partially applied, passed as a value, captured by
+a lambda/delay, or referenced in a branch, even if that branch is known cold.
+There is no call-shape or path-sensitive heuristic.
+
+Retained members keep source order, parameter slices, static-parameter indices
+and types. An empty live set removes the group; a retained singleton remains a
+`LetRec` for the existing recursion rewrite. Function definitions and supported
+singleton delayed workers defer their bodies, so unused groups can disappear
+without running those bodies. Unsupported zero-parameter recursive values remain
+rejected. Singleton lowering already rechecks static metadata before using it;
+this rule neither re-infers static parameters nor performs another ANF pass.
+
+The trial is standalone, before recursion rewriting; it is not in the accepted
+cleanup loop yet. Semantic snapshots cover unreachable self/mutual cycles,
+transitive reachability and retention order, live mutual recursion, failures,
+partial/returned/suspended uses, nested groups, cold references, delayed workers,
+and mutual-to-singleton capture/static-metadata preservation.
+
+Explicit experiment: `cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_recursive`.
+
+Measured 30 cases: 21 direct Core scenarios and nine source workloads. No CPU,
+memory or Flat-size regressions occurred. Representative savings:
+
+| Fixture | CPU saved | Memory saved | Flat bytes saved |
+| --- | ---: | ---: | ---: |
+| Unused singleton | 144,000 | 900 | 12 |
+| Two members, one live identity | 144,000 | 900 | 23 |
+| Eight members, one live identity | 432,000 | 2,700 | 121 |
+| Two members, one live countdown, 64 recursive calls | 3,216,000 | 20,100 | 29 |
+| Eight members, one live countdown, 64 recursive calls | 3,504,000 | 21,900 | 155 |
+
+All-live groups, live delayed workers and the nine source workloads are unchanged.
+The permanent 23-case baseline also matches unchanged. These are explicit synthetic
+and existing fixture results, not claims about a real validator distribution.
+Validation: 498 IR/codegen nextest tests passed, with nine new test functions and
+16 paired Core/UPLC snapshots. Root and isolated strict Clippy and formatting
+passed. Read-only review found no correctness issues.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused

@@ -43,3 +43,6 @@ mod constant_sharing_tests;
 
 #[cfg(test)]
 mod dead_bindings_tests;
+
+#[cfg(test)]
+mod dead_recursive_tests;

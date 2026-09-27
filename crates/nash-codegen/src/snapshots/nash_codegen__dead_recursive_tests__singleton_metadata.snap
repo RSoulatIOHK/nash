@@ -1,0 +1,61 @@
+---
+source: crates/nash-codegen/src/dead_recursive_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let capture#6 : int = 2 in
+letrec
+  f#1 : int -> int -> int [static [0]] = \static#3 : int n#4 : int -> case@Bool equalsInteger n#4 0 of
+    True -> addInteger static#3 capture#6
+    False -> f#1 static#3 (subtractInteger n#4 1)
+  dead#2 : int -> int [static []] = \z#5 : int -> error
+in
+f#1 40 3
+--- core after
+let capture#6 : int = 2 in
+letrec
+  f#1 : int -> int -> int [static [0]] = \static#3 : int n#4 : int -> case@Bool equalsInteger n#4 0 of
+    True -> addInteger static#3 capture#6
+    False -> f#1 static#3 (subtractInteger n#4 1)
+in
+f#1 40 3
+--- uplc before
+(program 1.1.0
+  [(lam capture_6
+    [(lam dispatch_10
+      [(lam f_1
+        [(lam dead_2 [[f_1 (con integer 40)] (con integer 3)])
+          (lam z_20 [dispatch_10 (constr 1 dispatch_10 z_20)])])
+        (lam static_21 (lam n_22 [dispatch_10 (constr 0 dispatch_10 static_21 n_22)]))])
+      (lam request_11
+        (case
+          request_11
+          (lam self_12
+            (lam static_3
+              (lam n_4
+                (case
+                  [[(builtin equalsInteger) n_4] (con integer 0)]
+                  [self_12
+                    (constr 0 self_12 static_3 [[(builtin subtractInteger) n_4] (con integer 1)])]
+                  [[(builtin addInteger) static_3] capture_6]))))
+          (lam self_16 (lam z_5 (error)))))])
+    (con integer 2)])
+--- uplc after
+(program 1.1.0
+  [(lam capture_6
+    [(lam f_1 [[f_1 (con integer 40)] (con integer 3)])
+      (lam static_3
+        (lam n_4
+          [[(lam self_23 [self_23 self_23])
+            (lam self_23
+              (lam n_4
+                (case
+                  [[(builtin equalsInteger) n_4] (con integer 0)]
+                  [[self_23 self_23] [[(builtin subtractInteger) n_4] (con integer 1)]]
+                  [[(builtin addInteger) static_3] capture_6])))]
+            n_4]))])
+    (con integer 2)])
+--- result
+(con integer 42)
+--- logs
+[]
