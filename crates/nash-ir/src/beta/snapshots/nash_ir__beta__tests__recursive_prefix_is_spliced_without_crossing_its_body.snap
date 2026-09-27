@@ -1,0 +1,24 @@
+---
+source: crates/nash-ir/src/beta/tests.rs
+assertion_line: 143
+expression: "snapshot(&b, core)"
+---
+--- core before
+let result#4 : int = (\x#3 : int -> letrec
+  worker#1 : int -> int [static []] = \n#2 : int -> n#2
+in
+worker#1 x#3) 42 in
+result#4
+--- core after beta
+let x#3 : int = 42 in
+letrec
+  worker#1 : int -> int [static []] = \n#2 : int -> n#2
+in
+let result#4 : int = worker#1 x#3 in
+result#4
+--- core after rules 1 + 2
+letrec
+  worker#1 : int -> int [static []] = \n#2 : int -> n#2
+in
+let result#4 : int = worker#1 42 in
+result#4

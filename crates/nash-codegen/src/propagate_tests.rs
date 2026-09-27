@@ -202,3 +202,26 @@ fn literal_alias_chain_collapses() {
         false,
     );
 }
+
+#[test]
+fn repeated_bytes_at_64_byte_limit_evaluate() {
+    let a = Arena::new();
+    let b = Builder::new(&a);
+    let value = b.lit(Constant::byte_string(&a, &[42; 64]));
+    let x = binder(&b, "bytes", value.ty);
+    check(
+        "repeated_64_byte_literal",
+        &b,
+        b.let_(
+            x,
+            value,
+            b.builtin(
+                F::AppendByteString,
+                &[b.var(x.name, x.ty), b.var(x.name, x.ty)],
+                x.ty,
+            ),
+        ),
+        &[],
+        false,
+    );
+}

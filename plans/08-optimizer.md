@@ -4,8 +4,8 @@
 
 Chunks 1 and 2 are accepted and complete, including mandatory Core typing,
 pre-ANF static-parameter lifting and ANF. Chunk 3 remains pending; the user
-accepted Chunk 4 rule 1 (atom/alias propagation). Remaining Chunk 4 rules
-are still pending independent review.
+accepted Chunk 4 rules 1 and 2, including repeated-constant propagation and
+their fixed-point loop. Rules 3 and 4 remain pending independent review.
 Current assembly in
 `nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
@@ -319,9 +319,12 @@ safe single-use bindings; small functions with multiple call sites.
 ### Rule 1 — atom/alias propagation (accepted)
 
 `nash-ir::propagate::propagate` removes variable aliases transitively, then
-propagates literals with zero or one remaining syntactic uses. Count uses after
-alias removal: `let x = largeLiteral; let y = x; use y y` must retain the
-shared literal binding. No size threshold is introduced. Lambda, delay, bare
+propagates literals with zero or one remaining syntactic uses. On 27 September,
+the user also approved duplication of integer constants (no magnitude cap), byte
+strings up to 64 bytes inclusive, and all three BLS constant variants (G1, G2,
+Miller-loop result), regardless of use count. Other repeated literals stay shared.
+Count uses after alias removal: `let x = largeString; let y = x; use y y` must retain the
+shared string binding. The byte-string limit is explicitly user-selected. Lambda, delay, bare
 builtin and computed bindings remain for later rules. Alias substitution never
 moves the target computation. Globally unique binder IDs prevent capture;
 substitutions preserve occurrence and root type views and preserve ANF.
@@ -348,6 +351,77 @@ These are small rule-isolation examples, not whole-program performance claims.
 The temporary runner was explicitly compiled and run outside Cargo test
 discovery, then removed after the keep decision. Chunk 3's permanent runner
 remains pending.
+
+### Rule 2 — direct lambda application and the rules 1 + 2 loop (accepted)
+
+`nash-ir::beta::reduce` rewrites direct `App(Lam(...), args)` into strict
+parameter bindings. Partial application binds supplied arguments outside the
+remaining lambda. Exact saturation exposes the body. Oversaturation evaluates
+the saturated body before applying its result to extra arguments; a non-atomic
+result receives a fresh ANF binding. It does not inline named function bindings.
+
+Leading `Let`/`LetRec` sequences are spliced into the surrounding strict context,
+without crossing lambda, delay, branch, trace or recursive-function scopes.
+Each pass preserves typed ANF and unique binders; no whole-tree re-normalization
+is needed between iterations. Fresh names avoid all input binder and use IDs.
+
+`beta::simplify` runs rule 1 followed by rule 2 until neither changes Core.
+Unchanged-pointer preservation supplies the change flag; this is not a node-count
+comparison or a fixed iteration limit. Each beta rewrite consumes at least one
+lambda parameter, and rule 1 introduces none. Partial applications therefore
+also make progress. The loop runs before recursion rewriting and after its final
+ANF, only in the test pipeline. No UPLC pass is added.
+
+Snapshots cover partial capture, multiple iterations, nested and recursive RHS
+prefixes, explicit type views, fresh-builder name collisions, strict unused
+arguments, argument order, saturated-body failure, oversaturation success and
+suspended branch/delay bodies. Performance experiments remain outside ordinary
+Cargo test discovery.
+
+Temporary isolated experiments compare accepted ANF + rule 1 against rules 1 + 2
+(Plutus V3 default cost model, raw Flat bytes):
+
+| Fixture | CPU before → after | Memory before → after | Bytes before → after |
+| --- | ---: | ---: | ---: |
+| Identity applied to literal | 64100 → 16100 | 500 → 200 | 8 → 6 |
+| Identity applied to computation | 277308 → 229308 | 1202 → 902 | 15 → 13 |
+| Three nested direct applications | 160100 → 16100 | 1100 → 200 | 15 → 6 |
+| Partial application then named call | 325308 → 277308 | 1502 → 1202 | 18 → 15 |
+| Oversaturation with shared parameter and computed result | 448806 → 496806 | 1934 → 2234 | 35 → 37 |
+| Already minimal integer | 16100 → 16100 | 200 → 200 | 6 → 6 |
+
+The original oversaturation regression came from an added ANF binding for the
+computed function result, while the multiply-used integer parameter retained its
+binding under the original rule 1 policy. The table above records that initial
+experiment; the approved repeated-constant policy is measured below. This
+initial experiment is retained as history; the repeated-constant refinement
+below removes that particular regression. No UPLC cleanup or cost heuristic
+has been introduced.
+The temporary runner was explicitly compiled and run outside Cargo test
+discovery, then removed after the keep decision.
+
+Repeated-constant refinement (27 September): compare ANF before these rewrites
+against rules 1 + 2 with repeated integers/BLS and byte strings up to 64 bytes.
+
+| Fixture | CPU before → after | Memory before → after | Bytes before → after |
+| --- | ---: | ---: | ---: |
+| Original oversaturated integer example | 448806 → 448806 | 1934 → 1934 | 35 → 35 |
+| Twice-used 64-byte string | 131868 → 83868 | 916 → 616 | 78 → 142 |
+| Twice-used 65-byte string | 132214 → 132214 | 918 → 918 | 79 → 79 |
+
+The integer example loses its `x` binding, offsetting the new function binding.
+The byte-string policy intentionally permits serialized-size growth to remove
+binding evaluation costs. This is the user-selected 64-byte limit, not a claim
+that all metrics improve. Snapshot coverage includes 64/65-byte boundaries,
+large integers, all three BLS constant variants and the original oversaturation
+example. These tests concern literal constants; computed BLS operations remain
+bound. Native BLS Miller-loop constants have no UPLC text literal; their Core
+snapshot uses the existing unsupported-constant display.
+
+Accepted on 27 September 2026, including the repeated-constant refinement.
+Validation: formatting and strict all-target/all-feature Clippy pass;
+full workspace tests pass (3643 passed, 3 ignored). Added 25 tests and 23 paired
+snapshots. Existing snapshots remain unchanged.
 
 ### Remaining rules
 

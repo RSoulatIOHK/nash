@@ -1,6 +1,7 @@
 //! Nash Core IR and arena constructors.
 pub mod analysis;
 pub mod anf;
+pub mod beta;
 pub mod build;
 pub mod core;
 pub mod hygiene;

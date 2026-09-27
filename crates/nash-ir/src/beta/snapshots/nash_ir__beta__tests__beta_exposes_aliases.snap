@@ -1,0 +1,14 @@
+---
+source: crates/nash-ir/src/beta/tests.rs
+assertion_line: 46
+expression: "snapshot(&b, core)"
+---
+--- core before
+(\x#1 : int -> let y#2 : int = x#1 in
+y#2) 42
+--- core after beta
+let x#1 : int = 42 in
+let y#2 : int = x#1 in
+y#2
+--- core after rules 1 + 2
+42

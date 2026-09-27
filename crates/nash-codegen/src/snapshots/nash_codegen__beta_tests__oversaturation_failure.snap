@@ -1,0 +1,30 @@
+---
+source: crates/nash-codegen/src/beta_tests.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+(\x#1 : int -> trace "failure" in error) 0 42
+--- core after
+let beta#2 : int -> int = trace "failure" in error in
+beta#2 42
+--- baseline
+--- uplc
+(program 1.1.0
+  [[(lam x_1
+    (force [[(force (builtin trace)) (con string "failure")] (delay (error))]))
+    (con integer 0)]
+    (con integer 42)])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["failure"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam beta_2 [beta_2 (con integer 42)])
+    (force [[(force (builtin trace)) (con string "failure")] (delay (error))])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["failure"]

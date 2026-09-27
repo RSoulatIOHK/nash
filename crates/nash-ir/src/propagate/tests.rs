@@ -139,3 +139,84 @@ fn unused_literal_is_removed_but_unused_failure_remains() {
         b.let_(x, b.int(1), b.let_(y, b.error(INT), b.int(42)))
     ));
 }
+
+fn repeated_literal<'a>(b: &Builder<'a>, value: &'a Core<'a>, func: F) -> &'a Core<'a> {
+    let x = binder(b, "literal", value.ty);
+    let alias = binder(b, "alias", value.ty);
+    b.let_(
+        x,
+        value,
+        b.let_(
+            alias,
+            b.var(x.name, x.ty),
+            b.builtin(
+                func,
+                &[b.var(alias.name, alias.ty), b.var(alias.name, alias.ty)],
+                value.ty,
+            ),
+        ),
+    )
+}
+#[test]
+fn repeated_integer_inlines_without_a_size_cap() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let huge=arena.alloc_integer("123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890".parse().unwrap());
+    let core = repeated_literal(&b, b.lit(Constant::integer(&arena, huge)), F::AddInteger);
+    insta::assert_snapshot!(snapshot(&b, core));
+}
+#[test]
+fn repeated_bytes_at_64_byte_limit_inline() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let core = repeated_literal(
+        &b,
+        b.lit(Constant::byte_string(&arena, &[42; 64])),
+        F::AppendByteString,
+    );
+    insta::assert_snapshot!(snapshot(&b, core));
+}
+#[test]
+fn repeated_bytes_above_limit_stay_shared() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let core = repeated_literal(
+        &b,
+        b.lit(Constant::byte_string(&arena, &[42; 65])),
+        F::AppendByteString,
+    );
+    insta::assert_snapshot!(snapshot(&b, core));
+}
+#[test]
+fn repeated_bls_g1_constant_inlines() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let core = repeated_literal(
+        &b,
+        b.lit(Constant::g1(&arena, arena.alloc(Default::default()))),
+        F::Bls12_381_G1_Add,
+    );
+    insta::assert_snapshot!(snapshot(&b, core));
+}
+#[test]
+fn repeated_bls_g2_constant_inlines() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let core = repeated_literal(
+        &b,
+        b.lit(Constant::g2(&arena, arena.alloc(Default::default()))),
+        F::Bls12_381_G2_Add,
+    );
+    insta::assert_snapshot!(snapshot(&b, core));
+}
+#[test]
+fn repeated_bls_ml_constant_inlines() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let core = repeated_literal(
+        &b,
+        b.lit(Constant::ml_result(&arena, arena.alloc(Default::default()))),
+        F::Bls12_381_MulMlResult,
+    );
+    insta::assert_snapshot!(snapshot(&b, core));
+}

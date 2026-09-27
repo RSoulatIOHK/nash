@@ -416,10 +416,19 @@ Wiring remains test-only until the optimized production path is introduced;
 production assembly is unchanged.
 
 Plan 08 rule 1 is accepted in `nash-ir::propagate`: remove variable aliases,
-then propagate literals with at most one remaining use. Count uses after alias
-removal to retain shared payloads. Computed, lambda, delay and builtin bindings
+then propagate literals with at most one remaining use. Integers, byte strings
+up to 64 bytes inclusive, and BLS constants may also be duplicated at multiple
+uses. Count uses after alias removal to retain other shared payloads. Computed, lambda, delay and builtin bindings
 stay bound. This pass runs only in the test pipeline, before recursion
 rewriting and after the final ANF; production assembly remains unchanged.
+
+Rule 2 is accepted in `nash-ir::beta`: direct lambda applications become
+strict parameter bindings, with partial and oversaturated application staging
+preserved. Local binding splicing preserves ANF. `beta::simplify` repeats rules
+1 and 2 until neither changes Core, using unchanged-pointer preservation rather
+than a node-count comparison. This loop currently runs in the test pipeline.
+Computed results of oversaturated calls can introduce an extra ANF binding;
+measured tradeoffs are recorded in Plan 08.
 
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for

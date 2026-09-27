@@ -1,0 +1,14 @@
+---
+source: crates/nash-ir/src/beta/tests.rs
+assertion_line: 162
+expression: "snapshot(&fresh, core)"
+---
+--- core before
+\outer#1 : int -> (\x#2 : int -> trace "body" in \y#3 : int -> y#3) 1 42
+--- core after beta
+\outer#1 : int -> let x#2 : int = 1 in
+let beta#4 : int -> int = trace "body" in \y#3 : int -> y#3 in
+beta#4 42
+--- core after rules 1 + 2
+\outer#1 : int -> let beta#5 : int -> int = trace "body" in \y#3 : int -> y#3 in
+beta#5 42

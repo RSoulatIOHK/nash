@@ -1,0 +1,11 @@
+---
+source: crates/nash-ir/src/propagate/tests.rs
+assertion_line: 221
+expression: "snapshot(&b, core)"
+---
+--- core before
+let literal#1 : bls_mlr = <unsupported constant: BLS Miller-loop results have no UPLC text literal> in
+let alias#2 : bls_mlr = literal#1 in
+bls12_381_mulMlResult alias#2 alias#2
+--- core after
+bls12_381_mulMlResult <unsupported constant: BLS Miller-loop results have no UPLC text literal> <unsupported constant: BLS Miller-loop results have no UPLC text literal>

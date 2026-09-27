@@ -1,0 +1,17 @@
+---
+source: crates/nash-ir/src/beta/tests.rs
+assertion_line: 88
+expression: "snapshot(&b, b.let_(y, call, b.var(y.name, INT)))"
+---
+--- core before
+let result#2 : int = (\x#1 : int -> let strict#3 : int = error in
+x#1) 42 in
+result#2
+--- core after beta
+let x#1 : int = 42 in
+let strict#3 : int = error in
+let result#2 : int = x#1 in
+result#2
+--- core after rules 1 + 2
+let strict#3 : int = error in
+42
