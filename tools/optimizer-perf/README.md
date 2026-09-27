@@ -90,3 +90,15 @@ Verify isolation after changing workspace manifests using root `cargo metadata
 `cargo test --workspace --all-features -- --list`, and
 `cargo nextest list --workspace --all-features --message-format json`. None may
 include the `nash-optimizer-perf` package/binary. Run root tests normally as well.
+
+Chunk 5 force-sharing measurements (isolated from Core optimizations):
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example builtin_sharing
+```
+
+This compares one-force and two-force builtin references across single/repeated
+sites, loops with 0/1/8/64 calls, and an unselected branch. It checks results and
+traces, and reports CPU, memory and raw Flat bytes. It is an explicit experiment,
+not a root Cargo test. The permanent baseline also includes forced-builtin sharing
+in optimized lowering; O0 still uses structural lowering without sharing.

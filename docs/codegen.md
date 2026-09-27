@@ -438,8 +438,8 @@ single use and removes immediate computed return bindings (`let x = rhs in x`).
 Forced builtin references are excluded: their bindings remain shared even at one
 use or in direct returns. Plan 08 requires one shared binding per forced builtin
 at the validator's outermost scope, outside its argument lambdas (or the outermost
-program scope for other entry points). The builtin-sharing chunk will implement
-that placement.
+program scope for other entry points). The optimized lowering entry point now
+implements that placement.
 Other computed bindings remain at their evaluation points, including computed
 function operands. This keeps ANF and effect order without a general effect-motion
 analysis. The test-only candidate loop composes it with accepted rules 1 and 2.
@@ -452,6 +452,17 @@ beta reduction preserves strict argument evaluation. Partial and escaping uses
 remain shared. Conditional bodies and broader size heuristics are deferred.
 `small_inline::simplify` composes rules 1–4 to a fixed point in the candidate and
 explicit performance pipelines. This does not change the normal build default.
+
+Chunk 5 force sharing is implemented in `lower::lower_with_builtin_sharing`.
+During lowering, references to each builtin requiring forces share one fresh
+name, including builtins introduced by Data-case and Trace lowering. The whole
+UPLC root is wrapped in bindings of the fully forced builtin values, outside all
+validator argument lambdas. Applied arguments and computations stay in place.
+Only references surviving lowering are bound; exhaustive case defaults can be
+discarded. This also shares across erased type instantiations without changing
+Core typing or repeating ANF. Core cleanup runs before these bindings exist.
+The candidate/performance pipelines use it; O0 and normal builds still use
+`lower`. Constant partial-application sharing is a separate pending step.
 
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for

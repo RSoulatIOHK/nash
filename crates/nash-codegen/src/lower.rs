@@ -19,15 +19,68 @@ pub enum Error {
 }
 
 pub fn lower<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Result<Uplc<'a>, Error> {
+    lower_inner(arena, core, false)
+}
+
+/// Cache fully forced builtin values once, outside every program argument.
+/// Applied arguments remain at their original evaluation sites. This includes
+/// builtins introduced by lowering, and leaves the O0 entry point unchanged.
+pub fn lower_with_builtin_sharing<'a>(
+    arena: &'a Arena,
+    core: &'a Core<'a>,
+) -> Result<Uplc<'a>, Error> {
+    lower_inner(arena, core, true)
+}
+
+fn lower_inner<'a>(arena: &'a Arena, core: &'a Core<'a>, share: bool) -> Result<Uplc<'a>, Error> {
     let next_unique = largest_name(core)
         .checked_add(1)
         .ok_or(Error::NameOverflow)?;
-    Lower { arena, next_unique }.term(core)
+    let mut lower = Lower {
+        arena,
+        next_unique,
+        share,
+        shared: Vec::new(),
+    };
+    let mut term = lower.term(core)?;
+    // Exhaustive cases can discard an already-lowered default. Only bind
+    // references that survive in the emitted program.
+    let mut referenced = std::collections::HashSet::new();
+    if !lower.shared.is_empty() {
+        let mut pending = vec![term];
+        while let Some(node) = pending.pop() {
+            match node {
+                Term::Var(name) => {
+                    referenced.insert(name.unique());
+                }
+                Term::Lambda { body, .. } | Term::Delay(body) | Term::Force(body) => {
+                    pending.push(body)
+                }
+                Term::Apply { function, argument } => pending.extend([*function, *argument]),
+                Term::Case { constr, branches } => {
+                    pending.push(constr);
+                    pending.extend(*branches);
+                }
+                Term::Constr { fields, .. } => pending.extend(*fields),
+                Term::Constant(_) | Term::Builtin(_) | Term::Error => {}
+            }
+        }
+    }
+    for (func, name) in lower.shared.iter().rev() {
+        if referenced.contains(&name.unique()) {
+            term = term
+                .lambda(arena, name)
+                .apply(arena, lower.forced_builtin(*func));
+        }
+    }
+    Ok(term)
 }
 
 struct Lower<'a> {
     arena: &'a Arena,
     next_unique: usize,
+    share: bool,
+    shared: Vec<(DefaultFunction, &'a Name<'a>)>,
 }
 
 impl<'a> Lower<'a> {
@@ -41,15 +94,33 @@ impl<'a> Lower<'a> {
         Ok(Name::new(self.arena, "generated", unique))
     }
 
-    fn builtin(&self, func: DefaultFunction, args: &[Uplc<'a>]) -> Uplc<'a> {
+    fn forced_builtin(&self, func: DefaultFunction) -> Uplc<'a> {
         let mut term = Term::builtin(self.arena, self.arena.alloc(func));
         for _ in 0..func.force_count() {
             term = term.force(self.arena);
         }
+        term
+    }
+
+    fn builtin(&mut self, func: DefaultFunction, args: &[Uplc<'a>]) -> Result<Uplc<'a>, Error> {
+        let mut term = if self.share && func.force_count() > 0 {
+            let name =
+                if let Some((_, name)) = self.shared.iter().find(|(cached, _)| *cached == func) {
+                    *name
+                } else {
+                    let fresh = self.fresh()?;
+                    let name = Name::new(self.arena, "builtin", fresh.unique());
+                    self.shared.push((func, name));
+                    name
+                };
+            Term::var(self.arena, name)
+        } else {
+            self.forced_builtin(func)
+        };
         for arg in args {
             term = term.apply(self.arena, arg);
         }
-        term
+        Ok(term)
     }
 
     fn branch(&self, condition: Uplc<'a>, yes: Uplc<'a>, no: Uplc<'a>) -> Uplc<'a> {
@@ -107,7 +178,7 @@ impl<'a> Lower<'a> {
                     .iter()
                     .map(|arg| self.term(arg))
                     .collect::<Result<Vec<_>, _>>()?;
-                self.builtin(*func, &args)
+                self.builtin(*func, &args)?
             }
             CoreKind::Case {
                 kind,
@@ -153,7 +224,7 @@ impl<'a> Lower<'a> {
             CoreKind::Trace { message, body } => {
                 let message = self.term(message)?;
                 let body = self.term(body)?;
-                self.builtin(DefaultFunction::Trace, &[message, body.delay(self.arena)])
+                self.builtin(DefaultFunction::Trace, &[message, body.delay(self.arena)])?
                     .force(self.arena)
             }
             CoreKind::Error => Term::error(self.arena),
@@ -230,7 +301,7 @@ impl<'a> Lower<'a> {
                         ),
                         _ => return Err(Error::InvalidCase("literal test has wrong kind")),
                     };
-                    let condition = self.builtin(func, &[value, literal]);
+                    let condition = self.builtin(func, &[value, literal])?;
                     let body = self.term(b.body)?;
                     rest = self.branch(condition, body, rest);
                 }
@@ -284,7 +355,7 @@ impl<'a> Lower<'a> {
                     arms[index] = Some(
                         if crate::build::names(b.body).contains(&b.binders[0].name.unique) {
                             let function = self.lambda(b.binders, body);
-                            let unwrapped = self.builtin(unwrap, &[value]);
+                            let unwrapped = self.builtin(unwrap, &[value])?;
                             function.apply(self.arena, unwrapped)
                         } else {
                             body
@@ -296,7 +367,7 @@ impl<'a> Lower<'a> {
                 self.builtin(
                     DefaultFunction::ChooseData,
                     &[value, constr, map, list, int, bytes],
-                )
+                )?
                 .force(self.arena)
                 .lambda(self.arena, name)
                 .apply(self.arena, scrutinee)

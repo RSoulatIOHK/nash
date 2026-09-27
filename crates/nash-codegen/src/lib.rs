@@ -34,3 +34,6 @@ mod single_use_tests;
 
 #[cfg(test)]
 mod small_inline_tests;
+
+#[cfg(test)]
+mod builtin_sharing_tests;

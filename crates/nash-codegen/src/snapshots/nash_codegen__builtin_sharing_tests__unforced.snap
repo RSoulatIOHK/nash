@@ -1,0 +1,12 @@
+---
+source: crates/nash-codegen/src/builtin_sharing_tests.rs
+expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+---
+--- uplc before
+[[(builtin addInteger) (con integer 20)] (con integer 22)]
+--- uplc after
+[[(builtin addInteger) (con integer 20)] (con integer 22)]
+--- result
+(con integer 42)
+--- logs
+[]

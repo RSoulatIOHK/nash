@@ -1,5 +1,5 @@
 {
-  "settings": "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower",
+  "settings": "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower+forced-builtin-sharing",
   "sources": {
     "Cardano.Tx": "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n",
     "Lift": "module Lift exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\ntrait Lift 'a 'b where\n    lift : 'a -> 'b\n    lower : 'b -> 'a\n\nimpl Lift int Int where\n    lift value = Builtin.iData value\n    lower value = Builtin.unIData value\n\nimpl Lift bytes Bytes where\n    lift value = Builtin.bData value\n    lower value = Builtin.unBData value\n",
@@ -9,7 +9,7 @@
     "VestingParam": "validator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : int -> Datum -> Redeemer -> Data -> unit\nmain minimumLock datum redeemer ctx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n",
     "Workloads": "module Workloads exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Logic exposing (..)\n\nsum : list int -> int\nsum xs =\n    case xs of\n        [] -> 0\n        x :: rest -> Builtin.addInteger x (sum rest)\n\nlistTraversal : int\nlistTraversal = sum [1, 2, 3, 4, 5, 6, 7, 8]\n\ncountdown : int -> int -> int\ncountdown n result =\n    if Builtin.equalsInteger n 0 then\n        result\n    else\n        countdown (Builtin.subtractInteger n 1) result\n\nstaticRecursion : int\nstaticRecursion = countdown 8 42\n\nmatchData : Data -> int\nmatchData value =\n    case value of\n        I n -> n\n        _ -> 0\n\ndataMatch : int\ndataMatch = matchData (I 42)\n\ndataMiss : int\ndataMiss = matchData (B #\"ab\")\n\ndecode : Data -> int\ndecode value =\n    case value of\n        Constr pair(_, [I n, _]) -> n\n        _ -> 0\n\ndecoding : int\ndecoding = decode (Builtin.constrData 0 [I 42, I 7])\n\nvalidate : Data -> unit\nvalidate value =\n    case value of\n        I n -> assert (Builtin.lessThanInteger 0 n)\n        _ -> fail\n\nvalidationPass : unit\nvalidationPass = validate (I 42)\n\nvalidationFail : unit\nvalidationFail = validate (I 0)\n\nbooleanHelpers : bool\nbooleanHelpers = (True && False) || (True && True)\n"
   },
-  "revision": "8239d78178f767d1ca22a121831053022cb17467",
+  "revision": "eb5ce47236dfe72c9c7e6cd18112f47e964643e7",
   "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
   "rows": [
     {
@@ -22,8 +22,8 @@
         "logs": []
       },
       "after": {
-        "cpu": 4828660,
-        "memory": 21872,
+        "cpu": 4764660,
+        "memory": 21472,
         "bytes": 93,
         "result": "(con integer 36)",
         "logs": []
@@ -56,9 +56,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 642518,
-        "memory": 3396,
-        "bytes": 38,
+        "cpu": 690518,
+        "memory": 3696,
+        "bytes": 41,
         "result": "(con integer 42)",
         "logs": []
       }
@@ -73,9 +73,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 569658,
-        "memory": 3064,
-        "bytes": 41,
+        "cpu": 617658,
+        "memory": 3364,
+        "bytes": 43,
         "result": "(con integer 0)",
         "logs": []
       }
@@ -90,9 +90,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 1983655,
-        "memory": 10088,
-        "bytes": 109,
+        "cpu": 2047655,
+        "memory": 10488,
+        "bytes": 113,
         "result": "(con integer 42)",
         "logs": []
       }
@@ -107,9 +107,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 831808,
-        "memory": 4297,
-        "bytes": 70,
+        "cpu": 943808,
+        "memory": 4997,
+        "bytes": 74,
         "result": "(con unit ())",
         "logs": []
       }
@@ -128,7 +128,7 @@
       "after": {
         "cpu": 235306,
         "memory": 229,
-        "bytes": 70,
+        "bytes": 74,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -162,9 +162,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2285392,
-        "memory": 12425,
-        "bytes": 246,
+        "cpu": 2381392,
+        "memory": 13025,
+        "bytes": 249,
         "result": "(con unit ())",
         "logs": []
       }
@@ -183,7 +183,7 @@
       "after": {
         "cpu": 408890,
         "memory": 357,
-        "bytes": 246,
+        "bytes": 249,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -200,9 +200,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2156434,
-        "memory": 11725,
-        "bytes": 246,
+        "cpu": 2252434,
+        "memory": 12325,
+        "bytes": 249,
         "result": "(con unit ())",
         "logs": []
       }
@@ -221,7 +221,7 @@
       "after": {
         "cpu": 391932,
         "memory": 357,
-        "bytes": 246,
+        "bytes": 249,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -238,9 +238,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2285392,
-        "memory": 12425,
-        "bytes": 246,
+        "cpu": 2381392,
+        "memory": 13025,
+        "bytes": 249,
         "result": "(con unit ())",
         "logs": []
       }
@@ -255,9 +255,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2285392,
-        "memory": 12425,
-        "bytes": 246,
+        "cpu": 2381392,
+        "memory": 13025,
+        "bytes": 249,
         "result": "(con unit ())",
         "logs": []
       }
@@ -272,9 +272,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2546600,
-        "memory": 13427,
-        "bytes": 253,
+        "cpu": 2642600,
+        "memory": 14027,
+        "bytes": 256,
         "result": "(con unit ())",
         "logs": []
       }
@@ -293,7 +293,7 @@
       "after": {
         "cpu": 510098,
         "memory": 359,
-        "bytes": 253,
+        "bytes": 256,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -310,9 +310,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2204434,
-        "memory": 12025,
-        "bytes": 253,
+        "cpu": 2300434,
+        "memory": 12625,
+        "bytes": 256,
         "result": "(con unit ())",
         "logs": []
       }
@@ -331,7 +331,7 @@
       "after": {
         "cpu": 391932,
         "memory": 357,
-        "bytes": 253,
+        "bytes": 256,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -348,9 +348,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2546600,
-        "memory": 13427,
-        "bytes": 253,
+        "cpu": 2642600,
+        "memory": 14027,
+        "bytes": 256,
         "result": "(con unit ())",
         "logs": []
       }
@@ -369,7 +369,7 @@
       "after": {
         "cpu": 510098,
         "memory": 359,
-        "bytes": 253,
+        "bytes": 256,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"

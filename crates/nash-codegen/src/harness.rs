@@ -90,7 +90,9 @@ pub(crate) fn assert_candidate_equivalent<'a>(
     baseline: &Evaluated,
 ) {
     let candidate = crate::anf_tests::candidate(arena, core);
-    let normalized = eval_core_raw(arena, candidate);
+    let named =
+        crate::lower::lower_with_builtin_sharing(arena, candidate).expect("shared lowering");
+    let normalized = eval_named(arena, named);
     assert_eq!(
         baseline.observable, normalized.observable,
         "candidate passes preserve ground results and error category"
@@ -103,6 +105,13 @@ pub(crate) fn assert_candidate_equivalent<'a>(
 
 pub(crate) fn eval_core_raw<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Evaluated {
     let named = crate::lower::lower(arena, core).expect("valid lowered Core");
+    eval_named(arena, named)
+}
+
+pub(crate) fn eval_named<'a>(
+    arena: &'a Arena,
+    named: &'a nash_plutus::term::Term<'a, nash_plutus::binder::Name<'a>>,
+) -> Evaluated {
     let term = debruijn::to_debruijn(arena, named).expect("closed term");
     let program = Program::new(arena, Version::plutus_v3(arena), term);
     let evaluation = program.eval(arena);

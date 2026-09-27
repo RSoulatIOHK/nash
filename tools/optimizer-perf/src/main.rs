@@ -20,7 +20,7 @@ const BUDGET: ExBudget = ExBudget {
     cpu: 100_000_000,
     mem: 2_000_000,
 };
-const SETTINGS: &str = "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower";
+const SETTINGS: &str = "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower+forced-builtin-sharing";
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -197,8 +197,8 @@ fn compare<'a>(
         nash_codegen::recursion::rewrite(&Builder::new(arena), core).expect("baseline recursion");
     let after = accepted(arena, core);
     assert_eq!(core.ty, after.ty);
-    let before = measure(arena, before, args)?;
-    let after = measure(arena, after, args)?;
+    let before = measure(arena, before, args, false)?;
+    let after = measure(arena, after, args, true)?;
     if before.result != after.result || before.logs != after.logs {
         return Err(format!("semantic mismatch for {input}: {before:?} versus {after:?}").into());
     }
@@ -222,8 +222,14 @@ fn measure<'a>(
     arena: &'a Arena,
     core: &'a Core<'a>,
     args: &[&'a Term<'a, DeBruijn>],
+    sharing: bool,
 ) -> Result<Measurement> {
-    let named = nash_codegen::lower::lower(arena, core).expect("lowering");
+    let named = if sharing {
+        nash_codegen::lower::lower_with_builtin_sharing(arena, core)
+    } else {
+        nash_codegen::lower::lower(arena, core)
+    }
+    .expect("lowering");
     let term = debruijn::to_debruijn(arena, named).expect("closed UPLC");
     let mut program = Program::new(arena, Version::plutus_v3(arena), term);
     let bytes = flat::encode(program).expect("Flat encoding").len();

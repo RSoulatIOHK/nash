@@ -1,0 +1,16 @@
+---
+source: crates/nash-codegen/src/builtin_sharing_tests.rs
+expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+---
+--- uplc before
+[[(force (builtin trace)) (con string "never")]
+  (force [[(force (builtin trace)) (con string "argument")] (delay (error))])]
+--- uplc after
+[(lam builtin_1
+  [[builtin_1 (con string "never")]
+    (force [[builtin_1 (con string "argument")] (delay (error))])])
+  (force (builtin trace))]
+--- result
+error: ExplicitErrorTerm
+--- logs
+["argument"]

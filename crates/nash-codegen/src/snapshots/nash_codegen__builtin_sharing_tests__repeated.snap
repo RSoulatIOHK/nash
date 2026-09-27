@@ -1,0 +1,19 @@
+---
+source: crates/nash-codegen/src/builtin_sharing_tests.rs
+expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+---
+--- uplc before
+[[(builtin addInteger)
+  (force [[(force (builtin trace)) (con string "left")] (delay (con integer 20))])]
+  (force
+    [[(force (builtin trace)) (con string "right")] (delay (con integer 22))])]
+--- uplc after
+[(lam builtin_1
+  [[(builtin addInteger)
+    (force [[builtin_1 (con string "left")] (delay (con integer 20))])]
+    (force [[builtin_1 (con string "right")] (delay (con integer 22))])])
+  (force (builtin trace))]
+--- result
+(con integer 42)
+--- logs
+["left", "right"]

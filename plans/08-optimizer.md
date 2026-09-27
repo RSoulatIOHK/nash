@@ -11,7 +11,8 @@ builtin-wrapper cases are accepted, including their measured size tradeoffs;
 conditional bodies are excluded for now, including recursive-only inlining.
 Broader body-size heuristics, partial/indirect-call expansion and further Rule 4
 experiments are deferred. The retained cases are implemented in `nash-ir::small_inline` and integrated
-with the candidate/performance pipelines. Normal build defaults remain O0 pending
+with the candidate/performance pipelines. Chunk 5 step 1 adds outermost forced-builtin
+sharing during optimized lowering. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
@@ -324,11 +325,11 @@ Representative current O0 → optimized figures (full rows in `baseline.json`):
 
 | Input | CPU | Memory | Flat bytes |
 | --- | ---: | ---: | ---: |
-| List sum of 1–8 | 5788660 → 4828660 | 27872 → 21872 | 102 → 93 |
+| List sum of 1–8 | 5788660 → 4764660 | 27872 → 21472 | 102 → 93 |
 | Static countdown 8, returning 42 | 4736761 → 4448761 | 21725 → 19925 | 52 → 39 |
-| Data integer match | 978518 → 642518 | 5496 → 3396 | 58 → 38 |
-| Vesting claim after deadline | 2621392 → 2285392 | 14525 → 12425 | 271 → 246 |
-| VestingParam claim after deadline | 2834600 → 2546600 | 15227 → 13427 | 275 → 253 |
+| Data integer match | 978518 → 690518 | 5496 → 3696 | 58 → 41 |
+| Vesting claim after deadline | 2621392 → 2381392 | 14525 → 13025 | 271 → 249 |
+| VestingParam claim after deadline | 2834600 → 2642600 | 15227 → 14027 | 275 → 256 |
 
 These compare the full accepted pipeline with O0, not rule 3 in isolation.
 The normalize-once revision saves 384000 CPU and 2400 memory on each recursive
@@ -336,7 +337,8 @@ fixture versus the previous pipeline; Flat size falls 137 → 134 for list trave
 and 62 → 60 for countdown. The other 18 rows, all O0 results, and all optimized
 results/traces are unchanged. This baseline update was explicit and reviewed.
 The later Rule 4 integration removes the remaining countdown, boolean-helper,
-and decoding regressions; the table above now reflects rules 1–4. Every O0 row
+and decoding regressions. The table above includes the subsequent Chunk 5 step 1
+sharing costs documented below. Every O0 row
 and all outcomes remain unchanged. Six optimized rows reduce CPU/memory, seven
 reduce serialized size, and none regresses relative to rules 1–3.
 
@@ -815,6 +817,67 @@ indefinitely.
 
 **Done when:** each accepted sharing rule has measurements and regressions for
 profitable and unfavorable cases, including lazy scopes.
+
+### Step 1 — Outermost forced-builtin references
+
+Implemented in `nash-codegen::lower::lower_with_builtin_sharing`, used by the
+candidate semantic pipeline and explicit performance runner. O0 `lower` and
+normal build assembly remain unchanged. This rule runs during lowering, after
+Core cleanup, so it also covers lowering-generated `Trace` and `ChooseData` and
+cannot be undone by Rule 3. Core types and the single-ANF pipeline are unchanged.
+
+Cache by builtin identity, independent of erased type instantiation or use count.
+Each cache entry receives a fresh name above existing Core names. On completion,
+wrap the whole UPLC root with strict lambda/application bindings of fully forced
+builtin values, in deterministic encounter order. Arguments, partial applications,
+saturated calls, delays and branches retain their evaluation positions. Filter
+out references discarded with exhaustive case defaults before wrapping the root.
+No constant partial-application sharing is implemented in this step.
+
+Paired UPLC snapshots cover one/repeated uses, placement outside validator
+arguments, recursion, delays, bare/partial references, polymorphic uses, one/two
+forces, lowering-generated Data/Trace builtins, unchanged zero-force builtins,
+trace/failure order, unselected branches, and discarded Bool/List/Data defaults.
+De Bruijn conversion checks closed scope; repeated lowering checks determinism.
+
+Explicit experiment:
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example builtin_sharing
+```
+
+CPU/memory/Flat-byte deltas versus identical lowering without sharing (positive
+means extra cost). Both programs include a validator argument and are applied:
+
+| Reference / workload | CPU delta | Memory delta | Flat bytes delta |
+| --- | ---: | ---: | ---: |
+| One force, one call | +48000 | +300 | +2 |
+| One force, two sites | +32000 | +200 | +3 |
+| One force, eight sites | -64000 | -400 | +3 |
+| One force, loop zero calls | +64000 | +400 | +2 |
+| One force, loop eight calls | -64000 | -400 | +2 |
+| One force, loop 64 calls | -960000 | -6000 | +2 |
+| One force, unselected branch | +64000 | +400 | +2 |
+| Two forces, one call | +48000 | +300 | +3 |
+| Two forces, two sites | +16000 | +100 | +2 |
+| Two forces, eight sites | -176000 | -1100 | -4 |
+| Two forces, loop zero calls | +80000 | +500 | +2 |
+| Two forces, loop eight calls | -176000 | -1100 | +2 |
+| Two forces, loop 64 calls | -1968000 | -12300 | +2 |
+| Two forces, unselected branch | +80000 | +500 | +2 |
+
+The 20-row baseline preserves all O0 rows and all results/traces. Relative to
+rules 1–4 alone, list traversal saves 64000 CPU/400 memory; short Data and
+validation successes add 48000–112000 CPU, and successful vesting paths add
+96000 CPU/600 memory. Sizes increase by 2–4 bytes on affected fixtures. These
+are recorded tradeoffs of the accepted unconditional placement, not a new
+profitability threshold. Step 2, constant partial-application sharing, remains
+unimplemented and requires its own review.
+
+Validation: all 469 IR/codegen tests pass, including 14 new paired UPLC
+snapshots; existing snapshots are unchanged. Formatting and strict workspace
+and performance-runner Clippy pass. All 20 explicit baselines match, and the
+16 isolated experiment cases preserve results and traces. Step 1 is complete.
 
 ## Chunk 6 — Dead bindings, functions and parameters
 
