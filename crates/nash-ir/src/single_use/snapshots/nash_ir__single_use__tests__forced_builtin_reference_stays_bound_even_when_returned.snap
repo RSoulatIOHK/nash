@@ -1,0 +1,14 @@
+---
+source: crates/nash-ir/src/single_use/tests.rs
+assertion_line: 194
+expression: "snapshot(&b, core)"
+---
+--- core before rule 3
+let tracer#1 : string -> int -> int = trace in
+tracer#1
+--- core after rule 3
+let tracer#1 : string -> int -> int = trace in
+tracer#1
+--- core after rules 1 + 2 + 3
+let tracer#1 : string -> int -> int = trace in
+tracer#1

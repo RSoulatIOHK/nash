@@ -430,6 +430,17 @@ than a node-count comparison. This loop currently runs in the test pipeline.
 Computed results of oversaturated calls can introduce an extra ANF binding;
 measured tradeoffs are recorded in Plan 08.
 
+Rule 3 is accepted in `nash-ir::single_use`. It substitutes ANF values at a
+single use and removes immediate computed return bindings (`let x = rhs in x`).
+Forced builtin references are excluded: their bindings remain shared even at one
+use or in direct returns. Plan 08 requires one shared binding per forced builtin
+at the validator's outermost scope, outside its argument lambdas (or the outermost
+program scope for other entry points). The builtin-sharing chunk will implement
+that placement.
+Other computed bindings remain at their evaluation points, including computed
+function operands. This keeps ANF and effect order without a general effect-motion
+analysis. The test-only candidate loop composes it with accepted rules 1 and 2.
+
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for
 the user's keep/revise/discard decision before advancing. Small functions used

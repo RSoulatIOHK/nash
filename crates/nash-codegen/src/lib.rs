@@ -29,3 +29,5 @@ mod anf_tests;
 mod beta_tests;
 #[cfg(test)]
 mod propagate_tests;
+#[cfg(test)]
+mod single_use_tests;

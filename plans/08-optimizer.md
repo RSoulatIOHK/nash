@@ -5,7 +5,7 @@
 Chunks 1 and 2 are accepted and complete, including mandatory Core typing,
 pre-ANF static-parameter lifting and ANF. Chunk 3 remains pending; the user
 accepted Chunk 4 rules 1 and 2, including repeated-constant propagation and
-their fixed-point loop. Rules 3 and 4 remain pending independent review.
+their fixed-point loop. Rule 3 was accepted on 27 September 2026; rule 4 remains pending independent review.
 Current assembly in
 `nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
@@ -423,6 +423,74 @@ Validation: formatting and strict all-target/all-feature Clippy pass;
 full workspace tests pass (3643 passed, 3 ignored). Added 25 tests and 23 paired
 snapshots. Existing snapshots remain unchanged.
 
+### Rule 3 — single-use values and immediate computed returns (accepted)
+
+`nash-ir::single_use::inline` tries two ANF-preserving rewrites:
+
+- Substitute an ANF atom at its sole syntactic use. This includes single-use
+  lambda, delay and unforced bare builtin bindings. Forced builtin references
+  are excluded even when returned directly: their bindings must remain shared
+  for top-level hoisting. Moving a value into a branch or
+  delayed scope does not execute its body. No binder-bearing body is duplicated.
+- Replace `let x = computation in x` with the computation. This preserves the
+  exact evaluation point, including failure, divergence and trace effects.
+
+Other computed bindings stay bound. A sole use inside a branch, lambda or delay,
+or after a trace, does not permit moving the original computation. Computed
+function operands also stay bound: inlining them would violate ANF. This trial
+therefore does not resolve the separate post-ANF/UPLC cleanup decision.
+
+Count uses by globally unique ID, then rewrite bottom-up using mapped children.
+Substituting original RHS pointers could resurrect bindings removed inside a
+lambda or delay; tests cover that trap. Preserve occurrence and enclosing result
+type views. No freshening or function-size threshold is needed. Local substitution
+walks can be quadratic for long chains; retain the simple implementation absent
+measured need for more machinery.
+
+`single_use::simplify` alternates the accepted rules 1 + 2 fixed point with rule 3
+until unchanged. Rule 3 removes bindings without duplicating lambda parameters,
+so it cannot undo the progress argument for beta reduction. Pointer identity
+remains the change flag. The test pipeline runs the candidate before recursion
+rewriting and after final ANF; production assembly remains unchanged.
+
+Tests cover immediate computed returns, newly exposed beta reduction, nested
+function bindings, delayed values, bare builtins, argument failures, trace order,
+computed captures, computed function operands, shared functions, type views and
+fixed-point idempotence. Paired snapshots show both Core and downstream UPLC.
+Temporary measurements run separately through `/tmp/nash-single-measure.rs`.
+Temporary experiments compare accepted rules 1 + 2 with the candidate loop
+(Plutus V3 default cost model, raw Flat bytes):
+
+| Fixture | CPU before → after | Memory before → after | Bytes before → after |
+| --- | ---: | ---: | ---: |
+| Immediate computed return | 229308 → 181308 | 902 → 602 | 13 → 10 |
+| Single-use bound function | 277308 → 181308 | 1202 → 602 | 15 → 10 |
+| Single-use builtin | 229308 → 181308 | 902 → 602 | 13 → 10 |
+| Single-use delay | 96100 → 48100 | 700 → 400 | 9 → 7 |
+| Computed function operand | 283598 → 283598 | 1532 → 1532 | 26 → 26 |
+| Shared function | 208100 → 208100 | 1400 → 1400 | 16 → 16 |
+| Forced builtin used once inside a function called eight times | 1836084 → 1836084 | 8856 → 8856 | 61 → 61 |
+
+The initial candidate inlined the last fixture's forced builtin, adding 64000
+CPU and 400 memory while saving 3 bytes. One syntactic use is not one runtime
+evaluation: moving the forced builtin into the repeated function loses shared
+forcing work. On 27 September the user decided
+that forced builtin references must always be top-level hoisted. Rule 3 therefore
+preserves every bare builtin binding whose `force_count()` is nonzero, regardless
+of use count or execution scope, including direct returns. With that exception,
+the eight-call fixture is unchanged: CPU 1836084, memory 8856, Flat size 61 bytes
+before and after. All other measurements in the table remain as shown. Chunk 5
+owns the actual top-level hoisting pass. This is a fixed policy, not a
+cost/frequency heuristic.
+
+Validation: formatting and strict all-target/all-feature Clippy pass. The full
+workspace run passes 3663 tests with 3 ignored. This candidate adds 20 semantic
+tests and 19 snapshots; no pending snapshots remain. Performance measurements
+stay in the explicit temporary experiment, outside normal test runs.
+
+The user accepted rule 3 on 27 September 2026. Temporary measurement source and
+binary were removed after recording the results; semantic tests and snapshots remain.
+
 ### Remaining rules
 
 Bind strict arguments before substitution and preserve application staging. Single
@@ -448,8 +516,15 @@ keep decision; rejected rules are removed.
 
 Treat force caching and constant currying as separate review units.
 
-- Share forced builtin references when repeated use justifies the binding cost.
-  Compare standalone calls, loops and branch-local uses; preserve evaluation.
+- Always hoist forced builtin references to the validator's outermost binding
+  prefix, outside its argument lambdas, and reuse them throughout its body,
+  including one-use references. For non-validator entry points, use the same
+  outermost program scope. Bind each distinct forced builtin once per program.
+  This is the user's
+  27 September decision; no use-count, size or budget threshold gates it.
+  Hoist only the forced builtin value, never its applied arguments or a
+  saturated computation. Rule 3 must preserve these bindings. Measure standalone
+  calls, loops and branch-local uses to document costs, not to choose placement.
 - Share repeated constant partial applications at a safe common scope. Only hoist
   safe partial applications; never pre-evaluate a failing saturated call.
   Move a constant across operands only when the operation and evaluation order
@@ -457,8 +532,8 @@ Treat force caching and constant currying as separate review units.
   comparisons indiscriminately.
 
 Preserve ANF and correct types. Measure cached forces together with pair projections
-later. The old minimum-use constant of two is a candidate to test, not a fixed
-policy. Ensure cleanup does not inline away intentional sharing and recreate it
+later. The old minimum-use constant of two does not apply to forced builtin
+references. Ensure cleanup does not inline away intentional sharing and recreate it
 indefinitely.
 
 **Done when:** each accepted sharing rule has measurements and regressions for

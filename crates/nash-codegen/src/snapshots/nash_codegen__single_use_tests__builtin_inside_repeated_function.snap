@@ -1,0 +1,39 @@
+---
+source: crates/nash-codegen/src/single_use_tests.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let tracer#1 : string -> int -> int = trace in
+let repeated#3 : int -> int = \x#2 : int -> tracer#1 "tick" x#2 in
+let unused#4 : int = repeated#3 1 in
+repeated#3 42
+--- core after
+let tracer#1 : string -> int -> int = trace in
+let repeated#3 : int -> int = \x#2 : int -> tracer#1 "tick" x#2 in
+let unused#4 : int = repeated#3 1 in
+repeated#3 42
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam tracer_1
+    [(lam repeated_3
+      [(lam unused_4 [repeated_3 (con integer 42)]) [repeated_3 (con integer 1)]])
+      (lam x_2 [[tracer_1 (con string "tick")] x_2])])
+    (force (builtin trace))])
+--- result
+(con integer 42)
+--- logs
+["tick", "tick"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam tracer_1
+    [(lam repeated_3
+      [(lam unused_4 [repeated_3 (con integer 42)]) [repeated_3 (con integer 1)]])
+      (lam x_2 [[tracer_1 (con string "tick")] x_2])])
+    (force (builtin trace))])
+--- result
+(con integer 42)
+--- logs
+["tick", "tick"]
