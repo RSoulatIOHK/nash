@@ -336,7 +336,7 @@ fn build_sync(
         .map(|(uri, _, source)| {
             let dependencies = source.as_ref().map_or_else(
                 |_| vec![],
-                |source| extract_imports(source, uri, &known, true),
+                |source| scan_module(source, uri, &known, true).expect("unreserved test module"),
             );
             (uri.clone(), dependencies)
         })
@@ -544,69 +544,72 @@ pub async fn build_graph_with_tests(
     modules: &[Url],
     test_modules: &[Url],
 ) -> Result<DepGraph, DriverError> {
-    let mut graph = DepGraph::new();
-
-    graph.test_modules = Some(test_modules.iter().cloned().collect());
     let sources = Database::sources(&db, &modules.iter().collect::<Vec<_>>()).await;
-    for (uri, source) in modules.iter().zip(sources) {
-        if crate::bundled_base::source(uri).is_none()
-            && modules.contains(&crate::bundled_base::uri("Prelude"))
-            && let Ok(source) = &source
-        {
-            let bump = Bump::new();
-            if let Ok(module) = nash_parse::Parser::new(&bump, source).module() {
-                let name = module.name.map_or_else(
-                    || {
-                        std::path::Path::new(uri.path())
-                            .file_stem()
-                            .and_then(|name| name.to_str())
-                            .unwrap_or("Main")
-                    },
-                    |name| name.value,
-                );
-                if matches!(name, "Primitive" | "Builtin")
-                    || crate::bundled_base::SOURCES
-                        .iter()
-                        .any(|(reserved, _)| *reserved == name)
-                {
-                    return Err(DriverError::ReservedModule {
-                        name: name.into(),
-                        uri: Box::new(uri.clone()),
-                    });
-                }
-            }
-        }
+    let known: Arc<[Url]> = modules.into();
+    let scans: Vec<_> = modules
+        .iter()
+        .zip(sources)
+        .map(|(uri, source)| {
+            let (uri, known) = (uri.clone(), known.clone());
+            let include_tests = test_modules.contains(&uri);
+            tokio::task::spawn_blocking(move || {
+                // Retain unreadable nodes: the build reports their I/O failure and
+                // blocks dependents while continuing independent modules.
+                let imports = match source {
+                    Ok(source) => scan_module(&source, &uri, &known, include_tests)?,
+                    Err(_) => vec![],
+                };
+                Ok::<_, DriverError>((uri, imports))
+            })
+        })
+        .collect();
 
-        // Retain unreadable nodes: the build reports their I/O failure and
-        // blocks dependents while continuing independent modules.
-        let imports = source.as_ref().map_or_else(
-            |_| vec![],
-            |source| extract_imports(source, uri, modules, test_modules.contains(uri)),
-        );
-        graph.add_module(uri.clone(), imports);
+    let mut graph = DepGraph::new();
+    graph.test_modules = Some(test_modules.iter().cloned().collect());
+    for scan in scans {
+        let (uri, imports) = scan.await.expect("module scan panicked")?;
+        graph.add_module(uri, imports);
     }
-
     graph.compute_order()?;
     Ok(graph)
 }
 
-/// Extract import URIs from source code.
-///
-/// This is a simplified implementation - in production we'd use the parser.
-fn extract_imports(
+/// Parse once to reject reserved module names and resolve imports to known modules.
+fn scan_module(
     source: &str,
     current: &Url,
     known_modules: &[Url],
     include_tests: bool,
-) -> Vec<Url> {
+) -> Result<Vec<Url>, DriverError> {
+    let bump = Bump::new();
+    let module = nash_parse::Parser::new(&bump, bump.alloc_str(source))
+        .module()
+        .ok();
+    let implicit_base = crate::bundled_base::source(current).is_none()
+        && known_modules.contains(&crate::bundled_base::uri("Prelude"));
     let mut imports = Vec::new();
 
-    // Parse to get imports
-    let bump = Bump::new();
-    let src = bump.alloc_str(source);
-    let mut parser = nash_parse::Parser::new(&bump, src);
-
-    if let Ok(module) = parser.module() {
+    if let Some(module) = module {
+        let name = module.name.map_or_else(
+            || {
+                std::path::Path::new(current.path())
+                    .file_stem()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("Main")
+            },
+            |name| name.value,
+        );
+        if implicit_base
+            && (matches!(name, "Primitive" | "Builtin")
+                || crate::bundled_base::SOURCES
+                    .iter()
+                    .any(|(reserved, _)| *reserved == name))
+        {
+            return Err(DriverError::ReservedModule {
+                name: name.into(),
+                uri: Box::new(current.clone()),
+            });
+        }
         for import in module.imports.iter().chain(
             module
                 .tests
@@ -614,10 +617,7 @@ fn extract_imports(
                 .filter(|_| include_tests)
                 .flat_map(|tests| tests.imports.iter()),
         ) {
-            let import_name = import.import.value;
-
-            // Try to resolve import to a known module
-            if let Some(uri) = resolve_import(import_name, current, known_modules)
+            if let Some(uri) = resolve_import(import.import.value, current, known_modules)
                 && !imports.contains(&uri)
             {
                 imports.push(uri);
@@ -625,9 +625,7 @@ fn extract_imports(
         }
     }
 
-    if crate::bundled_base::source(current).is_none()
-        && known_modules.contains(&crate::bundled_base::uri("Prelude"))
-    {
+    if implicit_base {
         for (name, _) in nash_can::defaults::MODULES {
             let uri = crate::bundled_base::uri(name);
             if known_modules.contains(&uri) && !imports.contains(&uri) {
@@ -635,7 +633,7 @@ fn extract_imports(
             }
         }
     }
-    imports
+    Ok(imports)
 }
 
 /// Resolve an import name to a module URI.
