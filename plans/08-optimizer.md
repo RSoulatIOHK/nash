@@ -974,7 +974,7 @@ experiment preserves results and traces. Existing semantic snapshots are unchang
 
 ## Chunk 6 — Dead bindings, functions and parameters
 
-**First trial (27 September 2026), pending keep/discard:**
+**First rule retained (27 September 2026): safe unused nonrecursive bindings.**
 `nash_ir::dead_bindings::simplify` removes unused nonrecursive lets only when
 `analysis::safe_to_discard` proves the RHS terminates without failure or trace.
 It counts uses by unique binder identity and repeats after removal, so dead
@@ -986,7 +986,9 @@ Semantic snapshots cover literal/closure/delay/partial-builtin removal, cascadin
 aliases/captures, live captures, strict constructor fields, traces, failures,
 forced failures, saturated builtin calls and strict partial-call arguments.
 The diverging recursive-call fixture checks exact retained Core without running
-an infinite program. The trial is separate from the accepted pipeline.
+an infinite program. The pass runs inside `small_inline::simplify` alongside
+rules 1–4 until the cleanup loop reaches a fixed point, before recursion rewriting.
+Recursive-member and parameter removal remain separate, unimplemented review units.
 
 Explicit experiment: `cargo run --locked --manifest-path
  tools/optimizer-perf/Cargo.toml --example dead_bindings` (one shell command).
@@ -994,10 +996,13 @@ Across 15 cases, unused literal/closure/delay removal saves 48,000 CPU and 300
 memory; the partial-builtin example saves 80,000 CPU and 500 memory. Flat sizes
 fall by 2–5 bytes. Strict trace/saturated-call cases and all nine existing source
 workloads are unchanged. This does not fix the existing recursive-fixture
-regressions. The permanent 23-row baseline remains unchanged.
+regressions. All 23 permanent baseline rows remain unchanged after integration;
+the recorded pipeline settings now include dead-binding cleanup.
 
-Validation: 488 IR/codegen nextest tests passed, including seven new tests and
-16 reviewed snapshots; root and isolated strict Clippy and formatting passed.
+Validation: 489 IR/codegen nextest tests passed. The original 16 semantic
+snapshots are supplemented by paired Core snapshots for safe ignored delayed
+arguments and strict tracing arguments through the accepted cleanup loop. Root
+and isolated strict Clippy and formatting passed.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused

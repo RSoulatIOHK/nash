@@ -234,3 +234,46 @@ fn unused_closure_releases_capture() {
         &[],
     );
 }
+
+#[test]
+fn accepted_cleanup_removes_safe_ignored_arguments() {
+    let a = Arena::new();
+    let b = Builder::new(&a);
+    for (name, argument, logs) in [
+        ("cleanup_safe_argument", b.delay(b.error(INT)), &[][..]),
+        (
+            "cleanup_strict_argument",
+            b.trace(b.lit(Constant::string(&a, "kept")), b.int(9)),
+            &["kept"][..],
+        ),
+    ] {
+        let p = bind(&b, argument.ty);
+        let before = nash_ir::anf::normalize(&b, b.app(b.lam(&[p], b.int(42)), &[argument], INT));
+        let after = nash_ir::small_inline::simplify(&b, before);
+        nash_ir::anf::validate(after).unwrap();
+        hygiene::validate(after, &[]).unwrap();
+        assert_eq!(before.ty, after.ty);
+        assert_eq!(
+            pretty(after),
+            pretty(nash_ir::small_inline::simplify(&b, after))
+        );
+        if logs.is_empty() {
+            assert!(matches!(after.kind, CoreKind::Lit(_)));
+        }
+        let baseline = crate::harness::eval_core_raw(&a, before);
+        let candidate = crate::harness::eval_core_raw(&a, after);
+        assert_eq!(baseline.observable, candidate.observable);
+        assert_eq!(candidate.logs, logs);
+        assert_eq!(baseline.logs, candidate.logs);
+        insta::assert_snapshot!(
+            name,
+            format!(
+                "--- core before\n{}\n--- core after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                pretty(after),
+                candidate.result,
+                candidate.logs
+            )
+        );
+    }
+}

@@ -450,7 +450,8 @@ operands or literals already approved for duplication by rule 1. Only fully
 applied direct calls are copied; each copy gets fresh parameters and existing
 beta reduction preserves strict argument evaluation. Partial and escaping uses
 remain shared. Conditional bodies and broader size heuristics are deferred.
-`small_inline::simplify` composes rules 1–4 to a fixed point in the candidate and
+`small_inline::simplify` composes rules 1–4 and safe dead-binding removal to a
+fixed point in the candidate and
 explicit performance pipelines. This does not change the normal build default.
 
 Chunk 5 force sharing is implemented in `lower::lower_with_builtin_sharing`.
@@ -886,3 +887,9 @@ When a source Data pattern ignores its payload, `chooseData` selects the branch
 without calling its unwrapper. A used payload still invokes the corresponding
 `un*Data` builtin. This does not remove explicitly written discarded calls in
 Nash validation implementations.
+
+Chunk 6 removes unused nonrecursive lets when `analysis::safe_to_discard` proves
+the RHS terminates without trace or failure. Repeating cleanup releases dead
+captures and aliases while preserving strict effectful arguments exposed by beta
+reduction. It runs before recursion rewriting; no second ANF pass is added.
+Recursive-group and parameter removal are not yet implemented.

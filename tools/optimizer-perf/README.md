@@ -27,7 +27,7 @@ validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
 The `before` pipeline is O0 (recursion rewrite and lowering). The `after` pipeline
-is the accepted static lifting, one ANF normalization and rules 1+2+3+4 loop,
+is the accepted static lifting, one ANF normalization and rules 1+2+3+4 plus safe dead-binding cleanup,
 then recursion rewrite, binder freshening and lowering with both Chunk 5 sharing steps. No second normalization
 or ANF-dependent cleanup runs after recursion rewriting. Rule 3 was accepted on 27 September 2026. These figures record current behavior, including overhead
 from ANF; they are not a claim that the incomplete optimizer beats O0 everywhere.
@@ -129,6 +129,7 @@ cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dea
 Compares accepted lowering with/without conservative unused-let elimination
 before recursion rewriting: six direct Core cases and nine source workloads.
 The source workloads run accepted Core cleanup first. Results and traces must
-match; CPU, memory and Flat bytes are printed separately. This candidate is not
-part of the accepted pipeline or permanent baseline. It is outside root test
+match; CPU, memory and Flat bytes are printed separately. Dead-binding removal is now accepted in the Core cleanup loop; source workloads
+already include it, while the direct Core cases isolate its effect. This experiment
+does not update the permanent baseline. It is outside root test
 discovery, like the other explicit experiments.

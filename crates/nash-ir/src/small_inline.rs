@@ -3,15 +3,15 @@ use crate::{
     analysis,
     build::Builder,
     core::{Binder, Core, CoreKind},
-    propagate, single_use,
+    dead_bindings, propagate, single_use,
 };
 use std::{collections::HashSet, ptr};
 
-/// Compose accepted rules 1–4 on typed ANF with globally unique binders.
+/// Compose rules 1–4 and safe dead-binding removal on typed ANF with unique binders.
 /// Conditional bodies, partial calls and indirect calls are not selected by rule 4.
 pub fn simplify<'a>(b: &Builder<'a>, mut core: &'a Core<'a>) -> &'a Core<'a> {
     loop {
-        let next = inline(b, single_use::simplify(b, core));
+        let next = dead_bindings::simplify(b, inline(b, single_use::simplify(b, core)));
         if ptr::eq(core, next) {
             return next;
         }
