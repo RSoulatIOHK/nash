@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use miette::{IntoDiagnostic, Result};
 use nash_driver::{Database, FileSystemSource, Project, build_graph_with_tests, test_with};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, task::spawn_blocking};
 
 use super::build::{PlutusVersionArg, TraceLevelArg};
 
@@ -156,14 +156,14 @@ impl Args {
             (time ^ (time >> 32) ^ u128::from(std::process::id())) as u32
         });
         let started = Instant::now();
-        let outcomes = nash_test::run_all(
-            programs,
-            &nash_test::Config {
-                seed,
-                max_success: self.max_success,
-                jobs: self.jobs,
-            },
-        );
+        let config = nash_test::Config {
+            seed,
+            max_success: self.max_success,
+            jobs: self.jobs,
+        };
+        let outcomes = spawn_blocking(move || nash_test::run_all(programs, &config))
+            .await
+            .into_diagnostic()?;
         if self.json {
             println!(
                 "{}",
