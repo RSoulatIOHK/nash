@@ -4,6 +4,8 @@
 //! to enable incremental compilation.
 
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use url::Url;
 
 use crate::error::DriverError;
@@ -17,7 +19,7 @@ use crate::source::FileSource;
 /// - Dependency tracking for invalidation
 pub struct Database {
     /// File source for reading/writing files.
-    source: Box<dyn FileSource>,
+    source: Arc<dyn FileSource>,
 
     /// Cached source text keyed by URI.
     files: HashMap<Url, String>,
@@ -33,7 +35,7 @@ impl Database {
     /// Create a new database with the given file source.
     pub fn new(source: impl FileSource + 'static) -> Self {
         Database {
-            source: Box::new(crate::bundled_base::BundledSource(source)),
+            source: Arc::new(crate::bundled_base::BundledSource(source)),
             files: HashMap::new(),
             imports: HashMap::new(),
             reverse_deps: HashMap::new(),
@@ -49,6 +51,40 @@ impl Database {
         }
 
         Ok(self.files.get(uri).unwrap())
+    }
+
+    /// Source text for each URI, in order; uncached files are read concurrently outside the lock.
+    pub(crate) async fn sources(
+        db: &Mutex<Self>,
+        uris: &[&Url],
+    ) -> Vec<Result<String, DriverError>> {
+        let reads: Vec<_> = {
+            let db = db.lock().await;
+            uris.iter()
+                .map(|&uri| {
+                    let cached = db.files.get(uri).cloned();
+                    let source = db.source.clone();
+                    let uri = uri.clone();
+                    tokio::spawn(async move {
+                        match cached {
+                            Some(text) => Ok(text),
+                            None => source.read(&uri).await,
+                        }
+                    })
+                })
+                .collect()
+        };
+        let mut sources = Vec::with_capacity(reads.len());
+        for read in reads {
+            sources.push(read.await.expect("source read panicked"));
+        }
+        let mut db = db.lock().await;
+        for (&uri, source) in uris.iter().zip(&sources) {
+            if let Ok(text) = source {
+                db.files.entry(uri.clone()).or_insert_with(|| text.clone());
+            }
+        }
+        sources
     }
 
     /// Check if a file exists.
@@ -172,5 +208,70 @@ mod tests {
 
         db.invalidate(&uri);
         assert_eq!(db.source(&uri).await.unwrap(), "updated");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn sources_preserve_order_and_errors() {
+        let mem = InMemorySource::new();
+        let uris: Vec<_> = (0..128)
+            .map(|i| Url::parse(&format!("file:///Module{i}.nash")).unwrap())
+            .collect();
+        for (index, uri) in uris.iter().enumerate() {
+            if index != 63 {
+                mem.insert(uri.clone(), format!("source {index}"));
+            }
+        }
+        let db = Mutex::new(Database::new(mem));
+        let sources = Database::sources(&db, &uris.iter().collect::<Vec<_>>()).await;
+        assert_eq!(sources.len(), uris.len());
+        for (index, source) in sources.iter().enumerate() {
+            if index == 63 {
+                assert!(source.is_err(), "missing source must retain its position");
+            } else {
+                assert_eq!(source.as_ref().unwrap(), &format!("source {index}"));
+            }
+        }
+    }
+
+    /// Each read waits until every read has started.
+    struct Rendezvous(tokio::sync::Barrier);
+
+    #[async_trait::async_trait]
+    impl FileSource for Rendezvous {
+        async fn exists(&self, _: &Url) -> Result<bool, DriverError> {
+            Ok(true)
+        }
+        async fn read(&self, uri: &Url) -> Result<String, DriverError> {
+            self.0.wait().await;
+            Ok(uri.path().to_owned())
+        }
+        async fn write(&self, _: &Url, _: &str) -> Result<(), DriverError> {
+            unreachable!()
+        }
+        async fn glob(&self, _: &Url, _: &str) -> Result<Vec<Url>, DriverError> {
+            unreachable!()
+        }
+    }
+
+    #[tokio::test]
+    async fn sources_read_concurrently_and_fill_the_cache() {
+        let uris: Vec<_> = (0..4)
+            .map(|i| Url::parse(&format!("file:///M{i}.nash")).unwrap())
+            .collect();
+        let db = Mutex::new(Database::new(Rendezvous(tokio::sync::Barrier::new(
+            uris.len(),
+        ))));
+        let fetch = async {
+            let sources = Database::sources(&db, &uris.iter().collect::<Vec<_>>()).await;
+            // A second read would wait at the barrier forever.
+            let cached = db.lock().await.source(&uris[0]).await.unwrap().to_owned();
+            (sources, cached)
+        };
+        let (sources, cached) = tokio::time::timeout(std::time::Duration::from_secs(5), fetch)
+            .await
+            .expect("reads must run concurrently and results must be cached");
+        let paths: Vec<_> = sources.into_iter().map(Result::unwrap).collect();
+        assert_eq!(paths, ["/M0.nash", "/M1.nash", "/M2.nash", "/M3.nash"]);
+        assert_eq!(cached, "/M0.nash");
     }
 }

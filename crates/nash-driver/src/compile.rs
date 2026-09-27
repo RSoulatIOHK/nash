@@ -172,16 +172,17 @@ where
     F: for<'a> FnOnce(Solved<'a>) -> R + Send + 'static,
 {
     let modules: Vec<&Url> = graph.levels().into_iter().flatten().collect();
-    let sources = fetch_sources(&db, &modules)
+    let sources = Database::sources(&db, &modules)
         .await
         .into_iter()
-        .map(|(uri, source)| {
+        .zip(modules)
+        .map(|(source, uri)| {
             let package = crate::bundled_base::modules()
-                .get(&uri)
+                .get(uri)
                 .cloned()
-                .or_else(|| origins.get(&uri).cloned())
+                .or_else(|| origins.get(uri).cloned())
                 .flatten();
-            (uri, package, source)
+            (uri.clone(), package, source.map_err(|e| e.to_string()))
         })
         .collect();
 
@@ -341,22 +342,6 @@ fn build_sync(
         })
         .collect();
     build_sync_with_edges(sources, &edges)
-}
-
-/// Fetch source content in dependency order, retaining failed reads in place.
-async fn fetch_sources(
-    db: &Arc<Mutex<Database>>,
-    uris: &[&Url],
-) -> Vec<(Url, Result<String, String>)> {
-    // Database::source needs exclusive access across the read, so spawning
-    // tasks cannot parallelize these reads and would lose dependency order.
-    let mut db = db.lock().await;
-    let mut results = Vec::with_capacity(uris.len());
-    for &uri in uris {
-        let source = db.source(uri).await.map(str::to_owned);
-        results.push((uri.clone(), source.map_err(|e| e.to_string())));
-    }
-    results
 }
 
 /// Compile into the build arena, preserving the original canonical addresses.
@@ -562,13 +547,8 @@ pub async fn build_graph_with_tests(
     let mut graph = DepGraph::new();
 
     graph.test_modules = Some(test_modules.iter().cloned().collect());
-    for uri in modules {
-        // Parse module to get imports
-        let source = {
-            let mut db = db.lock().await;
-            db.source(uri).await.map(str::to_owned)
-        };
-
+    let sources = Database::sources(&db, &modules.iter().collect::<Vec<_>>()).await;
+    for (uri, source) in modules.iter().zip(sources) {
         if crate::bundled_base::source(uri).is_none()
             && modules.contains(&crate::bundled_base::uri("Prelude"))
             && let Ok(source) = &source
@@ -751,29 +731,6 @@ mod tests {
                 scheme.annotation.context[0].trait_ref().unwrap().home.name,
                 "Base"
             );
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn source_fetch_preserves_dependency_order_and_errors() {
-        let mem = InMemorySource::new();
-        let uris: Vec<_> = (0..128).map(|i| url(&format!("Module{i}.nash"))).collect();
-        for (index, uri) in uris.iter().enumerate() {
-            if index != 63 {
-                mem.insert(uri.clone(), format!("source {index}"));
-            }
-        }
-        let db = Arc::new(Mutex::new(Database::new(mem)));
-        let ordered: Vec<_> = uris.iter().collect();
-        let sources = fetch_sources(&db, &ordered).await;
-        assert_eq!(sources.len(), uris.len());
-        for (index, (uri, source)) in sources.iter().enumerate() {
-            assert_eq!(uri, &uris[index], "source moved out of dependency order");
-            if index == 63 {
-                assert!(source.is_err(), "missing source must retain its position");
-            } else {
-                assert_eq!(source.as_ref().unwrap(), &format!("source {index}"));
-            }
         }
     }
 
