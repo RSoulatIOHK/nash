@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 divideInteger (trace "numerator" in 1) 0 (trace "unreachable" in 2)
@@ -12,12 +12,7 @@ let anf#1 : int = trace "numerator" in 1 in
 let anf#2 : int = divideInteger anf#1 0 in
 let anf#3 : int = trace "unreachable" in 2 in
 anf#2 anf#3
---- hygienic rewritten core before ANF
-let anf#4 : int = trace "numerator" in 1 in
-let anf#5 : int = divideInteger anf#4 0 in
-let anf#6 : int = trace "unreachable" in 2 in
-anf#5 anf#6
---- rewritten core after ANF
+--- rewritten core (no second ANF)
 let anf#4 : int = trace "numerator" in 1 in
 let anf#5 : int = divideInteger anf#4 0 in
 let anf#6 : int = trace "unreachable" in 2 in

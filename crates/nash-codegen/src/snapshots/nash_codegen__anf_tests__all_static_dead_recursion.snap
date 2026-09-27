@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -27,18 +27,10 @@ in
 force worker#6 in
 let anf#7 : int = trace "argument" in 42 in
 same#4 anf#7
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let same#13 : int -> int = \x#9 : int -> let worker#12 : @delay int = (\self#10 : @self (@delay int) -> self#10 self#10) (\self#11 : @self (@delay int) -> delay (case@Bool true of
   True -> trace "selected" in x#9
   False -> force (self#11 self#11))) in
-force worker#12 in
-let anf#14 : int = trace "argument" in 42 in
-same#13 anf#14
---- rewritten core after ANF
-let same#13 : int -> int = \x#9 : int -> let worker#12 : @delay int = (\self#10 : @self (@delay int) -> self#10 self#10) (\self#11 : @self (@delay int) -> delay (case@Bool true of
-  True -> trace "selected" in x#9
-  False -> let anf#15 : @delay int = self#11 self#11 in
-  force anf#15)) in
 force worker#12 in
 let anf#14 : int = trace "argument" in 42 in
 same#13 anf#14
@@ -76,7 +68,7 @@ same#13 anf#14
             (delay
               (case
                 (con bool True)
-                [(lam anf_15 (force anf_15)) [self_11 self_11]]
+                (force [self_11 self_11])
                 (force [[(force (builtin trace)) (con string "selected")] (delay x_9)]))))]])])
 --- result
 (con integer 42)

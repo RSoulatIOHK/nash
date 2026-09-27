@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -33,26 +33,12 @@ let anf#16 : int = trace "initial" in 2 in
 let anf#17 : int -> int = anf#15 anf#16 in
 let anf#18 : int = trace "extra" in 2 in
 anf#17 anf#18
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let countdown#30 : int -> int -> int -> int = \x#21 : int n#22 : int -> let worker#29 : int -> int -> int = (\self#23 : @self (int -> int -> int) -> self#23 self#23) (\self#24 : @self (int -> int -> int) n#25 : int -> trace "step" in let anf#26 : bool = equalsInteger n#25 0 in
 case@Bool anf#26 of
   True -> \y#27 : int -> trace "returned function" in addInteger x#21 y#27
   False -> let anf#28 : int = subtractInteger n#25 1 in
   self#24 self#24 anf#28) in
-worker#29 n#22 in
-let anf#31 : int = trace "fixed" in 40 in
-let anf#32 : int -> int -> int = countdown#30 anf#31 in
-let anf#33 : int = trace "initial" in 2 in
-let anf#34 : int -> int = anf#32 anf#33 in
-let anf#35 : int = trace "extra" in 2 in
-anf#34 anf#35
---- rewritten core after ANF
-let countdown#30 : int -> int -> int -> int = \x#21 : int n#22 : int -> let worker#29 : int -> int -> int = (\self#23 : @self (int -> int -> int) -> self#23 self#23) (\self#24 : @self (int -> int -> int) n#25 : int -> trace "step" in let anf#26 : bool = equalsInteger n#25 0 in
-case@Bool anf#26 of
-  True -> \y#27 : int -> trace "returned function" in addInteger x#21 y#27
-  False -> let anf#28 : int = subtractInteger n#25 1 in
-  let anf#36 : int -> int -> int = self#24 self#24 in
-  anf#36 anf#28) in
 worker#29 n#22 in
 let anf#31 : int = trace "fixed" in 40 in
 let anf#32 : int -> int -> int = countdown#30 anf#31 in
@@ -118,7 +104,7 @@ anf#34 anf#35
                       [(lam anf_26
                         (case
                           anf_26
-                          [(lam anf_28 [(lam anf_36 [anf_36 anf_28]) [self_24 self_24]])
+                          [(lam anf_28 [[self_24 self_24] anf_28])
                             [[(builtin subtractInteger) n_25] (con integer 1)]]
                           (lam y_27
                             (force

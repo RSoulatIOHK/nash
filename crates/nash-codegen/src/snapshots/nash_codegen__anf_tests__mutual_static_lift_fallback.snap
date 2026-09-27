@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -39,7 +39,7 @@ letrec
     anf#39 anf#40
 in
 even#29 42 3
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let dispatch#74 : @dispatch[(int, int) -> int, (int, int) -> int] = \request#57 : @request[(int, int) -> int, (int, int) -> int] -> case@Tag request#57 of
   0 self#58 x#59 n#60 -> let anf#61 : bool = equalsInteger n#60 0 in
   case@Bool anf#61 of
@@ -55,27 +55,6 @@ let dispatch#74 : @dispatch[(int, int) -> int, (int, int) -> int] = \request#57 
     anf#72 anf#73 in
 let even#77 : int -> int -> int = \x#75 : int n#76 : int -> dispatch#74 (constr 0 dispatch#74 x#75 n#76) in
 let odd#80 : int -> int -> int = \y#78 : int m#79 : int -> dispatch#74 (constr 1 dispatch#74 y#78 m#79) in
-even#77 42 3
---- rewritten core after ANF
-let dispatch#74 : @dispatch[(int, int) -> int, (int, int) -> int] = \request#57 : @request[(int, int) -> int, (int, int) -> int] -> case@Tag request#57 of
-  0 self#58 x#59 n#60 -> let anf#61 : bool = equalsInteger n#60 0 in
-  case@Bool anf#61 of
-    True -> x#59
-    False -> let anf#64 : int -> int = (\y#62 : int m#63 : int -> let anf#81 : @packet[1][(int, int) -> int, (int, int) -> int] = constr 1 self#58 y#62 m#63 in
-    self#58 anf#81) x#59 in
-    let anf#65 : int = subtractInteger n#60 1 in
-    anf#64 anf#65
-  1 self#66 y#67 m#68 -> let anf#69 : bool = equalsInteger m#68 0 in
-  case@Bool anf#69 of
-    True -> y#67
-    False -> let anf#72 : int -> int = (\x#70 : int n#71 : int -> let anf#82 : @packet[0][(int, int) -> int, (int, int) -> int] = constr 0 self#66 x#70 n#71 in
-    self#66 anf#82) y#67 in
-    let anf#73 : int = subtractInteger m#68 1 in
-    anf#72 anf#73 in
-let even#77 : int -> int -> int = \x#75 : int n#76 : int -> let anf#83 : @packet[0][(int, int) -> int, (int, int) -> int] = constr 0 dispatch#74 x#75 n#76 in
-dispatch#74 anf#83 in
-let odd#80 : int -> int -> int = \y#78 : int m#79 : int -> let anf#84 : @packet[1][(int, int) -> int, (int, int) -> int] = constr 1 dispatch#74 y#78 m#79 in
-dispatch#74 anf#84 in
 even#77 42 3
 --- baseline
 --- uplc
@@ -114,10 +93,8 @@ even#77 42 3
   [(lam dispatch_74
     [(lam even_77
       [(lam odd_80 [[even_77 (con integer 42)] (con integer 3)])
-        (lam y_78
-          (lam m_79 [(lam anf_84 [dispatch_74 anf_84]) (constr 1 dispatch_74 y_78 m_79)]))])
-      (lam x_75
-        (lam n_76 [(lam anf_83 [dispatch_74 anf_83]) (constr 0 dispatch_74 x_75 n_76)]))])
+        (lam y_78 (lam m_79 [dispatch_74 (constr 1 dispatch_74 y_78 m_79)]))])
+      (lam x_75 (lam n_76 [dispatch_74 (constr 0 dispatch_74 x_75 n_76)]))])
     (lam request_57
       (case
         request_57
@@ -130,9 +107,7 @@ even#77 42 3
                   [(lam anf_64
                     [(lam anf_65 [anf_64 anf_65])
                       [[(builtin subtractInteger) n_60] (con integer 1)]])
-                    [(lam y_62
-                      (lam m_63 [(lam anf_81 [self_58 anf_81]) (constr 1 self_58 y_62 m_63)]))
-                      x_59]]
+                    [(lam y_62 (lam m_63 [self_58 (constr 1 self_58 y_62 m_63)])) x_59]]
                   x_59))
                 [[(builtin equalsInteger) n_60] (con integer 0)]])))
         (lam self_66
@@ -144,9 +119,7 @@ even#77 42 3
                   [(lam anf_72
                     [(lam anf_73 [anf_72 anf_73])
                       [[(builtin subtractInteger) m_68] (con integer 1)]])
-                    [(lam x_70
-                      (lam n_71 [(lam anf_82 [self_66 anf_82]) (constr 0 self_66 x_70 n_71)]))
-                      y_67]]
+                    [(lam x_70 (lam n_71 [self_66 (constr 0 self_66 x_70 n_71)])) y_67]]
                   y_67))
                 [[(builtin equalsInteger) m_68] (con integer 0)]])))))])
 --- result

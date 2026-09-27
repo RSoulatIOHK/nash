@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -29,20 +29,11 @@ letrec
     partial#15 anf#17
 in
 countdown#12 42 2
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let countdown#28 : int -> int -> int = (\self#21 : @self (int -> int -> int) -> self#21 self#21) (\self#22 : @self (int -> int -> int) x#23 : int n#24 : int -> let anf#25 : bool = equalsInteger n#24 0 in
 case@Bool anf#25 of
   True -> x#23
   False -> let partial#26 : int -> int = self#22 self#22 x#23 in
-  let anf#27 : int = trace "next" in subtractInteger n#24 1 in
-  partial#26 anf#27) in
-countdown#28 42 2
---- rewritten core after ANF
-let countdown#28 : int -> int -> int = (\self#21 : @self (int -> int -> int) -> self#21 self#21) (\self#22 : @self (int -> int -> int) x#23 : int n#24 : int -> let anf#25 : bool = equalsInteger n#24 0 in
-case@Bool anf#25 of
-  True -> x#23
-  False -> let anf#29 : int -> int -> int = self#22 self#22 in
-  let partial#26 : int -> int = anf#29 x#23 in
   let anf#27 : int = trace "next" in subtractInteger n#24 1 in
   partial#26 anf#27) in
 countdown#28 42 2
@@ -78,14 +69,12 @@ countdown#28 42 2
             [(lam anf_25
               (case
                 anf_25
-                [(lam anf_29
-                  [(lam partial_26
-                    [(lam anf_27 [partial_26 anf_27])
-                      (force
-                        [[(force (builtin trace)) (con string "next")]
-                          (delay [[(builtin subtractInteger) n_24] (con integer 1)])])])
-                    [anf_29 x_23]])
-                  [self_22 self_22]]
+                [(lam partial_26
+                  [(lam anf_27 [partial_26 anf_27])
+                    (force
+                      [[(force (builtin trace)) (con string "next")]
+                        (delay [[(builtin subtractInteger) n_24] (con integer 1)])])])
+                  [[self_22 self_22] x_23]]
                 x_23))
               [[(builtin equalsInteger) n_24] (con integer 0)]])))]])
 --- result

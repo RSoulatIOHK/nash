@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 case@Tag (trace "subject" in constr 1 (trace "field" in 42)) of
@@ -17,13 +17,7 @@ constr 1 anf#3 in
 case@Tag anf#4 of
   0 -> trace "unselected" in error
   1 field#2 -> trace "selected" in field#2
---- hygienic rewritten core before ANF
-let anf#6 : @constr[1](int) = trace "subject" in let anf#5 : int = trace "field" in 42 in
-constr 1 anf#5 in
-case@Tag anf#6 of
-  0 -> trace "unselected" in error
-  1 field#7 -> trace "selected" in field#7
---- rewritten core after ANF
+--- rewritten core (no second ANF)
 let anf#6 : @constr[1](int) = trace "subject" in let anf#5 : int = trace "field" in 42 in
 constr 1 anf#5 in
 case@Tag anf#6 of

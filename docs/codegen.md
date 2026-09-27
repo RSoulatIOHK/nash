@@ -388,16 +388,19 @@ size counts nodes/binders, not literal payload or serialized bytes.
 The accepted pipeline begins with binder hygiene, static-parameter lifting, then
 A-normal form (ANF). Lifting retains recursive `LetRec` workers and captures the
 unchanged parameters before ANF can split complete calls into partial ones. Main
-optimization runs before recursion rewriting; generated code is normalized again
-and cleaned up afterward. Freshen binder occurrences again after recursion
+optimization runs before recursion rewriting. Normalize once only: generated
+recursive code lowers directly, without a second ANF pass or ANF-dependent cleanup.
+Freshen binder occurrences again after recursion
 rewriting, which can share generated lambda subtrees at several use sites.
 Assembly coordinates these phases. Before recursion rewriting, refresh recursive
 groups. Discovering additional static parameters after the main optimizations is
 a separate future candidate; the initial lifting pass needs no ANF call-chain
 recovery. Do not repeatedly unfold recursive calls
-or generated self-application. O0 still performs required recursion rewriting.
+or generated self-application. Post-rewrite Core may contain nested applications;
+lowering accepts these. Any future cleanup there must explicitly support nested
+Core or UPLC. O0 still performs required recursion rewriting.
 Non-atomic intermediate operands receive explicit bindings; variables/literals
-can stay inline. Existing Core nodes are reused. Later passes preserve ANF and
+can stay inline. Existing Core nodes are reused. Main optimization passes preserve ANF and
 strict evaluation order, including application staging and trace timing; they
 must not move work across case-branch, lambda, or delay boundaries without a
 separate semantic justification. O0 remains the unnormalized baseline. See
@@ -419,8 +422,8 @@ Plan 08 rule 1 is accepted in `nash-ir::propagate`: remove variable aliases,
 then propagate literals with at most one remaining use. Integers, byte strings
 up to 64 bytes inclusive, and BLS constants may also be duplicated at multiple
 uses. Count uses after alias removal to retain other shared payloads. Computed, lambda, delay and builtin bindings
-stay bound. This pass runs only in the test pipeline, before recursion
-rewriting and after the final ANF; production assembly remains unchanged.
+stay bound. This pass runs in the test pipeline before recursion rewriting;
+production assembly remains unchanged.
 
 Rule 2 is accepted in `nash-ir::beta`: direct lambda applications become
 strict parameter bindings, with partial and oversaturated application staging

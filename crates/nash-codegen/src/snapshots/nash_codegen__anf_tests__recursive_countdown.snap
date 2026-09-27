@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -26,20 +26,12 @@ letrec
     countdown#5 anf#8
 in
 countdown#5 2
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let countdown#16 : int -> int = (\self#11 : @self (int -> int) -> self#11 self#11) (\self#12 : @self (int -> int) n#13 : int -> trace "step" in let anf#14 : bool = equalsInteger n#13 0 in
 case@Bool anf#14 of
   True -> 42
   False -> let anf#15 : int = subtractInteger n#13 1 in
   self#12 self#12 anf#15) in
-countdown#16 2
---- rewritten core after ANF
-let countdown#16 : int -> int = (\self#11 : @self (int -> int) -> self#11 self#11) (\self#12 : @self (int -> int) n#13 : int -> trace "step" in let anf#14 : bool = equalsInteger n#13 0 in
-case@Bool anf#14 of
-  True -> 42
-  False -> let anf#15 : int = subtractInteger n#13 1 in
-  let anf#17 : int -> int = self#12 self#12 in
-  anf#17 anf#15) in
 countdown#16 2
 --- baseline
 --- uplc
@@ -72,7 +64,7 @@ countdown#16 2
                 [(lam anf_14
                   (case
                     anf_14
-                    [(lam anf_15 [(lam anf_17 [anf_17 anf_15]) [self_12 self_12]])
+                    [(lam anf_15 [[self_12 self_12] anf_15])
                       [[(builtin subtractInteger) n_13] (con integer 1)]]
                     (con integer 42)))
                   [[(builtin equalsInteger) n_13] (con integer 0)]])])))]])

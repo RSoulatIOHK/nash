@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -38,32 +38,13 @@ let anf#24 : int = trace "limit" in 2 in
 let anf#25 : int -> int = anf#23 anf#24 in
 let anf#26 : int = trace "acc" in 0 in
 anf#25 anf#26
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let countdown#44 : int -> int -> int -> int -> int = \config#30 : int n#31 : int limit#32 : int acc#33 : int -> let worker#43 : int -> int -> int = (\self#34 : @self (int -> int -> int) -> self#34 self#34) (\self#35 : @self (int -> int -> int) n#36 : int acc#37 : int -> let anf#38 : bool = equalsInteger n#36 0 in
 case@Bool anf#38 of
   True -> let anf#39 : int = addInteger limit#32 acc#37 in
   addInteger config#30 anf#39
   False -> let anf#40 : int = trace "next n" in subtractInteger n#36 1 in
   let anf#41 : int -> int = self#35 self#35 anf#40 in
-  let anf#42 : int = trace "next acc" in addInteger acc#37 1 in
-  anf#41 anf#42) in
-worker#43 n#31 acc#33 in
-let anf#45 : int = trace "config" in 40 in
-let anf#46 : int -> int -> int -> int = countdown#44 anf#45 in
-let anf#47 : int = trace "n" in 2 in
-let anf#48 : int -> int -> int = anf#46 anf#47 in
-let anf#49 : int = trace "limit" in 2 in
-let anf#50 : int -> int = anf#48 anf#49 in
-let anf#51 : int = trace "acc" in 0 in
-anf#50 anf#51
---- rewritten core after ANF
-let countdown#44 : int -> int -> int -> int -> int = \config#30 : int n#31 : int limit#32 : int acc#33 : int -> let worker#43 : int -> int -> int = (\self#34 : @self (int -> int -> int) -> self#34 self#34) (\self#35 : @self (int -> int -> int) n#36 : int acc#37 : int -> let anf#38 : bool = equalsInteger n#36 0 in
-case@Bool anf#38 of
-  True -> let anf#39 : int = addInteger limit#32 acc#37 in
-  addInteger config#30 anf#39
-  False -> let anf#40 : int = trace "next n" in subtractInteger n#36 1 in
-  let anf#52 : int -> int -> int = self#35 self#35 in
-  let anf#41 : int -> int = anf#52 anf#40 in
   let anf#42 : int = trace "next acc" in addInteger acc#37 1 in
   anf#41 anf#42) in
 worker#43 n#31 acc#33 in
@@ -141,14 +122,12 @@ anf#50 anf#51
                         (case
                           anf_38
                           [(lam anf_40
-                            [(lam anf_52
-                              [(lam anf_41
-                                [(lam anf_42 [anf_41 anf_42])
-                                  (force
-                                    [[(force (builtin trace)) (con string "next acc")]
-                                      (delay [[(builtin addInteger) acc_37] (con integer 1)])])])
-                                [anf_52 anf_40]])
-                              [self_35 self_35]])
+                            [(lam anf_41
+                              [(lam anf_42 [anf_41 anf_42])
+                                (force
+                                  [[(force (builtin trace)) (con string "next acc")]
+                                    (delay [[(builtin addInteger) acc_37] (con integer 1)])])])
+                              [[self_35 self_35] anf_40]])
                             (force
                               [[(force (builtin trace)) (con string "next n")]
                                 (delay [[(builtin subtractInteger) n_36] (con integer 1)])])]

@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -30,21 +30,11 @@ letrec
     anf#17 anf#18
 in
 countdown#12 42 2
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let countdown#32 : int -> int -> int = (\self#22 : @self (int -> int -> int) -> self#22 self#22) (\self#23 : @self (int -> int -> int) x#24 : int n#25 : int -> let anf#26 : bool = equalsInteger n#25 0 in
 case@Bool anf#26 of
   True -> x#24
   False -> let escaped#29 : int -> int -> int = \x#27 : int n#28 : int -> self#23 self#23 x#27 n#28 in
-  let anf#30 : int -> int = escaped#29 x#24 in
-  let anf#31 : int = subtractInteger n#25 1 in
-  anf#30 anf#31) in
-countdown#32 42 2
---- rewritten core after ANF
-let countdown#32 : int -> int -> int = (\self#22 : @self (int -> int -> int) -> self#22 self#22) (\self#23 : @self (int -> int -> int) x#24 : int n#25 : int -> let anf#26 : bool = equalsInteger n#25 0 in
-case@Bool anf#26 of
-  True -> x#24
-  False -> let escaped#29 : int -> int -> int = \x#27 : int n#28 : int -> let anf#33 : int -> int -> int = self#23 self#23 in
-  anf#33 x#27 n#28 in
   let anf#30 : int -> int = escaped#29 x#24 in
   let anf#31 : int = subtractInteger n#25 1 in
   anf#30 anf#31) in
@@ -83,7 +73,7 @@ countdown#32 42 2
                     [(lam anf_31 [anf_30 anf_31])
                       [[(builtin subtractInteger) n_25] (con integer 1)]])
                     [escaped_29 x_24]])
-                  (lam x_27 (lam n_28 [(lam anf_33 [[anf_33 x_27] n_28]) [self_23 self_23]]))]
+                  (lam x_27 (lam n_28 [[[self_23 self_23] x_27] n_28]))]
                 x_24))
               [[(builtin equalsInteger) n_25] (con integer 0)]])))]])
 --- result

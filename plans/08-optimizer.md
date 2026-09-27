@@ -74,7 +74,7 @@ O0: Core -> recursion rewrite -> UPLC lowering
 Candidate optimized pipeline:
 Core with LetRec -> unique names -> static-parameter lifting -> ANF
   -> accepted main passes -> refresh recursive groups
-  -> recursion rewrite once -> unique names -> ANF -> accepted cleanup passes -> UPLC lowering
+  -> recursion rewrite once -> unique names -> UPLC lowering
 ```
 
 Assembly coordinates the phases. Passes belong in `nash-ir`; recursion rewriting,
@@ -104,8 +104,8 @@ execution budgets can change; report those changes separately from semantics.
 - Preserve trace order: evaluate the message, emit it, then evaluate the body.
 - Preserve strict constructor fields, including ignored fields of a folded case.
   Big field extraction and shared wildcard helpers retain their selected scopes.
-- Each pass preserves ANF. Inline atoms or splice binding sequences at call sites;
-  do not substitute a compound expression into an atomic operand. Avoid cycles
+- Each main optimization pass preserves ANF. Inline atoms or splice binding
+  sequences at call sites; do not substitute a compound expression into an atomic operand. Avoid cycles
   between substitution and reintroducing identical administrative bindings.
 
 ### Recursion boundary
@@ -127,9 +127,11 @@ execution budgets can change; report those changes separately from semantics.
   additional static parameters after optimization is a separate future candidate;
   do not add ANF application-chain recovery as a prerequisite.
 - Freshen binder occurrences again after rewriting: generated lambda subtrees can
-  be shared at multiple use sites. Restore ANF for wrappers, self-applications,
-  packets and cases.
-  Cleanup reuses accepted passes and semantic checks; it is not another optimizer.
+  be shared at multiple use sites. Do not normalize again: generated wrappers,
+  self-applications, packets and cases may contain non-atomic operands. Lowering
+  accepts this nested Core. Do not run ANF-dependent passes across this boundary.
+  Any future post-rewrite cleanup requires a separate review and must accept
+  nested Core or operate on UPLC; it must not reintroduce a second ANF pass.
 
 ## Chunk 1 — Shared analysis and hygiene
 
@@ -193,6 +195,21 @@ UPLC, evaluation results, traces and budgets. The vesting Core annotations chang
 only delayed binder types; their UPLC and ledger checks pass unchanged. Vesting
 fixtures now keep Core, UPLC and ledger outcomes together in one sectioned snapshot.
 
+**27 September pipeline revision:** normalize once, before the main optimization
+passes. Rewrite recursion after those passes, freshen generated binder occurrences,
+and lower directly. The previous second ANF pass added a binding around `self self`
+on each recursive step; it is removed along with its ANF-dependent cleanup loop.
+Semantic phase snapshots retain the pre-ANF, post-ANF and rewritten Core, plus
+baseline/optimized UPLC. Earlier two-normalization measurements below are history;
+Chunk 3's explicit baseline is updated for this revised pipeline.
+
+Validation: formatting, strict Clippy for both workspaces, all 20 explicit
+performance cases, and the full workspace suite pass (3664 passed, 3 ignored).
+The new regression test fails under the old pipeline and proves nested recursive
+self-application lowers correctly with preserved results and trace order. Reviewed
+19 updated phase snapshots and one new snapshot; removed the obsolete fixture
+that normalized already-rewritten recursion. O0 snapshot sections are unchanged.
+
 **Static-parameter lifting and ANF accepted (26 September 2026):**
 `nash-ir::anf` provides `normalize`, the shared atom predicate and an ANF shape
 checker. Atoms are variables, literals, nonempty lambdas, delays and bare builtin
@@ -202,19 +219,19 @@ names, retaining exact result types. Preserve atomic application runs and execut
 earlier stages before a later non-atomic argument. Builtins retain their n-ary
 form because valid builtin nodes only execute on saturation.
 
-Test-only codegen wiring now lifts static parameters before the first ANF pass,
-then rewrites recursion and normalizes again after freshening binder occurrences. Production assembly and public flags
-are unchanged. Ten IR tests cover lifting, shape, types, hygiene and idempotence;
-nineteen semantic tests produce twenty paired phase snapshots. Existing source fixtures
-also compare original versus normalized execution at both recursion boundaries,
+Test-only codegen wiring lifts static parameters before the sole ANF pass,
+then rewrites recursion and freshens binder occurrences, without normalizing again.
+Production assembly and public flags are unchanged. Ten IR tests cover lifting, shape, types, hygiene and idempotence;
+Twenty semantic tests produce twenty paired phase snapshots. Existing source fixtures
+also compare original versus optimized execution across the recursion boundary,
 including Big/little wildcard, captured/function fallback, Logic and Lift cases.
 Ground values, error categories/messages and trace order are compared; returned
 opaque functions are exercised through dedicated applications rather than checked
 for identical lambda syntax. New optimizer snapshots do not pin performance budgets.
 
-Revised validation: formatting and strict all-target/all-feature Clippy pass. The
-full workspace test run passes (3,606 passed, 3 ignored), including doctests. The
-combined implementation adds 29 tests and 28 paired snapshots relative to the accepted
+26 September validation: formatting and strict all-target/all-feature Clippy pass.
+The full workspace test run passes (3,606 passed, 3 ignored), including doctests. The
+combined implementation added 29 tests and 28 paired snapshots relative to the accepted
 typing prerequisite. No snapshots are pending. The interleaved-parameter fixture
 proves both captured values, retained dynamic-parameter order and initial argument
 trace order; ordinary O0 source snapshots remain unchanged.
@@ -257,7 +274,7 @@ accepted this implementation. Temporary measurement scripts and binaries were
 removed after recording the results; functional tests and paired snapshots remain.
 
 Implement `anf::normalize` and an invariant checker using the contract above.
-Normalize at main-phase entry and after recursion rewriting. Add temporary harness
+Normalize once at main-phase entry, before recursion rewriting. Add temporary harness
 access to inspect phases without choosing public optimizer flags.
 
 Tests cover nested applications/builtins, lets, fields, constructors, case subjects,
@@ -281,7 +298,7 @@ See its README for exact invocations and fixture scope. There are no performance
 test targets or ordinary CI changes.
 
 The initial 20 rows compare O0 against accepted static lifting, ANF and rules
-1–3 around recursion rewriting. Inputs cover list traversal, static recursion,
+1–3 before recursion rewriting. Inputs cover list traversal, static recursion,
 Data hits/misses, field decoding, validation pass/fail, real base Logic helpers,
 and six ledger scenarios for each of Vesting and VestingParam. Reports embed
 source inputs, record runtime/cost-model settings and provenance, and measure
@@ -296,17 +313,22 @@ targets. Temporary source experiments remain outside permanent fixtures and
 baselines. A 120-second watchdog bounds workload compilation and execution;
 each CEK run has explicit CPU/memory caps and budget exhaustion fails the command.
 
-Representative initial before → after figures (full rows in `baseline.json`):
+Representative current O0 → optimized figures (full rows in `baseline.json`):
 
 | Input | CPU | Memory | Flat bytes |
 | --- | ---: | ---: | ---: |
-| List sum of 1–8 | 5788660 → 6076660 | 27872 → 29672 | 102 → 137 |
-| Static countdown 8, returning 42 | 4736761 → 6704761 | 21725 → 34025 | 52 → 62 |
+| List sum of 1–8 | 5788660 → 5692660 | 27872 → 27272 | 102 → 134 |
+| Static countdown 8, returning 42 | 4736761 → 6320761 | 21725 → 31625 | 52 → 60 |
 | Data integer match | 978518 → 786518 | 5496 → 4296 | 58 → 48 |
 | Vesting claim after deadline | 2621392 → 2285392 | 14525 → 12425 | 271 → 246 |
 | VestingParam claim after deadline | 2834600 → 2546600 | 15227 → 13427 | 275 → 253 |
 
 These compare the full accepted pipeline with O0, not rule 3 in isolation.
+The normalize-once revision saves 384000 CPU and 2400 memory on each recursive
+fixture versus the previous pipeline; Flat size falls 137 → 134 for list traversal
+and 62 → 60 for countdown. The other 18 rows, all O0 results, and all optimized
+results/traces are unchanged. This baseline update was explicit and reviewed.
+Countdown's remaining first-ANF overhead is a separate investigation.
 
 Validation (27 September 2026): all 20 explicit baselines match. Deliberately
 lowering a CPU baseline by one unit makes `check` fail; changed fixture sources
@@ -376,8 +398,7 @@ builtin and computed bindings remain for later rules. Alias substitution never
 moves the target computation. Globally unique binder IDs prevent capture;
 substitutions preserve occurrence and root type views and preserve ANF.
 
-This accepted rule is exercised before recursion rewriting and after the final ANF
-in the test-only pipeline. Production assembly is unchanged. Paired Core/UPLC
+This accepted rule is exercised before recursion rewriting in the test-only pipeline. Production assembly is unchanged. Paired Core/UPLC
 semantic snapshots cover scope, sharing, strict failures and delayed captures;
 performance measurements run separately from normal test discovery. The user
 kept this rule on 26 September 2026. Validation: formatting, strict all-target /
@@ -498,7 +519,7 @@ measured need for more machinery.
 until unchanged. Rule 3 removes bindings without duplicating lambda parameters,
 so it cannot undo the progress argument for beta reduction. Pointer identity
 remains the change flag. The test pipeline runs the candidate before recursion
-rewriting and after final ANF; production assembly remains unchanged.
+rewriting only; production assembly remains unchanged.
 
 Tests cover immediate computed returns, newly exposed beta reduction, nested
 function bindings, delayed values, bare builtins, argument failures, trace order,
@@ -686,14 +707,16 @@ rule. No assumption that projection wins, and no per-program tuning engine.
 Compose only the accepted passes. Establish their actual order from interactions:
 inlining exposes dead code and known cases, sharing can conflict with inlining,
 and recursion rewriting creates cleanup opportunities. Reuse the same accepted
-passes in cleanup where applicable; do not blindly repeat whole-program sharing.
+passes in cleanup only if their input contracts allow nested post-rewrite Core.
+Do not repeat ANF-dependent passes or whole-program sharing after recursion rewriting.
 
 Detect actual structural progress or accurate rewrite reports, not equal node
 counts. Keep generated names deterministic. Test same-size rewrites, cycles,
-optimizer and cleanup idempotence, and hygiene/ANF after every pass.
+optimizer and cleanup idempotence, and hygiene after every pass. Check ANF only
+in the main optimization phase, before recursion rewriting.
 
 Retain named phase sections for raw Core, ANF, optimized recursive Core, rewritten
-Core and cleaned/lowered output. Keep each optimization's before/after pair in
+Core and lowered output (plus any separately accepted later cleanup). Keep each optimization's before/after pair in
 one snapshot at the representation it transforms. Differentially evaluate baseline
 and optimized programs, including selected traits, Logic laziness and Big/little case fixtures.
 Keep O0 snapshots; never mass-replace them with optimized ones. Run ordinary

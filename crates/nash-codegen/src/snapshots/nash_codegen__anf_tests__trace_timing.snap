@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 trace (trace "message evaluation" in "outer") in trace "body" in error
@@ -10,10 +10,7 @@ trace (trace "message evaluation" in "outer") in trace "body" in error
 --- core after ANF
 let anf#1 : string = trace "message evaluation" in "outer" in
 trace anf#1 in trace "body" in error
---- hygienic rewritten core before ANF
-let anf#2 : string = trace "message evaluation" in "outer" in
-trace anf#2 in trace "body" in error
---- rewritten core after ANF
+--- rewritten core (no second ANF)
 let anf#2 : string = trace "message evaluation" in "outer" in
 trace anf#2 in trace "body" in error
 --- baseline

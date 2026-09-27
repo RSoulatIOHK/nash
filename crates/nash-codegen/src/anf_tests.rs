@@ -32,8 +32,8 @@ fn constr<'a>(b: &Builder<'a>, tag: u16, fields: &[&'a Core<'a>]) -> &'a Core<'a
     )
 }
 
-/// Lift static parameters before normalization, then normalize again after
-/// recursion rewriting. Used only by tests, never production assembly.
+/// Normalize once before optimization, then rewrite recursion and lower nested
+/// Core directly. Used only by tests, never production assembly.
 pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a> {
     let b = Builder::new(arena);
     let fresh = hygiene::freshen(&b, core);
@@ -44,12 +44,10 @@ pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a
     anf::validate(normalized).unwrap();
     hygiene::validate(normalized, &[]).unwrap();
     let propagated = nash_ir::single_use::simplify(&b, normalized);
+    anf::validate(propagated).unwrap();
     let rewritten = crate::recursion::rewrite(&b, propagated).unwrap();
     // Recursion rewriting reuses self-application lambda subtrees.
-    let rewritten = hygiene::freshen(&b, rewritten);
-    let result = anf::normalize(&b, rewritten);
-    let result = nash_ir::single_use::simplify(&b, result);
-    anf::validate(result).unwrap();
+    let result = hygiene::freshen(&b, rewritten);
     hygiene::validate(result, &[]).unwrap();
     assert_eq!(core.ty, result.ty);
     result
@@ -61,13 +59,11 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, logs: &[&str], fails: boo
     let lifted = nash_ir::static_lift::lift(b, fresh);
     let first_anf = anf::normalize(b, lifted);
     let rewritten = crate::recursion::rewrite(b, first_anf).unwrap();
-    let rewritten = hygiene::freshen(b, rewritten);
-    let after = anf::normalize(b, rewritten);
-    for phase in [fresh, lifted, first_anf, rewritten, after] {
+    let after = hygiene::freshen(b, rewritten);
+    for phase in [fresh, lifted, first_anf, after] {
         hygiene::validate(phase, &[]).unwrap();
     }
     anf::validate(first_anf).unwrap();
-    anf::validate(after).unwrap();
     assert_eq!(core.ty, after.ty);
     let baseline = crate::harness::eval_core_raw(b.arena, before);
     let normalized = crate::harness::eval_core_raw(b.arena, after);
@@ -78,11 +74,10 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, logs: &[&str], fails: boo
     insta::assert_snapshot!(
         name,
         format!(
-            "--- core before static lifting\n{}\n--- core after static lifting / before ANF\n{}\n--- core after ANF\n{}\n--- hygienic rewritten core before ANF\n{}\n--- rewritten core after ANF\n{}\n--- baseline\n{}\n--- candidate\n{}",
+            "--- core before static lifting\n{}\n--- core after static lifting / before ANF\n{}\n--- core after ANF\n{}\n--- rewritten core (no second ANF)\n{}\n--- baseline\n{}\n--- candidate\n{}",
             pretty(fresh),
             pretty(lifted),
             pretty(first_anf),
-            pretty(rewritten),
             pretty(after),
             semantic_output(&baseline),
             semantic_output(&normalized),
@@ -278,7 +273,7 @@ fn force_runs_delayed_work_at_the_force_site() {
 }
 
 #[test]
-fn explicit_recursion_and_generated_self_application_preserve_order() {
+fn explicit_recursion_preserves_order() {
     let arena = Arena::new();
     let b = Builder::new(&arena);
     let function_ty = Ty::Term(arena.alloc(TermTy::Fun(arena.alloc_slice_copy(&[INT]), INT)));
@@ -315,14 +310,6 @@ fn explicit_recursion_and_generated_self_application_preserve_order() {
         "recursive_countdown",
         &b,
         core,
-        &["step", "step", "step"],
-        false,
-    );
-    let rewritten = crate::recursion::rewrite(&b, core).unwrap();
-    check(
-        "rewritten_countdown",
-        &b,
-        rewritten,
         &["step", "step", "step"],
         false,
     );
@@ -861,4 +848,55 @@ fn multiple_static_parameters_preserve_dynamic_and_initial_argument_order() {
         ],
         false,
     );
+}
+
+#[test]
+fn optimized_recursion_lowers_without_renormalizing_self_application() {
+    let arena = Arena::new();
+    let b = Builder::new(&arena);
+    let f = binder(&b, "countdown", function_ty(&arena, &[INT], INT));
+    let n = binder(&b, "n", INT);
+    let body = b.if_(
+        b.builtin(
+            F::EqualsInteger,
+            &[b.var(n.name, INT), b.int(0)],
+            Ty::Const(&ConstTy::Bool),
+        ),
+        b.int(42),
+        b.app(
+            b.var(f.name, f.ty),
+            &[traced(
+                &b,
+                "step",
+                b.builtin(F::SubtractInteger, &[b.var(n.name, INT), b.int(1)], INT),
+            )],
+            INT,
+        ),
+    );
+    let core = b.let_rec(
+        &[RecBinder {
+            binder: f,
+            params: arena.alloc_slice_copy(&[n]),
+            static_params: &[],
+            body,
+        }],
+        b.app(b.var(f.name, f.ty), &[b.int(2)], INT),
+    );
+    let before = crate::recursion::rewrite(&b, core).unwrap();
+    let after = candidate(&arena, core);
+    // Generated self-application remains nested. Lowering accepts this shape.
+    assert!(anf::validate(after).is_err());
+    let baseline = crate::harness::eval_core_raw(&arena, before);
+    let optimized = crate::harness::eval_core_raw(&arena, after);
+    assert_eq!(baseline.observable, optimized.observable);
+    assert_eq!(optimized.result, "(con integer 42)");
+    assert_eq!(baseline.logs, optimized.logs);
+    assert_eq!(optimized.logs, ["step", "step"]);
+    insta::assert_snapshot!(format!(
+        "--- core before\n{}\n--- core after\n{}\n--- baseline\n{}\n--- optimized\n{}",
+        pretty(core),
+        pretty(after),
+        semantic_output(&baseline),
+        semantic_output(&optimized),
+    ));
 }

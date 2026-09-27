@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -31,24 +31,12 @@ let anf#12 : int = trace "fixed" in 42 in
 let anf#13 : int -> int = countdown#5 anf#12 in
 let anf#14 : int = trace "initial" in 2 in
 anf#13 anf#14
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let countdown#25 : int -> int -> int = \fixed#17 : int n#18 : int -> let worker#24 : int -> int = (\self#19 : @self (int -> int) -> self#19 self#19) (\self#20 : @self (int -> int) n#21 : int -> let anf#22 : bool = equalsInteger n#21 0 in
 case@Bool anf#22 of
   True -> fixed#17
   False -> let anf#23 : int = trace "next" in subtractInteger n#21 1 in
   self#20 self#20 anf#23) in
-worker#24 n#18 in
-let anf#26 : int = trace "fixed" in 42 in
-let anf#27 : int -> int = countdown#25 anf#26 in
-let anf#28 : int = trace "initial" in 2 in
-anf#27 anf#28
---- rewritten core after ANF
-let countdown#25 : int -> int -> int = \fixed#17 : int n#18 : int -> let worker#24 : int -> int = (\self#19 : @self (int -> int) -> self#19 self#19) (\self#20 : @self (int -> int) n#21 : int -> let anf#22 : bool = equalsInteger n#21 0 in
-case@Bool anf#22 of
-  True -> fixed#17
-  False -> let anf#23 : int = trace "next" in subtractInteger n#21 1 in
-  let anf#29 : int -> int = self#20 self#20 in
-  anf#29 anf#23) in
 worker#24 n#18 in
 let anf#26 : int = trace "fixed" in 42 in
 let anf#27 : int -> int = countdown#25 anf#26 in
@@ -101,7 +89,7 @@ anf#27 anf#28
                 [(lam anf_22
                   (case
                     anf_22
-                    [(lam anf_23 [(lam anf_29 [anf_29 anf_23]) [self_20 self_20]])
+                    [(lam anf_23 [[self_20 self_20] anf_23])
                       (force
                         [[(force (builtin trace)) (con string "next")]
                           (delay [[(builtin subtractInteger) n_21] (con integer 1)])])]

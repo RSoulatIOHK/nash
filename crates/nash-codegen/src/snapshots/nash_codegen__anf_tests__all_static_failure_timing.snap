@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 letrec
@@ -26,18 +26,9 @@ let anf#9 : int = trace "argument" in 42 in
 let anf#10 : int -> int = same#5 anf#9 in
 let anf#11 : int = trace "unreachable extra" in 1 in
 anf#10 anf#11
---- hygienic rewritten core before ANF
+--- rewritten core (no second ANF)
 let same#18 : int -> int -> int = \x#13 : int -> let worker#17 : @delay (int -> int) = (\self#14 : @self (@delay (int -> int)) -> self#14 self#14) (\self#15 : @self (@delay (int -> int)) -> delay (let failed#16 : int = trace "failure" in error in
 force (self#15 self#15))) in
-force worker#17 in
-let anf#19 : int = trace "argument" in 42 in
-let anf#20 : int -> int = same#18 anf#19 in
-let anf#21 : int = trace "unreachable extra" in 1 in
-anf#20 anf#21
---- rewritten core after ANF
-let same#18 : int -> int -> int = \x#13 : int -> let worker#17 : @delay (int -> int) = (\self#14 : @self (@delay (int -> int)) -> self#14 self#14) (\self#15 : @self (@delay (int -> int)) -> delay (let failed#16 : int = trace "failure" in error in
-let anf#22 : @delay (int -> int) = self#15 self#15 in
-force anf#22)) in
 force worker#17 in
 let anf#19 : int = trace "argument" in 42 in
 let anf#20 : int -> int = same#18 anf#19 in
@@ -82,7 +73,7 @@ error: ExplicitErrorTerm
         [(lam self_14 [self_14 self_14])
           (lam self_15
             (delay
-              [(lam failed_16 [(lam anf_22 (force anf_22)) [self_15 self_15]])
+              [(lam failed_16 (force [self_15 self_15]))
                 (force [[(force (builtin trace)) (con string "failure")] (delay (error))])]))]])])
 --- result
 error: ExplicitErrorTerm

@@ -1,7 +1,7 @@
 ---
 source: crates/nash-codegen/src/anf_tests.rs
-assertion_line: 76
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
 ---
 --- core before static lifting
 let unused function#5 : int -> int = \x#4 : int -> trace "lambda body" in error in
@@ -15,11 +15,7 @@ let unused delay#6 : @delay int = delay (trace "delay body" in error) in
 let unused function#5 : int -> int = \x#4 : int -> trace "lambda body" in error in
 let unused delay#6 : @delay int = delay (trace "delay body" in error) in
 42
---- hygienic rewritten core before ANF
-let unused function#8 : int -> int = \x#7 : int -> trace "lambda body" in error in
-let unused delay#9 : @delay int = delay (trace "delay body" in error) in
-42
---- rewritten core after ANF
+--- rewritten core (no second ANF)
 let unused function#8 : int -> int = \x#7 : int -> trace "lambda body" in error in
 let unused delay#9 : @delay int = delay (trace "delay body" in error) in
 42
