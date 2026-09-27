@@ -1,0 +1,10 @@
+---
+source: crates/nash-ir/src/propagate/tests.rs
+assertion_line: 46
+expression: "snapshot(&b,core)"
+---
+--- core before
+\x#1 : int -> let alias#2 : int = x#1 in
+\x#3 : int -> alias#2
+--- core after
+\x#1 : int -> \x#3 : int -> x#1

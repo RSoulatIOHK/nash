@@ -3,7 +3,10 @@
 ## Status and accepted scope
 
 Chunks 1 and 2 are accepted and complete, including mandatory Core typing,
-pre-ANF static-parameter lifting and ANF. Chunk 3 is next. Current assembly in
+pre-ANF static-parameter lifting and ANF. Chunk 3 remains pending; the user
+accepted Chunk 4 rule 1 (atom/alias propagation). Remaining Chunk 4 rules
+are still pending independent review.
+Current assembly in
 `nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
 Reuse its existing Core, Builder, traversal and free-variable facilities.
@@ -312,6 +315,41 @@ special path, isolation is verified, and initial measurements are reproducible.
 
 Review these independently: atom/alias propagation; direct lambda application;
 safe single-use bindings; small functions with multiple call sites.
+
+### Rule 1 — atom/alias propagation (accepted)
+
+`nash-ir::propagate::propagate` removes variable aliases transitively, then
+propagates literals with zero or one remaining syntactic uses. Count uses after
+alias removal: `let x = largeLiteral; let y = x; use y y` must retain the
+shared literal binding. No size threshold is introduced. Lambda, delay, bare
+builtin and computed bindings remain for later rules. Alias substitution never
+moves the target computation. Globally unique binder IDs prevent capture;
+substitutions preserve occurrence and root type views and preserve ANF.
+
+This accepted rule is exercised before recursion rewriting and after the final ANF
+in the test-only pipeline. Production assembly is unchanged. Paired Core/UPLC
+semantic snapshots cover scope, sharing, strict failures and delayed captures;
+performance measurements run separately from normal test discovery. The user
+kept this rule on 26 September 2026. Validation: formatting, strict all-target /
+all-feature Clippy, and the full workspace run (3618 passed, 3 ignored). Added
+12 tests and 11 paired snapshots; existing snapshots remain unchanged.
+
+Temporary isolated measurements (Plutus V3 default cost model, raw Flat bytes;
+accepted ANF baseline versus this rule alone):
+
+| Fixture | CPU before → after | Memory before → after | Bytes before → after |
+| --- | ---: | ---: | ---: |
+| Two-binding literal chain | 112100 → 16100 | 800 → 200 | 11 → 6 |
+| Shared string through alias | 536842 → 488842 | 1210 → 910 | 31 → 28 |
+| Alias of computed integer | 277308 → 229308 | 1202 → 902 | 15 → 13 |
+| Already minimal integer | 16100 → 16100 | 200 → 200 | 6 → 6 |
+
+These are small rule-isolation examples, not whole-program performance claims.
+The temporary runner was explicitly compiled and run outside Cargo test
+discovery, then removed after the keep decision. Chunk 3's permanent runner
+remains pending.
+
+### Remaining rules
 
 Bind strict arguments before substitution and preserve application staging. Single
 use is not proof that moving work into a conditional branch is safe. Respect

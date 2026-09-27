@@ -93,11 +93,11 @@ pub(crate) fn assert_candidate_equivalent<'a>(
     let normalized = eval_core_raw(arena, candidate);
     assert_eq!(
         baseline.observable, normalized.observable,
-        "static lifting and ANF preserve ground results and error category"
+        "candidate passes preserve ground results and error category"
     );
     assert_eq!(
         baseline.logs, normalized.logs,
-        "static lifting and ANF preserve trace order"
+        "candidate passes preserve trace order"
     );
 }
 

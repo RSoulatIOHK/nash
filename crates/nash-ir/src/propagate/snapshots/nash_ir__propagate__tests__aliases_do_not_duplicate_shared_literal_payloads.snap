@@ -1,0 +1,12 @@
+---
+source: crates/nash-ir/src/propagate/tests.rs
+assertion_line: 30
+expression: "snapshot(&b,core)"
+---
+--- core before
+let text#1 : string = "a deliberately shared string payload" in
+let alias#2 : string = text#1 in
+appendString alias#2 alias#2
+--- core after
+let text#1 : string = "a deliberately shared string payload" in
+appendString text#1 text#1

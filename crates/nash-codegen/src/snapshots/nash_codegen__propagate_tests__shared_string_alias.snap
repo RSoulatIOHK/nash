@@ -1,0 +1,30 @@
+---
+source: crates/nash-codegen/src/propagate_tests.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let text#1 : string = "shared payload" in
+let alias#2 : string = text#1 in
+appendString alias#2 alias#2
+--- core after
+let text#1 : string = "shared payload" in
+appendString text#1 text#1
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam text_1 [(lam alias_2 [[(builtin appendString) alias_2] alias_2]) text_1])
+    (con string "shared payload")])
+--- result
+(con string "shared payloadshared payload")
+--- logs
+[]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam text_1 [[(builtin appendString) text_1] text_1])
+    (con string "shared payload")])
+--- result
+(con string "shared payloadshared payload")
+--- logs
+[]

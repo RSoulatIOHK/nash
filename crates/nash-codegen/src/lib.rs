@@ -25,3 +25,5 @@ pub mod tests;
 
 #[cfg(test)]
 mod anf_tests;
+#[cfg(test)]
+mod propagate_tests;

@@ -1,0 +1,14 @@
+---
+source: crates/nash-ir/src/propagate/tests.rs
+assertion_line: 39
+expression: "snapshot(&b,core)"
+---
+--- core before
+let computed#1 : int = addInteger 20 22 in
+let alias#2 : int = computed#1 in
+let delayed#3 : @delay int = delay alias#2 in
+force delayed#3
+--- core after
+let computed#1 : int = addInteger 20 22 in
+let delayed#3 : @delay int = delay computed#1 in
+force delayed#3

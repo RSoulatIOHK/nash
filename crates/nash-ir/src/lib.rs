@@ -5,6 +5,7 @@ pub mod build;
 pub mod core;
 pub mod hygiene;
 pub mod pretty;
+pub mod propagate;
 pub mod static_lift;
 pub mod ty;
 

@@ -1,0 +1,48 @@
+---
+source: crates/nash-codegen/src/propagate_tests.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let strict#1 : int = trace "strict" in 42 in
+let alias#2 : int = strict#1 in
+let suspended#3 : @delay int = delay (trace "delayed" in alias#2) in
+trace "before force" in force suspended#3
+--- core after
+let strict#1 : int = trace "strict" in 42 in
+let suspended#3 : @delay int = delay (trace "delayed" in strict#1) in
+trace "before force" in force suspended#3
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam strict_1
+    [(lam alias_2
+      [(lam suspended_3
+        (force
+          [[(force (builtin trace)) (con string "before force")]
+            (delay (force suspended_3))]))
+        (delay
+          (force [[(force (builtin trace)) (con string "delayed")] (delay alias_2)]))])
+      strict_1])
+    (force
+      [[(force (builtin trace)) (con string "strict")] (delay (con integer 42))])])
+--- result
+(con integer 42)
+--- logs
+["strict", "before force", "delayed"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam strict_1
+    [(lam suspended_3
+      (force
+        [[(force (builtin trace)) (con string "before force")]
+          (delay (force suspended_3))]))
+      (delay
+        (force [[(force (builtin trace)) (con string "delayed")] (delay strict_1)]))])
+    (force
+      [[(force (builtin trace)) (con string "strict")] (delay (con integer 42))])])
+--- result
+(con integer 42)
+--- logs
+["strict", "before force", "delayed"]

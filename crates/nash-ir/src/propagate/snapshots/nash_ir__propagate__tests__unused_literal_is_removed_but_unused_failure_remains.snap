@@ -1,0 +1,12 @@
+---
+source: crates/nash-ir/src/propagate/tests.rs
+assertion_line: 65
+expression: "snapshot(&b,b.let_(x,b.int(1),b.let_(y,b.error(INT),b.int(42))))"
+---
+--- core before
+let literal#1 : int = 1 in
+let failure#2 : int = error in
+42
+--- core after
+let failure#2 : int = error in
+42

@@ -415,6 +415,12 @@ unique binders, and new binders retain the computation's actual result type.
 Wiring remains test-only until the optimized production path is introduced;
 production assembly is unchanged.
 
+Plan 08 rule 1 is accepted in `nash-ir::propagate`: remove variable aliases,
+then propagate literals with at most one remaining use. Count uses after alias
+removal to retain shared payloads. Computed, lambda, delay and builtin bindings
+stay bound. This pass runs only in the test pipeline, before recursion
+rewriting and after the final ANF; production assembly remains unchanged.
+
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for
 the user's keep/revise/discard decision before advancing. Small functions used

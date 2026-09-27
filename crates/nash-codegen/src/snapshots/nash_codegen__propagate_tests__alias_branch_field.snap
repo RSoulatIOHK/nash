@@ -1,0 +1,31 @@
+---
+source: crates/nash-codegen/src/propagate_tests.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let anf#3 : @constr[0](int) = constr 0 42 in
+case@Tag anf#3 of
+  0 field#1 -> let alias#2 : int = field#1 in
+  alias#2
+--- core after
+let anf#3 : @constr[0](int) = constr 0 42 in
+case@Tag anf#3 of
+  0 field#1 -> field#1
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam anf_3 (case anf_3 (lam field_1 [(lam alias_2 alias_2) field_1])))
+    (constr 0 (con integer 42))])
+--- result
+(con integer 42)
+--- logs
+[]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_3 (case anf_3 (lam field_1 field_1))) (constr 0 (con integer 42))])
+--- result
+(con integer 42)
+--- logs
+[]

@@ -1,0 +1,12 @@
+---
+source: crates/nash-ir/src/propagate/tests.rs
+assertion_line: 21
+expression: "snapshot(&b,core)"
+---
+--- core before
+let x#1 : int = 42 in
+let y#2 : int = x#1 in
+let z#3 : int = y#2 in
+z#3
+--- core after
+42
