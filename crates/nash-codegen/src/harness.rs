@@ -91,7 +91,7 @@ pub(crate) fn assert_candidate_equivalent<'a>(
 ) {
     let candidate = crate::anf_tests::candidate(arena, core);
     let named =
-        crate::lower::lower_with_builtin_sharing(arena, candidate).expect("shared lowering");
+        crate::lower::lower_with_constant_sharing(arena, candidate).expect("shared lowering");
     let normalized = eval_named(arena, named);
     assert_eq!(
         baseline.observable, normalized.observable,

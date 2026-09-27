@@ -12,7 +12,8 @@ conditional bodies are excluded for now, including recursive-only inlining.
 Broader body-size heuristics, partial/indirect-call expansion and further Rule 4
 experiments are deferred. The retained cases are implemented in `nash-ir::small_inline` and integrated
 with the candidate/performance pipelines. Chunk 5 step 1 adds outermost forced-builtin
-sharing during optimized lowering. Normal build defaults remain O0 pending
+sharing during optimized lowering. Step 2 is accepted with a two-occurrence minimum
+for one leading literal; the retained Chunk 5 scope is complete. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
@@ -871,23 +872,22 @@ rules 1–4 alone, list traversal saves 64000 CPU/400 memory; short Data and
 validation successes add 48000–112000 CPU, and successful vesting paths add
 96000 CPU/600 memory. Sizes increase by 2–4 bytes on affected fixtures. These
 are recorded tradeoffs of the accepted unconditional placement, not a new
-profitability threshold. Step 2 now has the candidate below and requires its
-own keep/revise/discard review.
+profitability threshold. Step 2 was subsequently accepted with its two-occurrence minimum, as recorded below.
 
 Validation: all 469 IR/codegen tests pass, including 14 new paired UPLC
 snapshots; existing snapshots are unchanged. Formatting and strict workspace
 and performance-runner Clippy pass. All 20 explicit baselines match, and the
 16 isolated experiment cases preserve results and traces. Step 1 is complete.
 
-### Step 2 candidate — One repeated leading literal
+### Step 2 — One repeated leading literal (accepted)
 
-`lower::lower_with_constant_sharing` is a separate review entry point; it is not
-in the accepted candidate pipeline, normal builds or the permanent performance
-baseline yet. It starts with Step 1 force sharing and operates on the surviving
+`lower::lower_with_constant_sharing` is used by the accepted candidate pipeline
+and permanent performance runner. Normal builds remain O0 pending Chunk 11.
+It starts with Step 1 force sharing and operates on the surviving
 lowered body before the force-cache wrappers are added. Typed Core, ANF and the
 Core cleanup loop are unchanged.
 
-The initial rule recognizes one leading literal argument of a known builtin
+The accepted rule recognizes one leading literal argument of a known builtin
 whose arity exceeds one. Two or more occurrences of the same builtin and
 structurally equal literal share one partial value at the outermost program
 scope. Saturated call sites can use it, but only their first argument is shared.
@@ -940,7 +940,7 @@ claims about real-world validator distributions.
 | Unused lambda with eight sites | +80000 | +500 | 81 → 58 |
 
 One lexical site inside a loop is intentionally unchanged regardless of runtime
-iteration count. The candidate counts source occurrences, not inferred frequency.
+iteration count. The rule counts emitted occurrences, not inferred frequency.
 Across the synthetic payloads, one shared binding has 80000 CPU/500 memory setup
 cost and saves 32000 CPU/200 memory per executed use. Three executed uses beat
 that setup cost; three syntactic sites do not guarantee three executed uses.
@@ -951,10 +951,26 @@ an assertion that every program gets cheaper.
 Validation: 481 IR/codegen tests pass, including 15 new paired UPLC snapshots
 and an idempotence check; existing snapshots are unchanged. Formatting and
 strict workspace/performance-runner Clippy pass. The 52-case explicit experiment
-preserves every result and trace. The accepted performance baseline is unchanged.
+preserves every result and trace. At this trial stage the accepted baseline was unchanged.
 
-Keep/revise/discard remains a separate review decision. Do not infer unconditional
-partial sharing from the earlier unconditional forced-reference decision.
+Keep decision (27 September 2026): retain the two-occurrence minimum, including
+the recorded startup costs for two executed uses and cold paths. No later cleanup
+undoes sharing. Longer prefixes, operand reordering and frequency heuristics
+remain deferred. Chunk 5's retained scope is complete.
+
+Integration: the candidate semantic harness and explicit performance runner now
+use both accepted sharing steps. The permanent baseline has 23 rows: all original
+20 rows are unchanged, plus two-use, cold and loop constant-prefix regressions.
+The isolated experiment now also runs those three sources (55 cases total).
+Their Step 2 deltas match the review: +16000 CPU/+100 memory for two uses,
++80000/+500 for cold uses, and -432000/-2700 for the eight-iteration loop.
+The loop's combined optimized cost is still 144000 CPU/900 memory above O0;
+Step 2 improves it but does not eliminate the earlier pipeline overhead. This
+remaining gap is retained in the baseline, not hidden by changing O0.
+Integration validation: 481 IR/codegen tests, all 23 explicit baselines, formatting,
+and strict workspace/performance-runner Clippy pass; the expanded 55-case
+experiment preserves results and traces. Existing semantic snapshots are unchanged.
+
 
 ## Chunk 6 — Dead bindings, functions and parameters
 

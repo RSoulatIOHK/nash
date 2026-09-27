@@ -1,4 +1,4 @@
-//! Candidate: share one literal leading argument of a builtin, never saturation.
+//! Share one literal leading argument of a builtin at two or more occurrences.
 use super::{Error, Lower, Uplc};
 use nash_plutus::{binder::Name, builtin::DefaultFunction, constant::Constant, term::Term};
 

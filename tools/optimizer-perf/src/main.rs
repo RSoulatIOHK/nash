@@ -20,7 +20,7 @@ const BUDGET: ExBudget = ExBudget {
     cpu: 100_000_000,
     mem: 2_000_000,
 };
-const SETTINGS: &str = "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower+forced-builtin-sharing";
+const SETTINGS: &str = "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower+forced-builtin-sharing+constant-prefix-sharing";
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -225,7 +225,7 @@ fn measure<'a>(
     sharing: bool,
 ) -> Result<Measurement> {
     let named = if sharing {
-        nash_codegen::lower::lower_with_builtin_sharing(arena, core)
+        nash_codegen::lower::lower_with_constant_sharing(arena, core)
     } else {
         nash_codegen::lower::lower(arena, core)
     }
@@ -277,6 +277,9 @@ fn suite() -> Result<Vec<Row>> {
         "validationPass",
         "validationFail",
         "booleanHelpers",
+        "constantPrefixTwice",
+        "constantPrefixCold",
+        "constantPrefixLoop",
     ];
     let cores = source::compile(&arena, include_str!("../fixtures/Workloads.nash"), &names);
     let expected = [
@@ -288,6 +291,9 @@ fn suite() -> Result<Vec<Row>> {
         "(con unit ())",
         "error: ExplicitErrorTerm",
         "(con bool True)",
+        "(con integer 197)",
+        "(con integer 42)",
+        "(con integer 1528)",
     ];
     for ((name, core), expected) in names.into_iter().zip(cores).zip(expected) {
         rows.push(compare(

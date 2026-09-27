@@ -59,3 +59,26 @@ validationFail = validate (I 0)
 
 booleanHelpers : bool
 booleanHelpers = (True && False) || (True && True)
+
+constantPrefixTwice : int
+constantPrefixTwice =
+    Builtin.addInteger (Builtin.subtractInteger 100 1) (Builtin.subtractInteger 100 2)
+
+constantPrefixCold : int
+constantPrefixCold =
+    if True then
+        42
+    else
+        Builtin.addInteger (Builtin.subtractInteger 100 1) (Builtin.subtractInteger 100 2)
+
+prefixLoop : int -> int
+prefixLoop n =
+    if Builtin.equalsInteger n 0 then
+        0
+    else
+        Builtin.addInteger
+            (Builtin.addInteger (Builtin.subtractInteger 100 n) (Builtin.subtractInteger 100 n))
+            (prefixLoop (Builtin.subtractInteger n 1))
+
+constantPrefixLoop : int
+constantPrefixLoop = prefixLoop 8

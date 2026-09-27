@@ -461,17 +461,17 @@ validator argument lambdas. Applied arguments and computations stay in place.
 Only references surviving lowering are bound; exhaustive case defaults can be
 discarded. This also shares across erased type instantiations without changing
 Core typing or repeating ANF. Core cleanup runs before these bindings exist.
-The candidate/performance pipelines use it; O0 and normal builds still use
-`lower`. Constant partial-application sharing is a separate pending step.
+The accepted pipeline composes this with the constant-prefix sharing below;
+O0 and normal builds still use `lower`.
 
-The separate `lower::lower_with_constant_sharing` entry point is a Chunk 5 step 2
-candidate, not part of the accepted pipeline. It shares repeated first literal
-arguments of known builtins with arity greater than one. It counts surviving UPLC
+The accepted pipeline uses `lower::lower_with_constant_sharing` for Chunk 5
+steps 1 and 2. The two-occurrence minimum is accepted, including startup costs.
+It shares repeated first literal arguments of known builtins with arity greater than one. It counts surviving UPLC
 occurrences, binds closed partial values outside the root, and keeps forced
 references outside those bindings. It does not move later arguments or saturated
 calls, reorder operands, or share longer prefixes. Its before/after semantic
-snapshots and explicit experiment compare with force sharing alone; adoption
-awaits the step's measured review.
+snapshots and explicit experiment compare with force sharing alone. The explicit
+performance baseline includes both sharing steps.
 
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for

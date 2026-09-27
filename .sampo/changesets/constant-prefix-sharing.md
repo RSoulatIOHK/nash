@@ -2,4 +2,4 @@
 cargo/nash-codegen: minor
 ---
 
-Add an experimental lowering entry point for sharing repeated literal builtin prefixes.
+Share repeated literal builtin prefixes in the accepted optimizer pipeline.

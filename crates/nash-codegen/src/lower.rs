@@ -34,8 +34,8 @@ pub fn lower_with_builtin_sharing<'a>(
     lower_inner(arena, core, Sharing::Forces)
 }
 
-/// Experimental Chunk 5 step 2: force sharing plus repeated one-literal
-/// builtin prefixes. Kept separate for measured review before pipeline adoption.
+/// Accepted Chunk 5 sharing: forced references plus one-literal builtin
+/// prefixes with at least two occurrences. Normal O0 assembly stays separate.
 pub fn lower_with_constant_sharing<'a>(
     arena: &'a Arena,
     core: &'a Core<'a>,

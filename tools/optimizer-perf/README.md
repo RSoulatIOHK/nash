@@ -19,16 +19,16 @@ mismatch, a compilation failure or an exhausted budget. `measure` prints JSON
 without changing any baseline. Debug/release profiles produce the same ledger
 budgets: these are CEK costs, not Rust wall-clock benchmarks.
 
-The initial 20 rows cover list traversal, static recursion, Data matching and
+The 23 rows include the original 20 covering list traversal, static recursion, Data matching and
 misses, field decoding, validation success/failure, the real base Logic helpers,
 and six ledger scenarios each for the existing Vesting and VestingParam source
-fixtures. Validator CPU/memory include applying the documented ledger arguments;
+fixtures, plus constant-prefix two-use, cold and loop regressions. Validator CPU/memory include applying the documented ledger arguments;
 validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
 The `before` pipeline is O0 (recursion rewrite and lowering). The `after` pipeline
 is the accepted static lifting, one ANF normalization and rules 1+2+3+4 loop,
-then recursion rewrite, binder freshening and lowering. No second normalization
+then recursion rewrite, binder freshening and lowering with both Chunk 5 sharing steps. No second normalization
 or ANF-dependent cleanup runs after recursion rewriting. Rule 3 was accepted on 27 September 2026. These figures record current behavior, including overhead
 from ANF; they are not a claim that the incomplete optimizer beats O0 everywhere.
 
@@ -103,7 +103,7 @@ traces, and reports CPU, memory and raw Flat bytes. It is an explicit experiment
 not a root Cargo test. The permanent baseline also includes forced-builtin sharing
 in optimized lowering; O0 still uses structural lowering without sharing.
 
-Chunk 5 constant-prefix candidate (not in the accepted baseline):
+Chunk 5 constant-prefix sharing (accepted at two or more occurrences):
 
 ```sh
 cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example constant_sharing
@@ -111,8 +111,11 @@ cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example con
 
 This compares force sharing alone with additional sharing of one repeated leading
 literal argument. It covers 1/2/3/8 call sites, cold and exclusive branches,
-recursive calls, an unused lambda, small/large byte strings, and six successful
+recursive calls, an unused lambda, small/large byte strings, and nine successful
 source workloads after the accepted Core passes. Synthetic cases isolate lowering;
 they do not run the Core optimizer. Size is Flat bytes of the supplied root,
 including explicit applications where present. Failed outcomes have semantic
 snapshot coverage separately. This is an explicit-only experiment, not a root test.
+
+The permanent optimized baseline includes both Chunk 5 steps. The example keeps
+Step 1 as its comparison so Step 2's individual costs remain visible.

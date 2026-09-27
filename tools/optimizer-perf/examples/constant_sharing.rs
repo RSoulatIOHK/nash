@@ -188,12 +188,12 @@ fn main() {
         "dataMiss",
         "decoding",
         "validationPass",
-        "validationFail",
-        "booleanHelpers",
+        "constantPrefixTwice",
+        "constantPrefixCold",
+        "constantPrefixLoop",
     ];
-    // validationFail is intentionally an error, outside this success-only trial.
-    let cores = source::compile(&a, include_str!("../fixtures/Workloads.nash"), &names[..6]);
-    for (name, core) in names[..6].iter().zip(cores) {
+    let cores = source::compile(&a, include_str!("../fixtures/Workloads.nash"), &names);
+    for (name, core) in names.iter().zip(cores) {
         let core = hygiene::freshen(&b, core);
         let core = small_inline::simplify(&b, anf::normalize(&b, static_lift::lift(&b, core)));
         measure(name, &a, core);
