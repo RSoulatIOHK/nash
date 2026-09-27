@@ -238,6 +238,34 @@ impl<'a> Rewriter<'_, 'a> {
         if binders.is_empty() {
             return self.term(body, env);
         }
+        // A fully static worker is an explicit delayed recursive value. Knot
+        // creation returns the delay; each original call still forces its body.
+        if let [single] = binders
+            && single.params.is_empty()
+            && matches!(single.body.kind, CoreKind::Delay(_))
+        {
+            let self_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::SelfFunction(single.binder.ty)));
+            let self_arg = self.fresh("self", self_ty);
+            let raw = b.app(
+                b.var(self_arg.name, self_arg.ty),
+                &[b.var(self_arg.name, self_arg.ty)],
+                single.binder.ty,
+            );
+            let mut inner_env = env.clone();
+            inner_env.insert(
+                single.binder.name,
+                Replacement {
+                    value: raw,
+                    packet: None,
+                    direct: None,
+                },
+            );
+            let inner_body = self.term(single.body, &inner_env)?;
+            let inner = b.with_type(b.lam(&[self_arg], inner_body), self_ty);
+            let knot = b.app(b.lam(&[self_arg], raw), &[inner], single.binder.ty);
+            let continuation = self.term(body, &without(env, [single.binder.name]))?;
+            return Ok(b.let_(single.binder, knot, continuation));
+        }
         if binders.iter().any(|r| r.params.is_empty()) {
             return Err(Error::RecursiveValue);
         }

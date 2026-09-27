@@ -1,0 +1,67 @@
+---
+source: crates/nash-codegen/src/anf_tests.rs
+assertion_line: 76
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+case@Tag (trace "subject" in constr 1 (trace "field" in 42)) of
+  0 -> trace "unselected" in error
+  1 field#2 -> trace "selected" in field#2
+--- core after static lifting / before ANF
+case@Tag (trace "subject" in constr 1 (trace "field" in 42)) of
+  0 -> trace "unselected" in error
+  1 field#2 -> trace "selected" in field#2
+--- core after ANF
+let anf#4 : @constr[1](int) = trace "subject" in let anf#3 : int = trace "field" in 42 in
+constr 1 anf#3 in
+case@Tag anf#4 of
+  0 -> trace "unselected" in error
+  1 field#2 -> trace "selected" in field#2
+--- hygienic rewritten core before ANF
+let anf#6 : @constr[1](int) = trace "subject" in let anf#5 : int = trace "field" in 42 in
+constr 1 anf#5 in
+case@Tag anf#6 of
+  0 -> trace "unselected" in error
+  1 field#7 -> trace "selected" in field#7
+--- rewritten core after ANF
+let anf#6 : @constr[1](int) = trace "subject" in let anf#5 : int = trace "field" in 42 in
+constr 1 anf#5 in
+case@Tag anf#6 of
+  0 -> trace "unselected" in error
+  1 field#7 -> trace "selected" in field#7
+--- baseline
+--- uplc
+(program 1.1.0
+  (case
+    (force
+      [[(force (builtin trace)) (con string "subject")]
+        (delay
+          (constr 1
+            (force
+              [[(force (builtin trace)) (con string "field")] (delay (con integer 42))])))])
+    (force [[(force (builtin trace)) (con string "unselected")] (delay (error))])
+    (lam field_1
+      (force [[(force (builtin trace)) (con string "selected")] (delay field_1)]))))
+--- result
+(con integer 42)
+--- logs
+["subject", "field", "selected"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_6
+    (case
+      anf_6
+      (force [[(force (builtin trace)) (con string "unselected")] (delay (error))])
+      (lam field_7
+        (force [[(force (builtin trace)) (con string "selected")] (delay field_7)]))))
+    (force
+      [[(force (builtin trace)) (con string "subject")]
+        (delay
+          [(lam anf_5 (constr 1 anf_5))
+            (force
+              [[(force (builtin trace)) (con string "field")] (delay (con integer 42))])])])])
+--- result
+(con integer 42)
+--- logs
+["subject", "field", "selected"]

@@ -64,6 +64,8 @@ pub struct Evaluated {
     pub result: String,
     pub logs: Vec<String>,
     pub budget: ExBudget,
+    // Function values need application tests, not syntax equality.
+    pub(crate) observable: Option<String>,
 }
 
 impl std::fmt::Display for Evaluated {
@@ -77,11 +79,52 @@ impl std::fmt::Display for Evaluated {
 }
 
 pub fn eval_core<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Evaluated {
+    let baseline = eval_core_raw(arena, core);
+    assert_candidate_equivalent(arena, core, &baseline);
+    baseline
+}
+
+pub(crate) fn assert_candidate_equivalent<'a>(
+    arena: &'a Arena,
+    core: &'a Core<'a>,
+    baseline: &Evaluated,
+) {
+    let candidate = crate::anf_tests::candidate(arena, core);
+    let normalized = eval_core_raw(arena, candidate);
+    assert_eq!(
+        baseline.observable, normalized.observable,
+        "static lifting and ANF preserve ground results and error category"
+    );
+    assert_eq!(
+        baseline.logs, normalized.logs,
+        "static lifting and ANF preserve trace order"
+    );
+}
+
+pub(crate) fn eval_core_raw<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Evaluated {
     let named = crate::lower::lower(arena, core).expect("valid lowered Core");
     let term = debruijn::to_debruijn(arena, named).expect("closed term");
     let program = Program::new(arena, Version::plutus_v3(arena), term);
     let evaluation = program.eval(arena);
+    fn ground(term: &nash_plutus::term::Term<'_, nash_plutus::binder::DeBruijn>) -> bool {
+        match term {
+            nash_plutus::term::Term::Constant(_) => true,
+            nash_plutus::term::Term::Constr { fields, .. } => {
+                fields.iter().all(|field| ground(field))
+            }
+            _ => false,
+        }
+    }
+    let observable = match &evaluation.term {
+        Ok(term) if ground(term) => Some(pretty::term(term)),
+        Ok(_) => None,
+        Err(error) => Some(format!(
+            "error: {:?}: {error}",
+            std::mem::discriminant(error)
+        )),
+    };
     Evaluated {
+        observable,
         uplc: pretty::program(Program::new(arena, Version::plutus_v3(arena), named)),
         result: match evaluation.term {
             Ok(term) => pretty::term(term),

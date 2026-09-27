@@ -1,0 +1,13 @@
+---
+source: crates/nash-ir/src/anf/tests.rs
+assertion_line: 52
+expression: "snapshot(&b, b.force(delayed, int))"
+---
+--- core before
+force (delay (addInteger (let y#2 : int = let x#1 : int = 1 in
+x#1 in
+y#2) 2))
+--- core after
+force (delay (let x#1 : int = 1 in
+let y#2 : int = x#1 in
+addInteger y#2 2))

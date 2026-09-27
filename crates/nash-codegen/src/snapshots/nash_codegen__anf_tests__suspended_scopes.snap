@@ -1,0 +1,51 @@
+---
+source: crates/nash-codegen/src/anf_tests.rs
+assertion_line: 76
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+let unused function#5 : int -> int = \x#4 : int -> trace "lambda body" in error in
+let unused delay#6 : @delay int = delay (trace "delay body" in error) in
+42
+--- core after static lifting / before ANF
+let unused function#5 : int -> int = \x#4 : int -> trace "lambda body" in error in
+let unused delay#6 : @delay int = delay (trace "delay body" in error) in
+42
+--- core after ANF
+let unused function#5 : int -> int = \x#4 : int -> trace "lambda body" in error in
+let unused delay#6 : @delay int = delay (trace "delay body" in error) in
+42
+--- hygienic rewritten core before ANF
+let unused function#8 : int -> int = \x#7 : int -> trace "lambda body" in error in
+let unused delay#9 : @delay int = delay (trace "delay body" in error) in
+42
+--- rewritten core after ANF
+let unused function#8 : int -> int = \x#7 : int -> trace "lambda body" in error in
+let unused delay#9 : @delay int = delay (trace "delay body" in error) in
+42
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam n756e757365642066756e6374696f6e_2
+    [(lam n756e757365642064656c6179_3 (con integer 42))
+      (delay
+        (force [[(force (builtin trace)) (con string "delay body")] (delay (error))]))])
+    (lam x_1
+      (force [[(force (builtin trace)) (con string "lambda body")] (delay (error))]))])
+--- result
+(con integer 42)
+--- logs
+[]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam n756e757365642066756e6374696f6e_8
+    [(lam n756e757365642064656c6179_9 (con integer 42))
+      (delay
+        (force [[(force (builtin trace)) (con string "delay body")] (delay (error))]))])
+    (lam x_7
+      (force [[(force (builtin trace)) (con string "lambda body")] (delay (error))]))])
+--- result
+(con integer 42)
+--- logs
+[]

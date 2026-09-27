@@ -1,0 +1,17 @@
+---
+source: crates/nash-ir/src/static_lift.rs
+assertion_line: 223
+expression: "fixture(false, true)"
+---
+--- core before
+letrec
+  f#1 : int -> int -> int [static []] = \fixed#2 : int n#3 : int -> let partial#4 : int -> int = f#1 fixed#2 in
+  42
+in
+f#1
+--- core after
+letrec
+  f#1 : int -> int -> int [static []] = \fixed#2 : int n#3 : int -> let partial#4 : int -> int = f#1 fixed#2 in
+  42
+in
+f#1

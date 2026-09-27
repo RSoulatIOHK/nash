@@ -22,3 +22,6 @@ mod assertion;
 pub mod build;
 pub mod can_to_core;
 pub mod tests;
+
+#[cfg(test)]
+mod anf_tests;

@@ -1,0 +1,29 @@
+---
+source: crates/nash-ir/src/static_lift.rs
+assertion_line: 299
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\", pretty(before),\npretty(after))"
+---
+--- core before
+letrec
+  outer#1 : int -> int -> int [static []] = \fixed#2 : int n#3 : int -> letrec
+    inner#4 : int -> int -> int [static []] = \capture#5 : int m#6 : int -> case@Bool equalsInteger m#6 0 of
+      True -> n#3
+      False -> inner#4 capture#5 (subtractInteger m#6 1)
+  in
+  let ignored#7 : int = inner#4 fixed#2 0 in
+  outer#1 fixed#2 (subtractInteger n#3 1)
+in
+outer#1
+--- core after
+let outer#1 : int -> int -> int = \fixed#2 : int n#3 : int -> letrec
+  worker#11 : int -> int [static []] = \n#10 : int -> let inner#4 : int -> int -> int = \capture#5 : int m#6 : int -> letrec
+    worker#9 : int -> int [static []] = \m#8 : int -> case@Bool equalsInteger m#8 0 of
+      True -> n#10
+      False -> worker#9 (subtractInteger m#8 1)
+  in
+  worker#9 m#6 in
+  let ignored#7 : int = inner#4 fixed#2 0 in
+  worker#11 (subtractInteger n#10 1)
+in
+worker#11 n#3 in
+outer#1

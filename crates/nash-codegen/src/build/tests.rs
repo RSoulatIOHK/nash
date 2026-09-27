@@ -231,6 +231,7 @@ fn core_eval(name: &str, source: &str) -> crate::harness::Evaluated {
         let core =
             crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core).unwrap();
         let result = crate::harness::eval_core(arena, core);
+        crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
         insta::assert_snapshot!(
             name,
             format!("--- core\n{}\n{result}", nash_ir::pretty::pretty(core))
@@ -594,6 +595,7 @@ fn all_trace_configs_keep_compiler_and_user_messages_independent() {
                     )
                     .unwrap();
                     let result = crate::harness::eval_core(arena, core);
+                    crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
                     insta::assert_snapshot!(
                         format!("trace_config_{user:?}_{compiler}"),
                         format!("--- core\n{}\n{result}", nash_ir::pretty::pretty(core))
@@ -771,6 +773,7 @@ fn empty_lists_key_the_native_element_layout_and_erase_big_nominal_names() {
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
             let result = crate::harness::eval_core(arena, core);
+            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
             assert!(result.result.contains("list integer"), "{}", result.result);
             assert_eq!(result.result.matches("list data").count(), 2);
         },
@@ -1357,6 +1360,7 @@ fn native_case_branches_evaluate_scrutinee_once_and_remain_lazy() {
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
             let result = crate::harness::eval_core(arena, core);
+            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
             assert_eq!(result.logs, ["condition", "true", "condition", "false"]);
             assert!(result.uplc.contains("(case"));
             assert!(!result.uplc.contains("ifThenElse"));
@@ -1403,6 +1407,7 @@ fn native_case_dispatches_lists_data_and_sparse_literals() {
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
             let result = crate::harness::eval_core(arena, core);
+            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
             assert!(!result.result.starts_with("error:"), "{}", result.result);
             assert!(result.uplc.contains("(case"));
             assert!(result.uplc.contains("chooseData"));
@@ -1898,6 +1903,7 @@ fn list_eq_little_preserves_custom_eq_and_short_circuit() {
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
             let result = crate::harness::eval_core(arena, core);
+            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
             assert_eq!(result.result, "(con bool False)");
             assert_eq!(result.logs, ["custom"]);
             insta::assert_snapshot!(format!(
@@ -2064,6 +2070,7 @@ fn map_eq_little_preserves_custom_eq_and_short_circuit() {
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
             let result = crate::harness::eval_core(arena, core);
+            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
             assert_eq!(result.result, "(con bool False)");
             assert_eq!(result.logs, ["custom"]);
             insta::assert_snapshot!(format!(

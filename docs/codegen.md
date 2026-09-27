@@ -166,7 +166,7 @@ Can AST + solved types + trait evidence
    │ 4. desugar do / records / tuples / lists   (folded into 1 and 3)
    ▼
 Core with LetRec
-   │ 5. hygiene + ANF + main optimization (Plan 08; optimized path only)
+   │ 5. hygiene + static lifting + ANF + main optimization (Plan 08; optimized path only)
    │ 6. recursion rewrite                 (LetRec -> self-application/dispatch)
    │ 7. ANF + cleanup optimization        (Plan 08; optimized path only)
    ▼
@@ -337,6 +337,23 @@ canonicalization already computed the SCCs.
    parameters gets a `Delay`/`Force` pair so the self-application does not
    loop at definition time.
 
+The accepted Plan 08 implementation performs static-parameter lifting separately in
+`nash-ir::static_lift::lift`, before ANF. It examines complete self calls, captures
+unchanged parameters in the original function wrapper, and creates an explicit
+recursive worker taking only the remaining parameters. The wrapper keeps its
+original arity, so partial calls from outside the recursive body retain their
+behavior. Genuine partial or first-class self uses still prevent lifting, as in
+the existing analysis; no ANF call-chain recognition is needed.
+
+If every parameter is static, the worker is a singleton delayed recursive binding:
+`letrec worker = delay body in force worker`. Its binder and body have the same
+`Delay(result)` type, and each recursive call forces the worker anew. It is not a
+memoized result. Final recursion rewriting supports this explicit delayed form;
+ordinary recursive values and zero-parameter mutual groups remain unsupported.
+The original integrated lifting path remains in O0 for baseline comparison while
+the accepted extracted pass remains wired through the test harness until the
+optimized production path is introduced.
+
 **Mutual recursion** uses native UPLC constructor packets and case dispatch:
 
 ```text
@@ -368,20 +385,35 @@ binders in the recipient and each inserted copy to avoid capture. Callers must
 still prove that a proposed rewrite preserves evaluation and effects. Structural
 size counts nodes/binders, not literal payload or serialized bytes.
 
-The accepted pipeline begins with binder hygiene and
-A-normal form (ANF) while recursive groups remain explicit as `LetRec`. Main
+The accepted pipeline begins with binder hygiene, static-parameter lifting, then
+A-normal form (ANF). Lifting retains recursive `LetRec` workers and captures the
+unchanged parameters before ANF can split complete calls into partial ones. Main
 optimization runs before recursion rewriting; generated code is normalized again
-and cleaned up afterward. Assembly coordinates these phases. Before recursion
-rewrite, refresh recursive groups and static-parameter metadata so simplification
-can expose newly unchanged arguments. Do not repeatedly unfold recursive calls
+and cleaned up afterward. Freshen binder occurrences again after recursion
+rewriting, which can share generated lambda subtrees at several use sites.
+Assembly coordinates these phases. Before recursion rewriting, refresh recursive
+groups. Discovering additional static parameters after the main optimizations is
+a separate future candidate; the initial lifting pass needs no ANF call-chain
+recovery. Do not repeatedly unfold recursive calls
 or generated self-application. O0 still performs required recursion rewriting.
 Non-atomic intermediate operands receive explicit bindings; variables/literals
 can stay inline. Existing Core nodes are reused. Later passes preserve ANF and
 strict evaluation order, including application staging and trace timing; they
 must not move work across case-branch, lambda, or delay boundaries without a
 separate semantic justification. O0 remains the unnormalized baseline. See
-[Plan 08 chunk 2](../plans/08-optimizer.md#chunk-2--anf-normalization).
+[Plan 08 chunk 2](../plans/08-optimizer.md#chunk-2--static-parameter-lifting-and-anf-normalization).
 
+The accepted ANF implementation uses `nash-ir::anf::{normalize, is_atom, validate}`. Variables,
+literals, nonempty lambdas, delays and bare builtin references are atoms; lambda
+and delay bodies still normalize in their own scopes. An empty lambda lowers to
+its body and is not a value boundary. General applications retain atomic argument
+runs, binding an earlier application stage before lifting a later computation.
+Known builtin arguments normalize in order; valid builtin nodes cannot exceed
+arity and only execute on saturation. Trace message work precedes emission, while
+body work remains inside the trace. Administrative lets reassociate only with
+unique binders, and new binders retain the computation's actual result type.
+Wiring remains test-only until the optimized production path is introduced;
+production assembly is unchanged.
 
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for

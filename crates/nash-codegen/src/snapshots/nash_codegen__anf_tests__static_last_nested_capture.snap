@@ -1,0 +1,116 @@
+---
+source: crates/nash-codegen/src/anf_tests.rs
+assertion_line: 76
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+let outer#6 : int = trace "capture" in 2 in
+letrec
+  countdown#7 : int -> int -> int [static [1]] = \n#8 : int fixed#9 : int -> case@Bool equalsInteger n#8 0 of
+    True -> addInteger fixed#9 outer#6
+    False -> countdown#7 (trace "next" in subtractInteger n#8 1) fixed#9
+in
+countdown#7 2 (trace "fixed" in 40)
+--- core after static lifting / before ANF
+let outer#6 : int = trace "capture" in 2 in
+let countdown#7 : int -> int -> int = \n#8 : int fixed#9 : int -> letrec
+  worker#11 : int -> int [static []] = \n#10 : int -> case@Bool equalsInteger n#10 0 of
+    True -> addInteger fixed#9 outer#6
+    False -> worker#11 (trace "next" in subtractInteger n#10 1)
+in
+worker#11 n#8 in
+countdown#7 2 (trace "fixed" in 40)
+--- core after ANF
+let outer#6 : int = trace "capture" in 2 in
+let countdown#7 : int -> int -> int = \n#8 : int fixed#9 : int -> letrec
+  worker#11 : int -> int [static []] = \n#10 : int -> let anf#12 : bool = equalsInteger n#10 0 in
+  case@Bool anf#12 of
+    True -> addInteger fixed#9 outer#6
+    False -> let anf#13 : int = trace "next" in subtractInteger n#10 1 in
+    worker#11 anf#13
+in
+worker#11 n#8 in
+let anf#14 : int -> int = countdown#7 2 in
+let anf#15 : int = trace "fixed" in 40 in
+anf#14 anf#15
+--- hygienic rewritten core before ANF
+let outer#18 : int = trace "capture" in 2 in
+let countdown#27 : int -> int -> int = \n#19 : int fixed#20 : int -> let worker#26 : int -> int = (\self#21 : @self (int -> int) -> self#21 self#21) (\self#22 : @self (int -> int) n#23 : int -> let anf#24 : bool = equalsInteger n#23 0 in
+case@Bool anf#24 of
+  True -> addInteger fixed#20 outer#18
+  False -> let anf#25 : int = trace "next" in subtractInteger n#23 1 in
+  self#22 self#22 anf#25) in
+worker#26 n#19 in
+let anf#28 : int -> int = countdown#27 2 in
+let anf#29 : int = trace "fixed" in 40 in
+anf#28 anf#29
+--- rewritten core after ANF
+let outer#18 : int = trace "capture" in 2 in
+let countdown#27 : int -> int -> int = \n#19 : int fixed#20 : int -> let worker#26 : int -> int = (\self#21 : @self (int -> int) -> self#21 self#21) (\self#22 : @self (int -> int) n#23 : int -> let anf#24 : bool = equalsInteger n#23 0 in
+case@Bool anf#24 of
+  True -> addInteger fixed#20 outer#18
+  False -> let anf#25 : int = trace "next" in subtractInteger n#23 1 in
+  let anf#30 : int -> int = self#22 self#22 in
+  anf#30 anf#25) in
+worker#26 n#19 in
+let anf#28 : int -> int = countdown#27 2 in
+let anf#29 : int = trace "fixed" in 40 in
+anf#28 anf#29
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam outer_1
+    [(lam countdown_2
+      [[countdown_2 (con integer 2)]
+        (force
+          [[(force (builtin trace)) (con string "fixed")] (delay (con integer 40))])])
+      (lam n_3
+        (lam fixed_4
+          [[(lam self_5 [self_5 self_5])
+            (lam self_5
+              (lam n_3
+                (case
+                  [[(builtin equalsInteger) n_3] (con integer 0)]
+                  [[self_5 self_5]
+                    (force
+                      [[(force (builtin trace)) (con string "next")]
+                        (delay [[(builtin subtractInteger) n_3] (con integer 1)])])]
+                  [[(builtin addInteger) fixed_4] outer_1])))]
+            n_3]))])
+    (force
+      [[(force (builtin trace)) (con string "capture")] (delay (con integer 2))])])
+--- result
+(con integer 42)
+--- logs
+["capture", "fixed", "next", "next"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam outer_18
+    [(lam countdown_27
+      [(lam anf_28
+        [(lam anf_29 [anf_28 anf_29])
+          (force
+            [[(force (builtin trace)) (con string "fixed")] (delay (con integer 40))])])
+        [countdown_27 (con integer 2)]])
+      (lam n_19
+        (lam fixed_20
+          [(lam worker_26 [worker_26 n_19])
+            [(lam self_21 [self_21 self_21])
+              (lam self_22
+                (lam n_23
+                  [(lam anf_24
+                    (case
+                      anf_24
+                      [(lam anf_25 [(lam anf_30 [anf_30 anf_25]) [self_22 self_22]])
+                        (force
+                          [[(force (builtin trace)) (con string "next")]
+                            (delay [[(builtin subtractInteger) n_23] (con integer 1)])])]
+                      [[(builtin addInteger) fixed_20] outer_18]))
+                    [[(builtin equalsInteger) n_23] (con integer 0)]]))]]))])
+    (force
+      [[(force (builtin trace)) (con string "capture")] (delay (con integer 2))])])
+--- result
+(con integer 42)
+--- logs
+["capture", "fixed", "next", "next"]

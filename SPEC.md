@@ -63,7 +63,7 @@ Implementation plans (Plan 08 is in progress; Plans 09 and 10 are complete):
 - [x] 05 Exhaustiveness (`Nitpick/PatternMatches` port) — [plans/05-nitpick.md](plans/05-nitpick.md)
 - [x] 06 Diagnostics (`nash-report`, concise source labels, stable codes, JSON/LSP) — [plans/06-diagnostics.md](plans/06-diagnostics.md); [concise diagnostics refactor](plans/diagnostics-refactor.md) complete
 - [x] 07 Codegen: Core IR, monomorphization, decision trees, recursion, Data casts, UPLC lowering — [plans/07-codegen.md](plans/07-codegen.md)
-- [ ] 08 Optimizer: ANF and optimization before recursion rewrite, post-rewrite cleanup, inlining, builtin force caching, DCE, case-of-known-ctor/constant folding — [plans/08-optimizer.md](plans/08-optimizer.md) (Chunk 1 shared analysis and hygiene, and mandatory Core typing prerequisite complete; ANF next)
+- [ ] 08 Optimizer: ANF and optimization before recursion rewrite, post-rewrite cleanup, inlining, builtin force caching, DCE, case-of-known-ctor/constant folding — [plans/08-optimizer.md](plans/08-optimizer.md) (Chunks 1–2 complete: analysis, hygiene, typed Core, pre-ANF static lifting and ANF; explicit performance-only test path next)
 - [x] 09 Validators + `nash build` — [plans/09-validators-build.md](plans/09-validators-build.md)
 - [x] 10 Testing: `tests` block, props, generators, shrinking, power-assert, `nash test` — [plans/10-testing.md](plans/10-testing.md)
 - [ ] 11 Macros + comptime — [plans/11-macros-comptime.md](plans/11-macros-comptime.md); includes explicit integer-dispatch AST and positional library macro (chunk 13), reusable call/binding/case-shaped macro inputs required in chunk 14 (library semantics deferred)

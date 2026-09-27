@@ -35,6 +35,7 @@ macro_rules! case {
                     )
                     .expect("recursion rewrites");
                     let evaluated = crate::harness::eval_core(arena, core);
+                    crate::harness::assert_candidate_equivalent(arena, compiled.core, &evaluated);
                     let expected: Result<&str, ()> = $expected;
                     match expected {
                         Ok(result) => assert_eq!(evaluated.result, result),

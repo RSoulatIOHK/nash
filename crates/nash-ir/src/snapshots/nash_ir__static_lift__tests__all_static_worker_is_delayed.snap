@@ -1,0 +1,16 @@
+---
+source: crates/nash-ir/src/static_lift.rs
+assertion_line: 219
+expression: "fixture(true, false)"
+---
+--- core before
+letrec
+  f#1 : int -> int -> int [static []] = \fixed#2 : int n#3 : int -> f#1 fixed#2 n#3
+in
+f#1
+--- core after
+let f#1 : int -> int -> int = \fixed#2 : int n#3 : int -> letrec
+  worker#4 : @delay int [static []] = \ -> delay (force worker#4)
+in
+force worker#4 in
+f#1

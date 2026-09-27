@@ -2,15 +2,17 @@
 
 ## Status and accepted scope
 
-Chunk 1 and Chunk 2's typing prerequisite are accepted and complete.
-ANF and later chunks remain pending. Current assembly in
+Chunks 1 and 2 are accepted and complete, including mandatory Core typing,
+pre-ANF static-parameter lifting and ANF. Chunk 3 is next. Current assembly in
 `nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
 Reuse its existing Core, Builder, traversal and free-variable facilities.
 
 Accepted decisions (26 September 2026):
 
-- Start with binder hygiene and A-normal form (ANF), using existing Core nodes.
+- Start with binder hygiene, static-parameter lifting and A-normal form (ANF),
+  retaining explicit recursive workers in Core. Lift before ANF splits calls;
+  do not reconstruct application chains to recover this information.
 - Optimize while recursive functions remain explicit `LetRec`, then rewrite
   recursion once, normalize the generated code and run cleanup.
 - Consider inlining small functions even when used multiple times. This is a
@@ -66,9 +68,9 @@ not a request to reauthorize routine implementation or testing within that chunk
 O0: Core -> recursion rewrite -> UPLC lowering
 
 Candidate optimized pipeline:
-Core with LetRec -> unique names -> ANF -> accepted main passes
-  -> refresh recursive groups and static-parameter metadata
-  -> recursion rewrite once -> ANF -> accepted cleanup passes -> UPLC lowering
+Core with LetRec -> unique names -> static-parameter lifting -> ANF
+  -> accepted main passes -> refresh recursive groups
+  -> recursion rewrite once -> unique names -> ANF -> accepted cleanup passes -> UPLC lowering
 ```
 
 Assembly coordinates the phases. Passes belong in `nash-ir`; recursion rewriting,
@@ -115,10 +117,14 @@ execution budgets can change; report those changes separately from semantics.
   including group-internal calls. Preserve strict argument evaluation and staging;
   keep unsafe partial/escaping signatures. Do not create unsupported zero-parameter
   recursive values.
-- Recompute groups and static-parameter metadata immediately before rewriting.
-  Discover newly static arguments as well as rejecting stale indices. Deleting a
-  dead call which changes `config` may make `config` capturable by a worker.
-- Restore ANF after rewriting wrappers, self-applications, packets and cases.
+- Lift static parameters before ANF while complete source calls remain visible.
+  Retain explicit recursive workers, so main optimization still precedes knot
+  rewriting. Recompute recursive groups before final rewriting. Discovering
+  additional static parameters after optimization is a separate future candidate;
+  do not add ANF application-chain recovery as a prerequisite.
+- Freshen binder occurrences again after rewriting: generated lambda subtrees can
+  be shared at multiple use sites. Restore ANF for wrappers, self-applications,
+  packets and cases.
   Cleanup reuses accepted passes and semantic checks; it is not another optimizer.
 
 ## Chunk 1 — Shared analysis and hygiene
@@ -162,7 +168,7 @@ tracing, failing and potentially diverging computations.
 
 **Done when:** shared analyses are tested and reviewed; no optimization is enabled.
 
-## Chunk 2 — ANF normalization
+## Chunk 2 — Static-parameter lifting and ANF normalization
 
 **Typing prerequisite accepted (26 September 2026):**
 Core is now `Core { ty, kind }`, with mandatory result metadata supplied or derived
@@ -173,7 +179,7 @@ no optional metadata lookup or missing-type presence check. Tests cover source
 nominal identity, partial functions, erased generics, fields and recursion-created
 values. Core annotation snapshots change; emitted UPLC and evaluation remain the
 baseline. The user accepted this prerequisite and the paired snapshot contract;
-ANF normalization is next.
+The accepted static-lifting and ANF implementation below builds on this prerequisite.
 
 Validation: 11 new tests cover builder typing, source metadata, recursion-created
 types and substitution preserving explicit coercion views. Formatting and strict
@@ -182,6 +188,69 @@ All 154 updated existing codegen snapshots containing UPLC retain byte-identical
 UPLC, evaluation results, traces and budgets. The vesting Core annotations change
 only delayed binder types; their UPLC and ledger checks pass unchanged. Vesting
 fixtures now keep Core, UPLC and ledger outcomes together in one sectioned snapshot.
+
+**Static-parameter lifting and ANF accepted (26 September 2026):**
+`nash-ir::anf` provides `normalize`, the shared atom predicate and an ANF shape
+checker. Atoms are variables, literals, nonempty lambdas, delays and bare builtin
+references. Normalize value bodies locally; empty lambdas/applications unwrap
+with their original type view. Reassociate let prefixes under globally unique
+names, retaining exact result types. Preserve atomic application runs and execute
+earlier stages before a later non-atomic argument. Builtins retain their n-ary
+form because valid builtin nodes only execute on saturation.
+
+Test-only codegen wiring now lifts static parameters before the first ANF pass,
+then rewrites recursion and normalizes again after freshening binder occurrences. Production assembly and public flags
+are unchanged. Ten IR tests cover lifting, shape, types, hygiene and idempotence;
+nineteen semantic tests produce twenty paired phase snapshots. Existing source fixtures
+also compare original versus normalized execution at both recursion boundaries,
+including Big/little wildcard, captured/function fallback, Logic and Lift cases.
+Ground values, error categories/messages and trace order are compared; returned
+opaque functions are exercised through dedicated applications rather than checked
+for identical lambda syntax. New optimizer snapshots do not pin performance budgets.
+
+Revised validation: formatting and strict all-target/all-feature Clippy pass. The
+full workspace test run passes (3,606 passed, 3 ignored), including doctests. The
+combined implementation adds 29 tests and 28 paired snapshots relative to the accepted
+typing prerequisite. No snapshots are pending. The interleaved-parameter fixture
+proves both captured values, retained dynamic-parameter order and initial argument
+trace order; ordinary O0 source snapshots remain unchanged.
+
+Initial ANF-only measurements (superseded by the pre-ANF lifting revision below)
+ran outside Cargo test discovery using
+`/tmp/nash-anf-measure.rs` (temporary experiment, not a permanent runner). Baseline
+is `9f454f1c`; candidate code was working-copy revision `07d012061767ba5f875121f3218f019190724b4b`.
+Target: Plutus V3 / UPLC 1.1.0, repository `nash-plutus` default V3 cost model,
+default evaluation budget; size is raw Flat bytes. Results and logs agree in all
+five cases. The nested arithmetic returns 43; the other cases return 42. Countdown
+uses `equalsInteger n 0` and `subtractInteger n 1`. Values below are baseline →
+candidate; none are acceptance thresholds.
+
+| Input | CPU | Memory | Flat bytes |
+| --- | ---: | ---: | ---: |
+| Atomic `addInteger 20 22` | 181308 → 181308 | 602 → 602 | 10 → 10 |
+| Nested `addInteger (multiplyInteger 6 7) 1` | 336261 → 384261 | 1004 → 1304 | 15 → 18 |
+| Curried addition: `trace "first" 20`, `trace "second" 22`; body traces `"stage"` | 791802 → 935802 | 3398 → 4298 | 55 → 62 |
+| Countdown 3 to 0, returning static second argument 42 | 1681056 → 2209056 | 7410 → 10710 | 39 → 49 |
+| Same countdown, static argument first and computed argument second | 1681056 → 2401056 | 7410 → 11910 | 39 → 48 |
+
+The final row exposed a loss of static lifting when ANF split a complete call.
+The user rejected recovering ANF call chains and chose early static lifting.
+`static_lift::lift` now captures unchanged parameters before normalization and
+retains `LetRec` workers for later optimization. An all-static worker is explicitly
+delayed and forced per call, without adding a dummy parameter or memoization.
+The original wrapper retains its arity and argument evaluation behavior.
+Genuine partial/escaping self uses and mutual groups retain the existing policy.
+
+
+Revised measurements used `/tmp/nash-static-lift-measure.rs`, outside Cargo test
+discovery, on candidate code revision `1a516a43fbef5d42dbffc9ce02f1843e7f0d82a9`.
+With the same inputs, baseline and cost model, both countdown parameter orders
+now cost 2,209,056 CPU, 10,710 memory and 49 Flat bytes. The static-first case no
+longer loses capture during ANF. The other three measurement rows are unchanged.
+Results and logs agree with the baseline in all five cases. ANF still adds binding
+overhead; this fixes the lifting loss without claiming a speedup over O0. The user
+accepted this implementation. Temporary measurement scripts and binaries were
+removed after recording the results; functional tests and paired snapshots remain.
 
 Implement `anf::normalize` and an invariant checker using the contract above.
 Normalize at main-phase entry and after recursion rewriting. Add temporary harness
@@ -195,8 +264,9 @@ Reuse Big/little wildcard fixtures, captured/function-valued fallback results,
 shared helpers and `Logic` short-circuit/selected-Lift fixtures. Test normalization
 idempotence and valid types/names, not just pretty output.
 
-**Done when:** normalization preserves semantics and its invariant, with separate
-ANF snapshots alongside unchanged O0 snapshots; review binding overhead in UPLC.
+**Done when:** normalization preserves semantics and its invariant, with paired
+before/after Core sections and unchanged baseline output; review binding overhead
+in UPLC.
 
 ## Chunk 3 — Explicit performance-only test path
 
@@ -291,8 +361,9 @@ at the correct call stage, even if that needs an unused let.
 
 Test tracing/failing/diverging unused RHSs, strict ignored arguments, saturated
 and partial/escaping calls, self/mutual recursion and all-static workers. Check
-that dead-call elimination exposes newly static parameters and parameter removal
-does not leave stale static indices.
+that parameter removal preserves worker captures and does not leave stale
+parameter indices. Newly exposed static parameters may be evaluated as a separate
+future candidate; early lifting must not depend on recovering ANF call chains.
 
 **Done when:** each retained rule preserves semantics and demonstrates a reviewed
 benefit; refresh recursion metadata before rewriting.

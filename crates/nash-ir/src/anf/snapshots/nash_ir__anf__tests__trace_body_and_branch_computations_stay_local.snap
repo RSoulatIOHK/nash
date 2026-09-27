@@ -1,0 +1,14 @@
+---
+source: crates/nash-ir/src/anf/tests.rs
+assertion_line: 109
+expression: "snapshot(&b, b.if_(condition, branch, b.error(int)))"
+---
+--- core before
+case@Bool true of
+  True -> trace "selected" in addInteger (force (delay 1)) 2
+  False -> error
+--- core after
+case@Bool true of
+  True -> trace "selected" in let anf#1 : int = force (delay 1) in
+  addInteger anf#1 2
+  False -> error

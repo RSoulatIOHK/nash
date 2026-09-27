@@ -1,0 +1,11 @@
+---
+source: crates/nash-ir/src/anf/tests.rs
+assertion_line: 91
+expression: "snapshot(&fresh, expression)"
+---
+--- core before
+(\x#1 : int y#2 : int -> x#1) 1 (addInteger 2 3)
+--- core after
+let anf#3 : int -> int = (\x#1 : int y#2 : int -> x#1) 1 in
+let anf#4 : int = addInteger 2 3 in
+anf#3 anf#4

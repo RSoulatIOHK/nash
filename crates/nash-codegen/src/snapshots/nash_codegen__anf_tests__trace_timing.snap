@@ -1,0 +1,45 @@
+---
+source: crates/nash-codegen/src/anf_tests.rs
+assertion_line: 76
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- hygienic rewritten core before ANF\\n{}\\n--- rewritten core after ANF\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(rewritten),\npretty(after), semantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+trace (trace "message evaluation" in "outer") in trace "body" in error
+--- core after static lifting / before ANF
+trace (trace "message evaluation" in "outer") in trace "body" in error
+--- core after ANF
+let anf#1 : string = trace "message evaluation" in "outer" in
+trace anf#1 in trace "body" in error
+--- hygienic rewritten core before ANF
+let anf#2 : string = trace "message evaluation" in "outer" in
+trace anf#2 in trace "body" in error
+--- rewritten core after ANF
+let anf#2 : string = trace "message evaluation" in "outer" in
+trace anf#2 in trace "body" in error
+--- baseline
+--- uplc
+(program 1.1.0
+  (force
+    [[(force (builtin trace))
+      (force
+        [[(force (builtin trace)) (con string "message evaluation")]
+          (delay (con string "outer"))])]
+      (delay (force [[(force (builtin trace)) (con string "body")] (delay (error))]))]))
+--- result
+error: ExplicitErrorTerm
+--- logs
+["message evaluation", "outer", "body"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_2
+    (force
+      [[(force (builtin trace)) anf_2]
+        (delay (force [[(force (builtin trace)) (con string "body")] (delay (error))]))]))
+    (force
+      [[(force (builtin trace)) (con string "message evaluation")]
+        (delay (con string "outer"))])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["message evaluation", "outer", "body"]
