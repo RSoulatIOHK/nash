@@ -6,7 +6,12 @@ Chunks 1 and 2 are accepted and complete, including mandatory Core typing,
 pre-ANF static-parameter lifting and ANF. Chunk 3 is complete with an isolated
 performance runner. The user
 accepted Chunk 4 rules 1 and 2, including repeated-constant propagation and
-their fixed-point loop. Rule 3 was accepted on 27 September 2026; rule 4 remains pending independent review.
+their fixed-point loop. Rule 3 was accepted on 27 September 2026. The measured Rule 4 identity and
+builtin-wrapper cases are accepted, including their measured size tradeoffs;
+conditional bodies are excluded for now, including recursive-only inlining.
+Broader body-size heuristics, partial/indirect-call expansion and further Rule 4
+experiments are deferred. The retained cases still need implementation as a pass;
+the measured selected-binding experiment is not an installed optimizer.
 Current assembly in
 `nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
@@ -559,26 +564,218 @@ stay in the explicit temporary experiment, outside normal test runs.
 The user accepted rule 3 on 27 September 2026. Temporary measurement source and
 binary were removed after recording the results; semantic tests and snapshots remain.
 
-### Remaining rules
+### Rule 4 trial 1 — multiple-use identity helper
 
-Bind strict arguments before substitution and preserve application staging. Single
-use is not proof that moving work into a conditional branch is safe. Respect
-recursive and escaping/partial-call restrictions. Keep large literals and strings
-from being duplicated indiscriminately. Consider builtin wrappers as candidates,
-not an unconditional exception to code-size and ANF rules.
+The first of three concrete experiments is `\x -> x`. It is measured before
+choosing any size threshold; builtin wrappers and conditional helpers remain
+separate, pending experiments. The temporary explicit command is:
 
-Multiple-use small-function inlining is approved for consideration. Measure call
-savings against duplicated body/constant size, including recursive callers and
-cold branches. Choose a simple deterministic threshold only from reviewed
-findings; the old size constant of 12 is not a decision. Do not add per-program
-search/tuning machinery.
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial
+```
 
-Tests: builtin wrappers, repeated small helpers, identity/Lift/Logic wrappers,
-strict argument failure/trace order, single uses in unselected branches or delays,
-strings, escaping functions and nonrecursive helpers within `LetRec`.
+The trial selects a fixture binding by unique ID, freshens its lambda at each
+fully applied direct call, and reuses the accepted rules 1–3 loop. It removes the
+shared pure lambda binding only if all uses were replaced. The trial does not
+recognize identity bodies as a compiler special case and installs no production
+pass or general selection policy. It normalizes once, before these rewrites;
+recursion rewriting and lowering follow without another ANF pass.
 
-**Done when:** each retained rule has semantic coverage, measured tradeoffs and a
-keep decision; rejected rules are removed.
+Baseline is the accepted normalize-once/rules 1–3 pipeline, not O0. Measurements
+use Plutus V3, UPLC 1.1.0, the bundled default V3 model and raw Flat bytes. The
+experiment asserts equal ground results and trace logs, expected results/logs,
+ANF before recursion rewriting, binder hygiene and root types. It has explicit
+CPU/memory caps and a 120-second watchdog. Paired Core and UPLC are printed by
+the command; the permanent performance baseline is not changed.
+
+| Identity fixture | CPU before → after | Memory before → after | Flat bytes before → after |
+| --- | ---: | ---: | ---: |
+| Two calls, summing two ones | 634516 → 394516 | 2804 → 1304 | 30 → 18 |
+| Eight calls, summing eight ones | 2489764 → 1673764 | 10616 → 5516 | 99 → 60 |
+| Recursive caller: setup call plus eight iterations | 7930425 → 7018425 | 36641 → 30941 | 67 → 55 |
+| Two calls with traced arguments | 1073512 → 833512 | 4868 → 3368 | 60 → 48 |
+| First argument fails; later trace must not execute | 59598 → 59598 | 132 → 132 | 59 → 47 |
+| One selected branch; other argument traces and fails | 363598 → 219598 | 2032 → 1132 | 52 → 39 |
+
+The recursive fixture has two syntactic uses of the identity helper and nine
+runtime calls. Its recursion is retained; only the nonrecursive helper is inlined.
+The simple identity body disappears after beta reduction and alias propagation,
+so these cases incur no duplicated body cost in final UPLC. This does not establish
+an acceptable threshold for larger helpers. No general partial/escaping-call or
+polymorphic-inlining claim is made by this first trial.
+
+The review has moved on to the builtin-wrapper experiment below. No general
+inlining rule or threshold is accepted yet.
+Delete the temporary example after recording the decision or replace it with
+appropriate semantic coverage when implementing a retained general rule.
+
+### Rule 4 trial 2 — multiple-use builtin wrapper
+
+The same temporary harness also measures `\x -> addInteger x 1`:
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- builtin-wrapper
+```
+
+It uses the same selected-binding rewrite, accepted baseline, semantic checks,
+measurement settings and six call patterns as trial 1. Only the helper body and
+expected results change. No builtin-wrapper exception is installed in the compiler.
+
+| Wrapper fixture | CPU before → after | Memory before → after | Flat bytes before → after |
+| --- | ---: | ---: | ---: |
+| Two calls | 964932 → 820932 | 3608 → 2708 | 34 → 32 |
+| Eight calls | 3811428 → 3379428 | 13832 → 11132 | 104 → 117 |
+| Recursive caller: setup call plus eight iterations | 9417297 → 8937297 | 40259 → 37259 | 72 → 70 |
+| Two calls with traced arguments | 1403928 → 1259928 | 5672 → 4772 | 65 → 62 |
+| First argument fails; later trace must not execute | 59598 → 59598 | 132 → 132 | 63 → 61 |
+| One selected branch; other argument traces and fails | 528806 → 432806 | 2434 → 1834 | 57 → 53 |
+
+All six preserve results and logs. Unlike identity, the builtin body remains at
+each call site: eight static uses save CPU and memory but add 13 Flat bytes. The
+recursive caller has only two static uses and nine runtime calls, so it saves
+runtime costs while reducing size by two bytes. Review this tradeoff before the
+third (conditional-helper) experiment; no size threshold follows from this alone.
+
+### Rule 4 — applying the accepted identity case to source workloads
+
+The user kept all measured identity and builtin-wrapper cases, including the
+small size growth. The explicit experiment now also supports:
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- source-cases
+```
+
+This compiles the existing `booleanHelpers` and `staticRecursion` workloads,
+selects each fixture's outer literal-conversion helper binding, and applies the
+same selected-helper inlining plus rules 1–3 cleanup. No new case folding,
+second ANF normalization, or general function-selection policy is added.
+
+| Workload | CPU O0 / rules 1–3 / plus Rule 4 trial | Memory O0 / rules 1–3 / plus Rule 4 trial | Flat bytes O0 / rules 1–3 / plus Rule 4 trial |
+| --- | ---: | ---: | ---: |
+| Boolean helpers | 400100 / 496100 / 160100 | 2600 / 3200 / 1100 | 29 / 34 / 18 |
+| Static countdown | 4736761 / 6320761 / 4448761 | 21725 / 31625 / 19925 | 52 / 60 / 39 |
+
+Both source-workload regressions disappear in this trial. Results and empty trace
+logs agree across all three variants; the trial asserts expected results, ANF,
+binder hygiene, and unchanged root types. The boolean expression retains its
+case-result binding and known cases; countdown retains bindings for its comparison
+and decrement. The permanent baseline and production pipeline remain unchanged.
+
+### Rule 4 trial 3 — smallest comparison-based conditional helper
+
+Measured `nonNegative x = if lessThanInteger x 0 then 0 else x` through the same
+explicit selected-helper experiment:
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- conditional
+```
+
+This is one comparison and one conditional, with only a literal and a variable
+in its branches. Body size is fixed. No constant evaluation or case folding is
+added. Baseline is accepted rules 1–3; candidate adds selected-helper inlining
+and their existing cleanup loop, with ANF only once. Same V3 model, raw Flat
+sizes, budgets, watchdog, result/log comparison and IR checks as earlier trials.
+
+The 25 samples cover 2/4/8/16 fully applied call sites with all positive, all
+negative, and alternating inputs; 2/4/8/16 mutually exclusive sites with only the
+first or last selected and every other argument tracing then failing; two static
+sites making nine runtime calls via recursion with positive or negative inputs;
+traced computed arguments; first-argument failure; and the zero boundary.
+
+| All sites execute | CPU before → after | Memory before → after | Flat bytes before → after |
+| --- | ---: | ---: | ---: |
+| 2 sites | 1013096 → 869096 | 4606 → 3706 | 41 → 48 |
+| 4 sites | 2010092 → 1770092 | 9012 → 7512 | 65 → 92 |
+| 8 sites | 4004084 → 3572084 | 17824 → 15124 | 111 → 180 |
+| 16 sites | 7992068 → 7176068 | 35448 → 30348 | 204 → 357 |
+
+Positive, negative, and alternating inputs have the same costs in this matrix.
+
+| Other usage | CPU before → after | Memory before → after | Flat bytes before → after |
+| --- | ---: | ---: | ---: |
+| 2 sites, first selected | 333390 → 237390 | 1901 → 1301 | 42 → 47 |
+| 4 sites, first selected | 333390 → 237390 | 1901 → 1301 | 80 → 105 |
+| 8 sites, first selected | 333390 → 237390 | 1901 → 1301 | 156 → 221 |
+| 16 sites, first selected | 333390 → 237390 | 1901 → 1301 | 308 → 453 |
+| 16 sites, last selected | 781390 → 685390 | 4701 → 4101 | 307 → 453 |
+| 2 static sites, 9 recursive runtime calls (either input sign) | 9634035 → 9154035 | 44750 → 41750 | 79 → 85 |
+| Traced computed arguments, both signs | 1569300 → 1425300 | 6772 → 5872 | 80 → 85 |
+| First argument fails | 59598 → 59598 | 132 → 132 | 70 → 75 |
+| Zero boundary | 799888 → 655888 | 3904 → 3004 | 34 → 40 |
+
+All 25 semantic checks pass; 24 reduce CPU and memory, and the early failure is
+unchanged. All grow in size. This supports runtime call-overhead savings for
+this particular body, but not unlimited duplication: cold sites add bytes without
+adding runtime savings. No threshold or production rule is chosen from these
+synthetic measurements. The user subsequently deferred conditional inlining; retain these measurements
+as evidence, not as an accepted transformation.
+
+### Rule 4 trial 4 — conditional inlining only inside recursive bodies
+
+At the user's request, the same conditional is inlined only at direct call sites
+inside `LetRec` function bodies. The `LetRec` continuation is not selected. This
+is a syntactic trial restriction, not a loop-frequency estimate or a production
+policy. Identity and builtin-wrapper acceptance is unchanged.
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- conditional --recursive-matrix --recursive-only
+```
+
+The matrix uses 1/2/4/8/16 sites and 0/1/4/8 iterations, with two outside calls
+so the shared helper remains after normal rules 1–3 cleanup. It also covers
+mutually exclusive sites (first/last selected; unselected arguments trace and
+fail), and two cases with no outside uses. All 30 pass expected outcomes,
+trace equality, ANF, type and binder checks under the existing 100M CPU cap.
+An initial 32-iteration sweep exceeded that cap for larger site counts; it was
+replaced by the bounded 0/1/4/8 sweep, not treated as a semantic mismatch.
+
+| Recursive-only case | CPU saved | Memory saved | Flat bytes before → after |
+| --- | ---: | ---: | ---: |
+| 1 site, zero iterations, two outside calls | 0 | 0 | 98 → 108 |
+| 1 site, eight iterations, two outside calls | 384000 | 2400 | 98 → 108 |
+| 2 sites, eight iterations, two outside calls | 768000 | 4800 | 109 → 130 |
+| 8 sites, eight iterations, two outside calls | 3072000 | 19200 | 179 → 263 |
+| 16 sites, eight iterations, two outside calls | 6144000 | 38400 | 272 → 440 |
+| 16 sites, eight iterations, only first executes | 384000 | 2400 | 375 → 536 |
+| 2 sites, eight iterations, no outside calls | 816000 | 5100 | 91 → 97 |
+
+Compared with unrestricted inlining on the identical matrix, retaining the two
+outside calls saves roughly 6–7 bytes but gives up 144000 CPU and 900 memory.
+If no outside calls exist, the two strategies are identical. Restricting by
+recursive scope does not prevent duplication of cold branches within that scope.
+
+The previous 25 conditional samples also pass with `--recursive-only`: all 23
+nonrecursive controls have unchanged metrics. The two recursive samples each
+leave just one outside helper use, which accepted Rule 3 then inlines; their final
+output is identical to unrestricted inlining. This cleanup interaction is expected
+and is why the new matrix retains two outside uses.
+
+Decision (27 September 2026): leave conditional bodies out for now, including
+this recursive-only variant. Defer further Rule 4 experiments and broad heuristic
+design; retain the already accepted identity and builtin-wrapper cases. No
+production code or permanent performance baseline changes. Strict experiment
+Clippy and formatting pass.
+
+### Rule 4 retained scope and deferred work
+
+The user accepted the established identity and small builtin-wrapper cases,
+including their measured size growth. Conditional bodies are excluded for now;
+recursive placement does not override that exclusion. This decision does not
+restrict the accepted identity/builtin-wrapper cases to recursive bodies.
+
+Defer broader body-size/growth heuristics, larger bodies, partial-application
+expansion, indirect/escaping-call expansion, and further exploratory experiments.
+Do not pick an arbitrary size threshold or add per-program search/tuning machinery.
+
+Implementation remains outstanding for the retained cases: replace fixture-selected
+binding IDs with a pass limited to the accepted shapes, preserve strict arguments
+and application staging, freshen copied binders, retain shared definitions when
+other uses remain, and integrate with rules 1–3 cleanup. Add paired semantic
+snapshots and review the resulting full performance baseline. The decision to
+stop exploring is not a claim that this pass has already landed.
+
+**Done when:** retained cases are implemented with semantic snapshots, verified
+measurements and the keep decision recorded. Deferred cases do not block completion.
 
 ## Chunk 5 — Builtin sharing
 
