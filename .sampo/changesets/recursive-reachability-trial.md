@@ -2,4 +2,4 @@
 cargo/nash-ir: minor
 ---
 
-Add a standalone pass to remove recursive members unreachable from their group's continuation.
+Remove recursive members unreachable from their group's continuation in the accepted optimizer cleanup loop.

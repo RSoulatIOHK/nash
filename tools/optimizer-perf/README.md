@@ -27,7 +27,7 @@ validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
 The `before` pipeline is O0 (recursion rewrite and lowering). The `after` pipeline
-is the accepted static lifting, one ANF normalization and rules 1+2+3+4 plus safe dead-binding cleanup,
+is the accepted static lifting, one ANF normalization and rules 1+2+3+4 plus safe dead-binding and recursive-reachability cleanup,
 then recursion rewrite, binder freshening and lowering with both Chunk 5 sharing steps. No second normalization
 or ANF-dependent cleanup runs after recursion rewriting. Rule 3 was accepted on 27 September 2026. These figures record current behavior, including overhead
 from ANF; they are not a claim that the incomplete optimizer beats O0 everywhere.
@@ -134,7 +134,7 @@ already include it, while the direct Core cases isolate its effect. This experim
 does not update the permanent baseline. It is outside root test
 discovery, like the other explicit experiments.
 
-## Chunk 6 recursive reachability trial
+## Chunk 6 recursive reachability experiment
 
 ```sh
 cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_recursive
@@ -145,5 +145,6 @@ rewriting. Includes groups of 1/2/4/8 members with none, one or all reachable;
 countdown loops in groups of 2/8 with 0/1/8/64 recursive calls; live/dead delayed
 workers; and nine source workloads after accepted Core cleanup. Results and
 trace logs must match. CPU, memory and Flat bytes are printed separately. This
-standalone trial is outside root test discovery and leaves the accepted pipeline
-and permanent baseline unchanged.
+experiment is outside root test discovery. Recursive reachability is accepted
+in the cleanup loop, so source cases already include it; direct Core cases isolate
+its effects. The experiment does not update the permanent baseline.

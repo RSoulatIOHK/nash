@@ -14,8 +14,7 @@ experiments are deferred. The retained cases are implemented in `nash-ir::small_
 with the candidate/performance pipelines. Chunk 5 step 1 adds outermost forced-builtin
 sharing during optimized lowering. Step 2 is accepted with a two-occurrence minimum
 for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
-unused-binding removal is accepted; recursive-member reachability is a standalone
-trial pending review. Normal build defaults remain O0 pending
+unused-binding removal and recursive-member reachability are accepted. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
@@ -990,7 +989,7 @@ forced failures, saturated builtin calls and strict partial-call arguments.
 The diverging recursive-call fixture checks exact retained Core without running
 an infinite program. The pass runs inside `small_inline::simplify` alongside
 rules 1–4 until the cleanup loop reaches a fixed point, before recursion rewriting.
-Recursive-member removal is the separate trial below; parameter removal remains
+Recursive-member removal is retained below; parameter removal remains
 unimplemented.
 
 Explicit experiment: `cargo run --locked --manifest-path
@@ -1007,7 +1006,7 @@ snapshots are supplemented by paired Core snapshots for safe ignored delayed
 arguments and strict tracing arguments through the accepted cleanup loop. Root
 and isolated strict Clippy and formatting passed.
 
-**Second trial (27 September 2026), pending keep/discard: recursive reachability.**
+**Second rule retained (27 September 2026): recursive reachability.**
 `nash_ir::dead_recursive::prune` visits groups bottom-up. It seeds a worklist with
 members referenced anywhere in the continuation, then follows references in
 reachable member bodies. Unreachable cycles do not seed themselves. A member
@@ -1023,8 +1022,9 @@ without running those bodies. Unsupported zero-parameter recursive values remain
 rejected. Singleton lowering already rechecks static metadata before using it;
 this rule neither re-infers static parameters nor performs another ANF pass.
 
-The trial is standalone, before recursion rewriting; it is not in the accepted
-cleanup loop yet. Semantic snapshots cover unreachable self/mutual cycles,
+The pass runs in the accepted cleanup loop before recursion rewriting. Repeating
+the loop removes newly unused safe captures while preserving strict effects.
+Semantic snapshots cover unreachable self/mutual cycles,
 transitive reachability and retention order, live mutual recursion, failures,
 partial/returned/suspended uses, nested groups, cold references, delayed workers,
 and mutual-to-singleton capture/static-metadata preservation.
@@ -1045,8 +1045,9 @@ memory or Flat-size regressions occurred. Representative savings:
 All-live groups, live delayed workers and the nine source workloads are unchanged.
 The permanent 23-case baseline also matches unchanged. These are explicit synthetic
 and existing fixture results, not claims about a real validator distribution.
-Validation: 498 IR/codegen nextest tests passed, with nine new test functions and
-16 paired Core/UPLC snapshots. Root and isolated strict Clippy and formatting
+Validation after integration: 499 IR/codegen nextest tests passed. The original
+16 paired Core/UPLC snapshots are supplemented by two paired Core snapshots
+covering cleanup of dead captures and retention of strict effectful initializers. Root and isolated strict Clippy and formatting
 passed. Read-only review found no correctness issues.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove

@@ -892,6 +892,8 @@ Chunk 6 removes unused nonrecursive lets when `analysis::safe_to_discard` proves
 the RHS terminates without trace or failure. Repeating cleanup releases dead
 captures and aliases while preserving strict effectful arguments exposed by beta
 reduction. It runs before recursion rewriting; no second ANF pass is added.
-Recursive-group pruning is available as a separate `dead_recursive::prune` trial,
+The cleanup loop also runs `dead_recursive::prune`,
 rooted in continuation references and their transitive member dependencies. It
-retains source order and existing metadata. Parameter removal is not implemented.
+retains source order and existing metadata. Repeating cleanup releases newly
+unused safe captures while preserving effectful initializers. Parameter removal
+is not implemented.

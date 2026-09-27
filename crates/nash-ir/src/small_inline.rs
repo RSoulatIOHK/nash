@@ -3,15 +3,17 @@ use crate::{
     analysis,
     build::Builder,
     core::{Binder, Core, CoreKind},
-    dead_bindings, propagate, single_use,
+    dead_bindings, dead_recursive, propagate, single_use,
 };
 use std::{collections::HashSet, ptr};
 
-/// Compose rules 1–4 and safe dead-binding removal on typed ANF with unique binders.
+/// Compose rules 1–4, safe dead bindings and recursive reachability to a fixed point.
+/// Input is typed ANF with globally unique binders.
 /// Conditional bodies, partial calls and indirect calls are not selected by rule 4.
 pub fn simplify<'a>(b: &Builder<'a>, mut core: &'a Core<'a>) -> &'a Core<'a> {
     loop {
         let next = dead_bindings::simplify(b, inline(b, single_use::simplify(b, core)));
+        let next = dead_recursive::prune(b, next);
         if ptr::eq(core, next) {
             return next;
         }

@@ -416,3 +416,69 @@ fn cold_and_nested_references_remain_live() {
     assert!(std::ptr::eq(cold, dead_recursive::prune(&b, cold)));
     check("cold_reference", &b, cold, 1, &[], false);
 }
+
+#[test]
+fn accepted_cleanup_releases_dead_captures_but_preserves_effects() {
+    let a = Arena::new();
+    let b = Builder::new(&a);
+    for (name, captured, suspended, logs) in [
+        (
+            "cleanup_dead_delay_capture",
+            b.delay(b.error(INT)),
+            true,
+            &[][..],
+        ),
+        (
+            "cleanup_strict_capture",
+            trace(&b, "kept", b.int(7)),
+            false,
+            &["kept"][..],
+        ),
+    ] {
+        let capture = bind(&b, "capture", captured.ty);
+        let f = function(&b, "dead", 1);
+        let x = bind(&b, "x", INT);
+        let value = b.var(capture.name, capture.ty);
+        let read = if suspended {
+            b.force(value, INT)
+        } else {
+            value
+        };
+        let body = b.builtin(F::AddInteger, &[read, read], INT);
+        let root = b.let_(
+            capture,
+            captured,
+            b.let_rec(&[def(&b, f, &[x], body)], b.int(42)),
+        );
+        let before = nash_ir::anf::normalize(&b, root);
+        let after = nash_ir::small_inline::simplify(&b, before);
+        assert_eq!(count(after), 0);
+        if suspended {
+            assert!(matches!(after.kind, CoreKind::Lit(_)));
+        }
+        assert_eq!(before.ty, after.ty);
+        nash_ir::anf::validate(after).unwrap();
+        hygiene::validate(after, &[]).unwrap();
+        assert!(std::ptr::eq(
+            after,
+            nash_ir::small_inline::simplify(&b, after)
+        ));
+        let baseline =
+            crate::harness::eval_core_raw(&a, crate::recursion::rewrite(&b, before).unwrap());
+        let candidate =
+            crate::harness::eval_core_raw(&a, crate::recursion::rewrite(&b, after).unwrap());
+        assert_eq!(baseline.observable, candidate.observable);
+        assert_eq!(baseline.logs, candidate.logs);
+        assert_eq!(candidate.logs, logs);
+        insta::assert_snapshot!(
+            name,
+            format!(
+                "--- core before\n{}\n--- core after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                pretty(after),
+                candidate.result,
+                candidate.logs
+            )
+        );
+    }
+}

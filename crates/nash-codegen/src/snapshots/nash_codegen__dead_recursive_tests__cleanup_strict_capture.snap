@@ -1,0 +1,17 @@
+---
+source: crates/nash-codegen/src/dead_recursive_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), candidate.result, candidate.logs)"
+---
+--- core before
+let capture#8 : int = trace "kept" in 7 in
+letrec
+  dead#9 : int -> int [static []] = \x#10 : int -> addInteger capture#8 capture#8
+in
+42
+--- core after
+let capture#8 : int = trace "kept" in 7 in
+42
+--- result
+(con integer 42)
+--- logs
+["kept"]
