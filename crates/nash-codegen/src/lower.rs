@@ -2,6 +2,8 @@
 use nash_ir::core::{Binder, Branch, CaseKind, Core, CoreKind, Name as CoreName, Test};
 use nash_plutus::{arena::Arena, binder::Name, builtin::DefaultFunction, term::Term};
 
+mod constant_sharing;
+
 type Uplc<'a> = &'a Term<'a, Name<'a>>;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -19,7 +21,7 @@ pub enum Error {
 }
 
 pub fn lower<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Result<Uplc<'a>, Error> {
-    lower_inner(arena, core, false)
+    lower_inner(arena, core, Sharing::None)
 }
 
 /// Cache fully forced builtin values once, outside every program argument.
@@ -29,20 +31,43 @@ pub fn lower_with_builtin_sharing<'a>(
     arena: &'a Arena,
     core: &'a Core<'a>,
 ) -> Result<Uplc<'a>, Error> {
-    lower_inner(arena, core, true)
+    lower_inner(arena, core, Sharing::Forces)
 }
 
-fn lower_inner<'a>(arena: &'a Arena, core: &'a Core<'a>, share: bool) -> Result<Uplc<'a>, Error> {
+/// Experimental Chunk 5 step 2: force sharing plus repeated one-literal
+/// builtin prefixes. Kept separate for measured review before pipeline adoption.
+pub fn lower_with_constant_sharing<'a>(
+    arena: &'a Arena,
+    core: &'a Core<'a>,
+) -> Result<Uplc<'a>, Error> {
+    lower_inner(arena, core, Sharing::ForcesAndConstants)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Sharing {
+    None,
+    Forces,
+    ForcesAndConstants,
+}
+
+fn lower_inner<'a>(
+    arena: &'a Arena,
+    core: &'a Core<'a>,
+    sharing: Sharing,
+) -> Result<Uplc<'a>, Error> {
     let next_unique = largest_name(core)
         .checked_add(1)
         .ok_or(Error::NameOverflow)?;
     let mut lower = Lower {
         arena,
         next_unique,
-        share,
+        share: sharing != Sharing::None,
         shared: Vec::new(),
     };
     let mut term = lower.term(core)?;
+    if sharing == Sharing::ForcesAndConstants {
+        term = constant_sharing::share(&mut lower, term)?;
+    }
     // Exhaustive cases can discard an already-lowered default. Only bind
     // references that survive in the emitted program.
     let mut referenced = std::collections::HashSet::new();

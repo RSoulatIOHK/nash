@@ -1,0 +1,26 @@
+---
+source: crates/nash-codegen/src/constant_sharing_tests.rs
+expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+---
+--- uplc before
+[(lam builtin_1
+  (force
+    [[builtin_1 (con string "before")]
+      (delay
+        [[(builtin addInteger)
+          [[(builtin divideInteger) (con integer 10)] (con integer 0)]]
+          [[(builtin divideInteger) (con integer 10)] (con integer 0)]])]))
+  (force (builtin trace))]
+--- uplc after
+[(lam builtin_1
+  [(lam partial_2
+    (force
+      [[builtin_1 (con string "before")]
+        (delay
+          [[(builtin addInteger) [partial_2 (con integer 0)]] [partial_2 (con integer 0)]])]))
+    [(builtin divideInteger) (con integer 10)]])
+  (force (builtin trace))]
+--- result
+error: Runtime(DivisionByZero(10, 0))
+--- logs
+["before"]

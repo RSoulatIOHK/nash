@@ -464,6 +464,15 @@ Core typing or repeating ANF. Core cleanup runs before these bindings exist.
 The candidate/performance pipelines use it; O0 and normal builds still use
 `lower`. Constant partial-application sharing is a separate pending step.
 
+The separate `lower::lower_with_constant_sharing` entry point is a Chunk 5 step 2
+candidate, not part of the accepted pipeline. It shares repeated first literal
+arguments of known builtins with arity greater than one. It counts surviving UPLC
+occurrences, binds closed partial values outside the root, and keeps forced
+references outside those bindings. It does not move later arguments or saturated
+calls, reorder operands, or share longer prefixes. Its before/after semantic
+snapshots and explicit experiment compare with force sharing alone; adoption
+awaits the step's measured review.
+
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for
 the user's keep/revise/discard decision before advancing. Small functions used

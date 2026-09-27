@@ -871,13 +871,90 @@ rules 1–4 alone, list traversal saves 64000 CPU/400 memory; short Data and
 validation successes add 48000–112000 CPU, and successful vesting paths add
 96000 CPU/600 memory. Sizes increase by 2–4 bytes on affected fixtures. These
 are recorded tradeoffs of the accepted unconditional placement, not a new
-profitability threshold. Step 2, constant partial-application sharing, remains
-unimplemented and requires its own review.
+profitability threshold. Step 2 now has the candidate below and requires its
+own keep/revise/discard review.
 
 Validation: all 469 IR/codegen tests pass, including 14 new paired UPLC
 snapshots; existing snapshots are unchanged. Formatting and strict workspace
 and performance-runner Clippy pass. All 20 explicit baselines match, and the
 16 isolated experiment cases preserve results and traces. Step 1 is complete.
+
+### Step 2 candidate — One repeated leading literal
+
+`lower::lower_with_constant_sharing` is a separate review entry point; it is not
+in the accepted candidate pipeline, normal builds or the permanent performance
+baseline yet. It starts with Step 1 force sharing and operates on the surviving
+lowered body before the force-cache wrappers are added. Typed Core, ANF and the
+Core cleanup loop are unchanged.
+
+The initial rule recognizes one leading literal argument of a known builtin
+whose arity exceeds one. Two or more occurrences of the same builtin and
+structurally equal literal share one partial value at the outermost program
+scope. Saturated call sites can use it, but only their first argument is shared.
+Unary calls, single occurrences, trailing literals, computed operands, variable
+aliases, operand reordering and longer constant prefixes are outside this rule.
+
+The first argument is stored by the CEK builtin runtime without executing or
+type-checking the builtin; execution occurs only at saturation. Thus these
+closed partial values can move outside branches, delays and lambdas without
+moving later-argument computations, traces or failures. Force-cache bindings
+wrap the partial bindings they supply. Counting after structural lowering keeps
+discarded exhaustive defaults out of the occurrence count. Fresh names avoid
+all source and lowering names; applying sharing twice makes no further change.
+
+Semantic snapshots compare Step 1 UPLC with the candidate UPLC. They cover
+separately allocated equal literals, different builtins/literals, strict later
+arguments, noncommutative operations, unary saturation, selected/unselected
+failure, trace timing, delays, returned partials, polymorphic trace calls,
+validator/lambda scopes, ternary builtins and discarded defaults.
+
+Measure against Step 1, independently of the accepted baseline:
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example constant_sharing
+```
+
+52-case experiment, 27 September 2026: every result and trace matched. The six
+successful source workloads (list traversal, countdown, Data hit/miss, decoding,
+validation pass) are unchanged; none exposes this repeated-prefix shape after
+the accepted Core passes. Synthetic cases isolate the lowering rule and are not
+claims about real-world validator distributions.
+
+| Workload | CPU delta | Memory delta | Flat bytes before → after |
+| --- | ---: | ---: | ---: |
+| Integer, one site | 0 | 0 | 11 → 11 |
+| Integer, two executed sites | +16000 | +100 | 22 → 21 |
+| Integer, three executed sites | -16000 | -100 | 32 → 27 |
+| Integer, eight executed sites | -176000 | -1100 | 83 → 60 |
+| Trace, two executed sites | +16000 | +100 | 36 → 30 |
+| Trace, eight executed sites | -176000 | -1100 | 134 → 75 |
+| 64-byte prefix, two sites | +16000 | +100 | 160 → 95 |
+| 64-byte prefix, eight sites | -176000 | -1100 | 637 → 163 |
+| 1024-byte prefix, two sites | +16000 | +100 | 2088 → 1059 |
+| 1024-byte prefix, eight sites | -176000 | -1100 | 8349 → 1127 |
+| Two sites per loop, zero iterations | +80000 | +500 | 53 → 52 |
+| Two sites per loop, eight iterations | -432000 | -2700 | 53 → 52 |
+| Two sites per loop, 64 iterations | -4016000 | -25100 | 54 → 53 |
+| Eight exclusive branches, one taken | +48000 | +300 | 125 → 102 |
+| Eight cold integer sites | +80000 | +500 | 88 → 65 |
+| Unused lambda with eight sites | +80000 | +500 | 81 → 58 |
+
+One lexical site inside a loop is intentionally unchanged regardless of runtime
+iteration count. The candidate counts source occurrences, not inferred frequency.
+Across the synthetic payloads, one shared binding has 80000 CPU/500 memory setup
+cost and saves 32000 CPU/200 memory per executed use. Three executed uses beat
+that setup cost; three syntactic sites do not guarantee three executed uses.
+Therefore increasing a global use-count cutoff would not solve cold/exclusive
+branch costs. Retaining the two-occurrence rule is a size/runtime tradeoff, not
+an assertion that every program gets cheaper.
+
+Validation: 481 IR/codegen tests pass, including 15 new paired UPLC snapshots
+and an idempotence check; existing snapshots are unchanged. Formatting and
+strict workspace/performance-runner Clippy pass. The 52-case explicit experiment
+preserves every result and trace. The accepted performance baseline is unchanged.
+
+Keep/revise/discard remains a separate review decision. Do not infer unconditional
+partial sharing from the earlier unconditional forced-reference decision.
 
 ## Chunk 6 — Dead bindings, functions and parameters
 

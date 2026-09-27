@@ -37,3 +37,6 @@ mod small_inline_tests;
 
 #[cfg(test)]
 mod builtin_sharing_tests;
+
+#[cfg(test)]
+mod constant_sharing_tests;

@@ -102,3 +102,17 @@ sites, loops with 0/1/8/64 calls, and an unselected branch. It checks results an
 traces, and reports CPU, memory and raw Flat bytes. It is an explicit experiment,
 not a root Cargo test. The permanent baseline also includes forced-builtin sharing
 in optimized lowering; O0 still uses structural lowering without sharing.
+
+Chunk 5 constant-prefix candidate (not in the accepted baseline):
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example constant_sharing
+```
+
+This compares force sharing alone with additional sharing of one repeated leading
+literal argument. It covers 1/2/3/8 call sites, cold and exclusive branches,
+recursive calls, an unused lambda, small/large byte strings, and six successful
+source workloads after the accepted Core passes. Synthetic cases isolate lowering;
+they do not run the Core optimizer. Size is Flat bytes of the supplied root,
+including explicit applications where present. Failed outcomes have semantic
+snapshot coverage separately. This is an explicit-only experiment, not a root test.
