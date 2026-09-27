@@ -35,7 +35,6 @@ The CLI performs asynchronous filesystem writes with Tokio. Extraction and
 rendering have library unit snapshots whose descriptions contain Nash input.
 No tests invoke the CLI binary.
 
-`.github/workflows/docs.yml` generates a downloadable site on pull requests and
-publishes Base documentation through GitHub Pages on `main`. The repository's
-Pages source must be configured as **GitHub Actions**. Local generation does not
-publish anything.
+`.github/workflows/docs.yml` generates the Base site as a downloadable artifact
+on pull requests and pushes to `main`. Neither CI nor local generation publishes
+the site.

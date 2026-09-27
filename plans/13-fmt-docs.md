@@ -185,10 +185,9 @@ highlighting and nested paths. Library tests cover package/application selection
 failed compilation, duplicate workspace modules, and every Base page/search link.
 No CLI subprocess tests were added.
 
-`.github/workflows/docs.yml` builds a downloadable preview for pull requests and
-publishes the Base site on main through GitHub Pages. Repository Pages must use
-GitHub Actions as its source. This work prepares the workflow; it does not perform
-a remote deployment. See [API documentation](../docs/documentation.md).
+`.github/workflows/docs.yml` builds the Base site as a downloadable artifact for
+pull requests and pushes to main. It does not publish the site. See
+[API documentation](../docs/documentation.md).
 
 ---
 
