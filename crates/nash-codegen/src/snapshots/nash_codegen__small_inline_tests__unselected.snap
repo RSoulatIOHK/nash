@@ -1,0 +1,41 @@
+---
+source: crates/nash-codegen/src/small_inline_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let increment#2 : int -> int = \x#1 : int -> addInteger x#1 1 in
+case@Bool true of
+  True -> let anf#3 : int = trace "chosen" in 41 in
+  increment#2 anf#3
+  False -> let anf#4 : int = trace "cold" in error in
+  increment#2 anf#4
+--- core after
+case@Bool true of
+  True -> let anf#3 : int = trace "chosen" in 41 in
+  addInteger anf#3 1
+  False -> let anf#4 : int = trace "cold" in error in
+  addInteger anf#4 1
+--- baseline uplc
+(program 1.1.0
+  [(lam increment_2
+    (case
+      (con bool True)
+      [(lam anf_4 [increment_2 anf_4])
+        (force [[(force (builtin trace)) (con string "cold")] (delay (error))])]
+      [(lam anf_3 [increment_2 anf_3])
+        (force
+          [[(force (builtin trace)) (con string "chosen")] (delay (con integer 41))])]))
+    (lam x_1 [[(builtin addInteger) x_1] (con integer 1)])])
+--- optimized uplc
+(program 1.1.0
+  (case
+    (con bool True)
+    [(lam anf_4 [[(builtin addInteger) anf_4] (con integer 1)])
+      (force [[(force (builtin trace)) (con string "cold")] (delay (error))])]
+    [(lam anf_3 [[(builtin addInteger) anf_3] (con integer 1)])
+      (force
+        [[(force (builtin trace)) (con string "chosen")] (delay (con integer 41))])]))
+--- result
+(con integer 42)
+--- logs
+["chosen"]

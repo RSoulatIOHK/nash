@@ -10,11 +10,13 @@ their fixed-point loop. Rule 3 was accepted on 27 September 2026. The measured R
 builtin-wrapper cases are accepted, including their measured size tradeoffs;
 conditional bodies are excluded for now, including recursive-only inlining.
 Broader body-size heuristics, partial/indirect-call expansion and further Rule 4
-experiments are deferred. The retained cases still need implementation as a pass;
-the measured selected-binding experiment is not an installed optimizer.
+experiments are deferred. The retained cases are implemented in `nash-ir::small_inline` and integrated
+with the candidate/performance pipelines. Normal build defaults remain O0 pending
+Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
-rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
+rewrites recursion and lowers directly; normal assembly does not yet call the
+accepted `nash-ir` passes.
 Reuse its existing Core, Builder, traversal and free-variable facilities.
 
 Accepted decisions (26 September 2026):
@@ -322,9 +324,9 @@ Representative current O0 → optimized figures (full rows in `baseline.json`):
 
 | Input | CPU | Memory | Flat bytes |
 | --- | ---: | ---: | ---: |
-| List sum of 1–8 | 5788660 → 5692660 | 27872 → 27272 | 102 → 134 |
-| Static countdown 8, returning 42 | 4736761 → 6320761 | 21725 → 31625 | 52 → 60 |
-| Data integer match | 978518 → 786518 | 5496 → 4296 | 58 → 48 |
+| List sum of 1–8 | 5788660 → 4828660 | 27872 → 21872 | 102 → 93 |
+| Static countdown 8, returning 42 | 4736761 → 4448761 | 21725 → 19925 | 52 → 39 |
+| Data integer match | 978518 → 642518 | 5496 → 3396 | 58 → 38 |
 | Vesting claim after deadline | 2621392 → 2285392 | 14525 → 12425 | 271 → 246 |
 | VestingParam claim after deadline | 2834600 → 2546600 | 15227 → 13427 | 275 → 253 |
 
@@ -333,7 +335,10 @@ The normalize-once revision saves 384000 CPU and 2400 memory on each recursive
 fixture versus the previous pipeline; Flat size falls 137 → 134 for list traversal
 and 62 → 60 for countdown. The other 18 rows, all O0 results, and all optimized
 results/traces are unchanged. This baseline update was explicit and reviewed.
-Countdown's remaining first-ANF overhead is a separate investigation.
+The later Rule 4 integration removes the remaining countdown, boolean-helper,
+and decoding regressions; the table above now reflects rules 1–4. Every O0 row
+and all outcomes remain unchanged. Six optimized rows reduce CPU/memory, seven
+reduce serialized size, and none regresses relative to rules 1–3.
 
 Validation (27 September 2026): all 20 explicit baselines match. Deliberately
 lowering a CPU baseline by one unit makes `check` fail; changed fixture sources
@@ -767,12 +772,19 @@ Defer broader body-size/growth heuristics, larger bodies, partial-application
 expansion, indirect/escaping-call expansion, and further exploratory experiments.
 Do not pick an arbitrary size threshold or add per-program search/tuning machinery.
 
-Implementation remains outstanding for the retained cases: replace fixture-selected
-binding IDs with a pass limited to the accepted shapes, preserve strict arguments
-and application staging, freshen copied binders, retain shared definitions when
-other uses remain, and integrate with rules 1–3 cleanup. Add paired semantic
-snapshots and review the resulting full performance baseline. The decision to
-stop exploring is not a claim that this pass has already landed.
+Implementation: `nash-ir::small_inline` selects the accepted shapes, preserves
+strict arguments through existing beta reduction, freshens copied parameters,
+retains definitions with other uses, and composes with rules 1–3 cleanup. The
+candidate harness and explicit performance runner use the composed pass. Paired
+semantic snapshots exercise the accepted shapes and exclusions. The reviewed
+20-row baseline now includes Rule 4; O0 and all results/traces are unchanged.
+Build configuration remains deferred to Chunk 11, rather than enabling an
+unreviewed default or inventing flags.
+
+Validation (27 September 2026): all 458 IR/codegen tests pass, including 12 new
+paired semantic snapshots. Formatting, strict workspace Clippy and strict
+performance-runner Clippy pass. All 20 reviewed performance baselines match.
+Chunk 4's retained scope is complete; the deferred cases remain out of scope.
 
 **Done when:** retained cases are implemented with semantic snapshots, verified
 measurements and the keep decision recorded. Deferred cases do not block completion.

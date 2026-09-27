@@ -43,7 +43,7 @@ pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a
     let normalized = anf::normalize(&b, lifted);
     anf::validate(normalized).unwrap();
     hygiene::validate(normalized, &[]).unwrap();
-    let propagated = nash_ir::single_use::simplify(&b, normalized);
+    let propagated = nash_ir::small_inline::simplify(&b, normalized);
     anf::validate(propagated).unwrap();
     let rewritten = crate::recursion::rewrite(&b, propagated).unwrap();
     // Recursion rewriting reuses self-application lambda subtrees.

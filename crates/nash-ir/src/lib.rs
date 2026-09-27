@@ -8,6 +8,7 @@ pub mod hygiene;
 pub mod pretty;
 pub mod propagate;
 pub mod single_use;
+pub mod small_inline;
 pub mod static_lift;
 pub mod ty;
 

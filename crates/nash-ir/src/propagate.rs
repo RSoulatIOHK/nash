@@ -44,7 +44,7 @@ pub fn propagate<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
     replace(b, core, &literals)
 }
 
-fn can_duplicate(literal: &Constant<'_>) -> bool {
+pub(crate) fn can_duplicate(literal: &Constant<'_>) -> bool {
     match literal {
         Constant::Integer(_)
         | Constant::Bls12_381G1Element(_)

@@ -31,3 +31,6 @@ mod beta_tests;
 mod propagate_tests;
 #[cfg(test)]
 mod single_use_tests;
+
+#[cfg(test)]
+mod small_inline_tests;

@@ -1,0 +1,40 @@
+---
+source: crates/nash-codegen/src/small_inline_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let identity#2 : int -> int = \x#1 : int -> x#1 in
+let anf#3 : int -> int = case@Bool true of
+  True -> identity#2
+  False -> identity#2 in
+let anf#4 : int = anf#3 20 in
+let anf#5 : int = identity#2 22 in
+addInteger anf#4 anf#5
+--- core after
+let identity#2 : int -> int = \x#1 : int -> x#1 in
+let anf#3 : int -> int = case@Bool true of
+  True -> identity#2
+  False -> identity#2 in
+let anf#4 : int = anf#3 20 in
+addInteger anf#4 22
+--- baseline uplc
+(program 1.1.0
+  [(lam identity_2
+    [(lam anf_3
+      [(lam anf_4
+        [(lam anf_5 [[(builtin addInteger) anf_4] anf_5]) [identity_2 (con integer 22)]])
+        [anf_3 (con integer 20)]])
+      (case (con bool True) identity_2 identity_2)])
+    (lam x_1 x_1)])
+--- optimized uplc
+(program 1.1.0
+  [(lam identity_2
+    [(lam anf_3
+      [(lam anf_4 [[(builtin addInteger) anf_4] (con integer 22)])
+        [anf_3 (con integer 20)]])
+      (case (con bool True) identity_2 identity_2)])
+    (lam x_1 x_1)])
+--- result
+(con integer 42)
+--- logs
+[]

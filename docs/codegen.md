@@ -444,6 +444,15 @@ Other computed bindings remain at their evaluation points, including computed
 function operands. This keeps ANF and effect order without a general effect-motion
 analysis. The test-only candidate loop composes it with accepted rules 1 and 2.
 
+Rule 4 is implemented in `nash-ir::small_inline`. It selects nonrecursive let-bound
+identity lambdas and wrappers containing one saturated builtin with only variable
+operands or literals already approved for duplication by rule 1. Only fully
+applied direct calls are copied; each copy gets fresh parameters and existing
+beta reduction preserves strict argument evaluation. Partial and escaping uses
+remain shared. Conditional bodies and broader size heuristics are deferred.
+`small_inline::simplify` composes rules 1–4 to a fixed point in the candidate and
+explicit performance pipelines. This does not change the normal build default.
+
 Candidate optimizations in `plans/08-optimizer.md` are reviewed one chunk or
 one rewrite at a time. Implement and measure a concrete candidate, then wait for
 the user's keep/revise/discard decision before advancing. Small functions used
@@ -808,7 +817,10 @@ Production assembly accepts a ledger target and validates generated UPLC against
 the protocol 11 compatibility baseline described in [validators.md](validators.md#target-compatibility).
 `assemble_core` remains the default V3 entrypoint; `assemble_core_for_version`
 emits UPLC 1.1.0 for V1, V2, and V3 and checks the complete program.
-No optimizer passes run while Plan 08 is deferred.
+Normal builds still use O0 (recursion rewriting then lowering). Plan 08 Chunk 11
+reserves public optimization modes, configuration and defaults until the accepted
+pass set is reviewed; implemented passes currently run through the candidate and
+explicit performance pipelines.
 
 ### Field offset extraction
 

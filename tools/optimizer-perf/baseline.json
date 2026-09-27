@@ -1,5 +1,5 @@
 {
-  "settings": "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3/recursion/hygiene/lower",
+  "settings": "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4/recursion/hygiene/lower",
   "sources": {
     "Cardano.Tx": "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n",
     "Lift": "module Lift exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\ntrait Lift 'a 'b where\n    lift : 'a -> 'b\n    lower : 'b -> 'a\n\nimpl Lift int Int where\n    lift value = Builtin.iData value\n    lower value = Builtin.unIData value\n\nimpl Lift bytes Bytes where\n    lift value = Builtin.bData value\n    lower value = Builtin.unBData value\n",
@@ -9,7 +9,7 @@
     "VestingParam": "validator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : int -> Datum -> Redeemer -> Data -> unit\nmain minimumLock datum redeemer ctx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n",
     "Workloads": "module Workloads exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Logic exposing (..)\n\nsum : list int -> int\nsum xs =\n    case xs of\n        [] -> 0\n        x :: rest -> Builtin.addInteger x (sum rest)\n\nlistTraversal : int\nlistTraversal = sum [1, 2, 3, 4, 5, 6, 7, 8]\n\ncountdown : int -> int -> int\ncountdown n result =\n    if Builtin.equalsInteger n 0 then\n        result\n    else\n        countdown (Builtin.subtractInteger n 1) result\n\nstaticRecursion : int\nstaticRecursion = countdown 8 42\n\nmatchData : Data -> int\nmatchData value =\n    case value of\n        I n -> n\n        _ -> 0\n\ndataMatch : int\ndataMatch = matchData (I 42)\n\ndataMiss : int\ndataMiss = matchData (B #\"ab\")\n\ndecode : Data -> int\ndecode value =\n    case value of\n        Constr pair(_, [I n, _]) -> n\n        _ -> 0\n\ndecoding : int\ndecoding = decode (Builtin.constrData 0 [I 42, I 7])\n\nvalidate : Data -> unit\nvalidate value =\n    case value of\n        I n -> assert (Builtin.lessThanInteger 0 n)\n        _ -> fail\n\nvalidationPass : unit\nvalidationPass = validate (I 42)\n\nvalidationFail : unit\nvalidationFail = validate (I 0)\n\nbooleanHelpers : bool\nbooleanHelpers = (True && False) || (True && True)\n"
   },
-  "revision": "b4b04dc3d57cce97f9b410a17c0ed0fdef78c1da",
+  "revision": "8239d78178f767d1ca22a121831053022cb17467",
   "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
   "rows": [
     {
@@ -22,9 +22,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 5692660,
-        "memory": 27272,
-        "bytes": 134,
+        "cpu": 4828660,
+        "memory": 21872,
+        "bytes": 93,
         "result": "(con integer 36)",
         "logs": []
       }
@@ -39,9 +39,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 6320761,
-        "memory": 31625,
-        "bytes": 60,
+        "cpu": 4448761,
+        "memory": 19925,
+        "bytes": 39,
         "result": "(con integer 42)",
         "logs": []
       }
@@ -56,9 +56,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 786518,
-        "memory": 4296,
-        "bytes": 48,
+        "cpu": 642518,
+        "memory": 3396,
+        "bytes": 38,
         "result": "(con integer 42)",
         "logs": []
       }
@@ -90,9 +90,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 2319655,
-        "memory": 12188,
-        "bytes": 127,
+        "cpu": 1983655,
+        "memory": 10088,
+        "bytes": 109,
         "result": "(con integer 42)",
         "logs": []
       }
@@ -107,9 +107,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 1071808,
-        "memory": 5797,
-        "bytes": 82,
+        "cpu": 831808,
+        "memory": 4297,
+        "bytes": 70,
         "result": "(con unit ())",
         "logs": []
       }
@@ -128,7 +128,7 @@
       "after": {
         "cpu": 235306,
         "memory": 229,
-        "bytes": 82,
+        "bytes": 70,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -145,9 +145,9 @@
         "logs": []
       },
       "after": {
-        "cpu": 496100,
-        "memory": 3200,
-        "bytes": 34,
+        "cpu": 160100,
+        "memory": 1100,
+        "bytes": 18,
         "result": "(con bool True)",
         "logs": []
       }

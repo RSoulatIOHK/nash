@@ -1,0 +1,51 @@
+---
+source: crates/nash-codegen/src/small_inline_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let offset#1 : int = trace "offset" in 10 in
+let adjust#3 : int -> int = \x#2 : int -> addInteger offset#1 x#2 in
+let anf#4 : int = trace "first" in 1 in
+let anf#5 : int = adjust#3 anf#4 in
+let anf#6 : int = trace "second" in 2 in
+let anf#7 : int = adjust#3 anf#6 in
+addInteger anf#5 anf#7
+--- core after
+let offset#1 : int = trace "offset" in 10 in
+let anf#4 : int = trace "first" in 1 in
+let anf#5 : int = addInteger offset#1 anf#4 in
+let anf#6 : int = trace "second" in 2 in
+let anf#7 : int = addInteger offset#1 anf#6 in
+addInteger anf#5 anf#7
+--- baseline uplc
+(program 1.1.0
+  [(lam offset_1
+    [(lam adjust_3
+      [(lam anf_4
+        [(lam anf_5
+          [(lam anf_6 [(lam anf_7 [[(builtin addInteger) anf_5] anf_7]) [adjust_3 anf_6]])
+            (force
+              [[(force (builtin trace)) (con string "second")] (delay (con integer 2))])])
+          [adjust_3 anf_4]])
+        (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])])
+      (lam x_2 [[(builtin addInteger) offset_1] x_2])])
+    (force
+      [[(force (builtin trace)) (con string "offset")] (delay (con integer 10))])])
+--- optimized uplc
+(program 1.1.0
+  [(lam offset_1
+    [(lam anf_4
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7 [[(builtin addInteger) anf_5] anf_7])
+            [[(builtin addInteger) offset_1] anf_6]])
+          (force
+            [[(force (builtin trace)) (con string "second")] (delay (con integer 2))])])
+        [[(builtin addInteger) offset_1] anf_4]])
+      (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])])
+    (force
+      [[(force (builtin trace)) (con string "offset")] (delay (con integer 10))])])
+--- result
+(con integer 23)
+--- logs
+["offset", "first", "second"]

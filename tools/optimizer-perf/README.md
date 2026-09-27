@@ -27,7 +27,7 @@ validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
 The `before` pipeline is O0 (recursion rewrite and lowering). The `after` pipeline
-is the accepted static lifting, one ANF normalization and rules 1+2+3 loop,
+is the accepted static lifting, one ANF normalization and rules 1+2+3+4 loop,
 then recursion rewrite, binder freshening and lowering. No second normalization
 or ANF-dependent cleanup runs after recursion rewriting. Rule 3 was accepted on 27 September 2026. These figures record current behavior, including overhead
 from ANF; they are not a claim that the incomplete optimizer beats O0 everywhere.
