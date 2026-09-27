@@ -40,3 +40,6 @@ mod builtin_sharing_tests;
 
 #[cfg(test)]
 mod constant_sharing_tests;
+
+#[cfg(test)]
+mod dead_bindings_tests;

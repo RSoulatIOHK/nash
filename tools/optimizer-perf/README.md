@@ -119,3 +119,16 @@ snapshot coverage separately. This is an explicit-only experiment, not a root te
 
 The permanent optimized baseline includes both Chunk 5 steps. The example keeps
 Step 1 as its comparison so Step 2's individual costs remain visible.
+
+## Chunk 6 unused-binding trial
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_bindings
+```
+
+Compares accepted lowering with/without conservative unused-let elimination
+before recursion rewriting: six direct Core cases and nine source workloads.
+The source workloads run accepted Core cleanup first. Results and traces must
+match; CPU, memory and Flat bytes are printed separately. This candidate is not
+part of the accepted pipeline or permanent baseline. It is outside root test
+discovery, like the other explicit experiments.

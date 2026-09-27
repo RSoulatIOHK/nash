@@ -4,6 +4,7 @@ pub mod anf;
 pub mod beta;
 pub mod build;
 pub mod core;
+pub mod dead_bindings;
 pub mod hygiene;
 pub mod pretty;
 pub mod propagate;

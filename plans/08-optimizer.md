@@ -974,6 +974,31 @@ experiment preserves results and traces. Existing semantic snapshots are unchang
 
 ## Chunk 6 — Dead bindings, functions and parameters
 
+**First trial (27 September 2026), pending keep/discard:**
+`nash_ir::dead_bindings::simplify` removes unused nonrecursive lets only when
+`analysis::safe_to_discard` proves the RHS terminates without failure or trace.
+It counts uses by unique binder identity and repeats after removal, so dead
+closures/aliases can release captured bindings. It preserves expression types
+and ANF. It does not remove recursive groups or parameters. Zero-use forced
+builtin references may disappear; sharing still applies to surviving references.
+
+Semantic snapshots cover literal/closure/delay/partial-builtin removal, cascading
+aliases/captures, live captures, strict constructor fields, traces, failures,
+forced failures, saturated builtin calls and strict partial-call arguments.
+The diverging recursive-call fixture checks exact retained Core without running
+an infinite program. The trial is separate from the accepted pipeline.
+
+Explicit experiment: `cargo run --locked --manifest-path
+ tools/optimizer-perf/Cargo.toml --example dead_bindings` (one shell command).
+Across 15 cases, unused literal/closure/delay removal saves 48,000 CPU and 300
+memory; the partial-builtin example saves 80,000 CPU and 500 memory. Flat sizes
+fall by 2–5 bytes. Strict trace/saturated-call cases and all nine existing source
+workloads are unchanged. This does not fix the existing recursive-fixture
+regressions. The permanent 23-row baseline remains unchanged.
+
+Validation: 488 IR/codegen nextest tests passed, including seven new tests and
+16 reviewed snapshots; root and isolated strict Clippy and formatting passed.
+
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused
 parameters only for rewritable uses; keep strict evaluation of dropped arguments
