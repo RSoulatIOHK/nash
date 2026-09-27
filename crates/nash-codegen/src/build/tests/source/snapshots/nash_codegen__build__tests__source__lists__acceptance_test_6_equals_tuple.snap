@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 200
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nsame : (int, list int) -> (int, list int) -> bool\nsame (a, b) (c, d) = if eq a c then eq b d else False\nmain = same (1, []) (1, [])\n"
 ---
 --- core
 let fromBool#10 : bool -> bool = \value#20 : bool -> value#20 in
 let eq#11 : int -> int -> bool = equalsInteger in
-let eq#12 : list 'erased -> list 'erased -> bool = (\self#36 : 'erased -> self#36 self#36) (\self#36 : 'erased xs#21 : list 'erased ys#22 : list 'erased -> let match#33 : list 'erased = xs#21 in
+let eq#12 : list 'erased -> list 'erased -> bool = (\self#36 : @self (list 'erased -> list 'erased -> bool) -> self#36 self#36) (\self#36 : @self (list 'erased -> list 'erased -> bool) xs#21 : list 'erased ys#22 : list 'erased -> let match#33 : list 'erased = xs#21 in
 case@List match#33 of
   Nil -> let match#23 : list 'erased = ys#22 in
   case@List match#23 of

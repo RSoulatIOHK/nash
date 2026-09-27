@@ -1,9 +1,10 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype alias Record = { owner : Bytes, count : Int }\ntype Datum = Datum { owner : Bytes, count : Int }\nrecord : Record\nrecord = { owner = #\"aa\", count = 1 }\ndatum : Datum\ndatum = Datum { owner = #\"bb\", count = 2 }\nmain = neq record.count datum.count\n"
 ---
 --- core
-let not#17 : 'erased -> bool = \value#22 : 'erased -> case@Bool (\identity#23 : 'erased -> identity#23) value#22 of
+let not#17 : 'erased -> bool = \value#22 : 'erased -> case@Bool (\identity#23 : bool -> identity#23) value#22 of
   True -> false
   False -> true in
 let neq#2 : 'erased -> 'erased -> bool = \a#15 : 'erased b#16 : 'erased -> not#17 (equalsData a#15 b#16) in

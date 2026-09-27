@@ -4,7 +4,7 @@ use std::path::Path;
 use nash_ast::{ModuleName, NodeId, Type};
 use nash_ir::{
     core::*,
-    ty::{ConstTy, Ty},
+    ty::{ConstTy, TermTy, Ty},
 };
 use nash_plutus::{arena::Arena, flat};
 use nash_region::{Located, Position, Region};
@@ -172,7 +172,10 @@ impl<'a> Engine<'a, '_, '_> {
                 "both",
                 Substitution::from([("a", head_type), ("b", typ)]),
             )?;
-            generator = self.ir.app(both, &[first, rest]);
+            let Ty::Term(TermTy::Fun(_, result)) = both.ty else {
+                unreachable!("Test.both is a function")
+            };
+            generator = self.ir.app(both, &[first, rest], *result);
             typ = self.ir.arena.alloc(Located::at_zero(Type::Tuple {
                 first: head_type,
                 second: typ,
@@ -182,7 +185,10 @@ impl<'a> Engine<'a, '_, '_> {
         let body = self.property_callback(test, ctx, typ, false)?;
         let display = self.property_callback(test, ctx, typ, true)?;
         let prepare = self.base_function("Test", "prepare", Substitution::from([("a", typ)]))?;
-        Ok(self.ir.app(prepare, &[generator, body, display]))
+        let Ty::Term(TermTy::Fun(_, result)) = prepare.ty else {
+            unreachable!("Test.prepare is a function")
+        };
+        Ok(self.ir.app(prepare, &[generator, body, display], *result))
     }
 
     fn property_callback(
@@ -196,7 +202,7 @@ impl<'a> Engine<'a, '_, '_> {
             name: self.ir.fresh("values"),
             ty: self.types.ty(typ, &Substitution::new())?,
         };
-        let mut remaining = self.ir.var(argument.name);
+        let mut remaining = self.ir.var(argument.name, argument.ty);
         let mut child = ctx.clone();
         let mut patterns = Vec::new();
         let mut shown = Vec::new();
@@ -209,8 +215,11 @@ impl<'a> Engine<'a, '_, '_> {
             let input = if index + 1 == test.binders.len() {
                 remaining
             } else {
-                let first = self.ir.field(remaining, 0, 2);
-                remaining = self.ir.field(remaining, 1, 2);
+                let Ty::Term(TermTy::Tuple([first_ty, rest_ty])) = remaining.ty else {
+                    unreachable!("property values are nested pairs")
+                };
+                let first = self.ir.field(remaining, 0, 2, *first_ty);
+                remaining = self.ir.field(remaining, 1, 2, *rest_ty);
                 first
             };
             let (records, literals) = self.pattern_inputs(binder.pattern, ctx)?;
@@ -228,7 +237,7 @@ impl<'a> Engine<'a, '_, '_> {
                 let rendered = self
                     .show_value(
                         NodeId::pattern(binder.pattern),
-                        self.ir.var(value.name),
+                        self.ir.var(value.name, value.ty),
                         ctx,
                     )?
                     .unwrap_or_else(|| self.string("?"));
@@ -246,7 +255,7 @@ impl<'a> Engine<'a, '_, '_> {
                 &self.ir,
                 &mut self.types,
                 value.ty,
-                self.ir.var(value.name),
+                self.ir.var(value.name, value.ty),
                 &[MatchBranch {
                     pattern: binder.pattern,
                     bindings,
@@ -256,7 +265,7 @@ impl<'a> Engine<'a, '_, '_> {
                     record_fields: &records,
                     literal_tests: &literals,
                 },
-                self.ir.error(),
+                self.ir.error(body.ty),
             )?;
             body = self.ir.let_(value, input, body);
         }

@@ -1,5 +1,5 @@
 //! Structural Core lowering. Trait evidence has already been specialized.
-use nash_ir::core::{Binder, Branch, CaseKind, Core, Name as CoreName, Test};
+use nash_ir::core::{Binder, Branch, CaseKind, Core, CoreKind, Name as CoreName, Test};
 use nash_plutus::{arena::Arena, binder::Name, builtin::DefaultFunction, term::Term};
 
 type Uplc<'a> = &'a Term<'a, Name<'a>>;
@@ -68,21 +68,21 @@ impl<'a> Lower<'a> {
     }
 
     fn term(&mut self, core: &'a Core<'a>) -> Result<Uplc<'a>, Error> {
-        Ok(match core {
-            Core::Var(n) => Term::var(self.arena, self.name(*n)),
-            Core::Lit(c) => Term::constant(self.arena, c),
-            Core::Lam { params, body } => {
+        Ok(match &core.kind {
+            CoreKind::Var(n) => Term::var(self.arena, self.name(*n)),
+            CoreKind::Lit(c) => Term::constant(self.arena, c),
+            CoreKind::Lam { params, body } => {
                 let body = self.term(body)?;
                 self.lambda(params, body)
             }
-            Core::App { func, args } => {
+            CoreKind::App { func, args } => {
                 let mut term = self.term(func)?;
                 for arg in *args {
                     term = term.apply(self.arena, self.term(arg)?);
                 }
                 term
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -99,7 +99,7 @@ impl<'a> Lower<'a> {
                         .apply(self.arena, value)
                 }
             }
-            Core::Builtin { func, args } => {
+            CoreKind::Builtin { func, args } => {
                 if args.len() > func.arity() {
                     return Err(Error::BuiltinArity);
                 }
@@ -109,13 +109,13 @@ impl<'a> Lower<'a> {
                     .collect::<Result<Vec<_>, _>>()?;
                 self.builtin(*func, &args)
             }
-            Core::Case {
+            CoreKind::Case {
                 kind,
                 scrutinee,
                 branches,
                 default,
             } => self.case(*kind, scrutinee, branches, *default)?,
-            Core::Constr { tag, fields } => {
+            CoreKind::Constr { tag, fields } => {
                 let fields = fields
                     .iter()
                     .map(|f| self.term(f))
@@ -126,7 +126,7 @@ impl<'a> Lower<'a> {
                     self.arena.alloc_slice_copy(&fields),
                 )
             }
-            Core::Field {
+            CoreKind::Field {
                 record,
                 index,
                 arity,
@@ -150,16 +150,16 @@ impl<'a> Lower<'a> {
                     self.arena.alloc_slice_copy(&[selector]),
                 )
             }
-            Core::Trace { message, body } => {
+            CoreKind::Trace { message, body } => {
                 let message = self.term(message)?;
                 let body = self.term(body)?;
                 self.builtin(DefaultFunction::Trace, &[message, body.delay(self.arena)])
                     .force(self.arena)
             }
-            Core::Error => Term::error(self.arena),
-            Core::Delay(t) => self.term(t)?.delay(self.arena),
-            Core::Force(t) => self.term(t)?.force(self.arena),
-            Core::LetRec { .. } => return Err(Error::Unlowered("recursion")),
+            CoreKind::Error => Term::error(self.arena),
+            CoreKind::Delay(t) => self.term(t)?.delay(self.arena),
+            CoreKind::Force(t) => self.term(t)?.force(self.arena),
+            CoreKind::LetRec { .. } => return Err(Error::Unlowered("recursion")),
         })
     }
 
@@ -341,19 +341,19 @@ fn largest_name(core: &Core<'_>) -> usize {
     let mut pending = vec![core];
     while let Some(core) = pending.pop() {
         let mut name = |n: CoreName<'_>| largest = largest.max(n.unique as usize);
-        match core {
-            Core::Var(n) => name(*n),
-            Core::Lam { params, body } => {
+        match &core.kind {
+            CoreKind::Var(n) => name(*n),
+            CoreKind::Lam { params, body } => {
                 for p in *params {
                     name(p.name);
                 }
                 pending.push(body);
             }
-            Core::App { func, args } => {
+            CoreKind::App { func, args } => {
                 pending.push(func);
                 pending.extend(*args);
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -361,7 +361,7 @@ fn largest_name(core: &Core<'_>) -> usize {
                 name(binder.name);
                 pending.extend([*value, *body]);
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 for b in *binders {
                     name(b.binder.name);
                     for p in b.params {
@@ -371,7 +371,7 @@ fn largest_name(core: &Core<'_>) -> usize {
                 }
                 pending.push(body);
             }
-            Core::Case {
+            CoreKind::Case {
                 scrutinee,
                 branches,
                 default,
@@ -386,13 +386,13 @@ fn largest_name(core: &Core<'_>) -> usize {
                 }
                 pending.extend(*default);
             }
-            Core::Constr { fields, .. } | Core::Builtin { args: fields, .. } => {
+            CoreKind::Constr { fields, .. } | CoreKind::Builtin { args: fields, .. } => {
                 pending.extend(*fields)
             }
-            Core::Field { record, .. } => pending.push(record),
-            Core::Delay(arg) | Core::Force(arg) => pending.push(arg),
-            Core::Trace { message, body } => pending.extend([*message, *body]),
-            Core::Lit(_) | Core::Error => {}
+            CoreKind::Field { record, .. } => pending.push(record),
+            CoreKind::Delay(arg) | CoreKind::Force(arg) => pending.push(arg),
+            CoreKind::Trace { message, body } => pending.extend([*message, *body]),
+            CoreKind::Lit(_) | CoreKind::Error => {}
         }
     }
     largest

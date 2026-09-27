@@ -1,16 +1,17 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1588
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nreplace : Record -> Record\nreplace r = { r | c = (trace \"replace\" 30) }\ntotal : Record -> int\ntotal r = Builtin.addInteger (Builtin.unIData r.a)\n    (Builtin.addInteger (Builtin.unIData r.b)\n        (Builtin.addInteger (Builtin.unIData r.c) (Builtin.unIData r.d)))\nmain = total (replace { a = 1, b = 2, c = 3, d = 4 })\n"
 ---
 --- core
 let message#34 : string = "replace" in
 let total#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#5 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let projection#26 : list Data = unListData r#5 in
 case@List projection#26 of
-  Cons head#6 tail#7 -> let evaluated#29 : 'erased = unIData head#6 in
+  Cons head#6 tail#7 -> let evaluated#29 : int = unIData head#6 in
   case@List tail#7 of
-    Cons head#10 tail#11 -> let evaluated#28 : 'erased = unIData head#10 in
+    Cons head#10 tail#11 -> let evaluated#28 : int = unIData head#10 in
     case@List tail#11 of
-      Cons head#12 tail#13 -> let evaluated#27 : 'erased = unIData head#12 in
+      Cons head#12 tail#13 -> let evaluated#27 : int = unIData head#12 in
       case@List tail#13 of
         Cons head#14 tail#15 -> addInteger evaluated#29 (addInteger evaluated#28 (addInteger evaluated#27 (unIData head#14))) in
 let fromInt#4 : int -> Int = iData in
@@ -19,7 +20,7 @@ let replace#3 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> { _0 : Int, _1 : I
 let projection#30 : list Data = unListData base#17 in
 case@List projection#30 of
   Cons head#18 tail#19 -> case@List tail#19 of
-    Cons head#22 tail#23 -> let evaluated#33 : 'erased = trace (fromString#24 message#34) in fromInt#4 30 in
+    Cons head#22 tail#23 -> let evaluated#33 : Int = trace (fromString#24 message#34) in fromInt#4 30 in
     case@List tail#23 of
       Cons head#31 tail#32 -> listData (mkCons head#18 (mkCons head#22 (mkCons evaluated#33 tail#32))) in
 let main#1 : int = total#2 (replace#3 (listData (mkCons (fromInt#4 1) (mkCons (fromInt#4 2) (mkCons (fromInt#4 3) (mkCons (fromInt#4 4) (con (list data) []))))))) in

@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nread : Choice -> int\nread value =\n    case value of\n        Stop -> 0\n        Zero -> 0\n        One a -> unIData a\n        Two a b -> addInteger (unIData a) (unIData b)\nchoose : int -> Choice -> int\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        whole -> trace \"fallback\" (addInteger outer (read whole))\nmain = (choose 10 Stop, choose 10 Zero, choose 10 (One 20), choose 10 (Two 30 40))\n"
 ---
 --- core
@@ -22,7 +23,7 @@ case@Pair projection#40 of
         let b#30 : Int = field#34 in
         addInteger (unIData a#29) (unIData b#30) in
 let choose#2 : int -> Main.Choice -> int = \outer#8 : int subject#9 : Main.Choice -> let match#13 : Main.Choice = trace (fromString#10 message#42) in subject#9 in
-let leaf#19 : 'erased = \whole#11 : Main.Choice -> trace (fromString#10 message#43) in addInteger outer#8 (read#12 whole#11) in
+let leaf#19 : Main.Choice -> int = \whole#11 : Main.Choice -> trace (fromString#10 message#43) in addInteger outer#8 (read#12 whole#11) in
 let projection#41 : pair int (list Data) = unConstrData match#13 in
 case@Pair projection#41 of
   Pair tag#23 fields#24 -> case@Tag tag#23 of

@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nbigBig : map Int Int\nbigBig = [Builtin.mkPairData 1 2]\nbigLittle : map Int int\nbigLittle = []\nlittleBig : map int Int\nlittleBig = []\nlittleLittle : map int (list Data)\nlittleLittle = [Builtin.unConstrData (Builtin.constrData 1 [])]\ndifferent : map int (list Data)\ndifferent = [Builtin.unConstrData (Builtin.constrData 2 [])]\nsame : Eq (map 'k 'v) => map 'k 'v -> map 'k 'v -> bool\nsame = eq\nmain =\n    ( same bigBig bigBig\n    , same bigLittle bigLittle\n    , same littleBig littleBig\n    , same littleLittle different\n    )\n"
 ---
 --- core
@@ -28,7 +29,7 @@ case@Pair match#82 of
       let secondB#97 : 'erased = field#89 in
       eq#90 secondA#92 secondB#97
       False -> false in
-let eq#23 : list 'erased -> list 'erased -> bool = (\self#123 : 'erased -> self#123 self#123) (\self#123 : 'erased xs#26 : list 'erased ys#27 : list 'erased -> let match#40 : list 'erased = xs#26 in
+let eq#23 : list 'erased -> list 'erased -> bool = (\self#123 : @self (list 'erased -> list 'erased -> bool) -> self#123 self#123) (\self#123 : @self (list 'erased -> list 'erased -> bool) xs#26 : list 'erased ys#27 : list 'erased -> let match#40 : list 'erased = xs#26 in
 case@List match#40 of
   Nil -> let match#29 : list 'erased = ys#27 in
   case@List match#29 of
@@ -67,7 +68,7 @@ case@Pair match#107 of
       let secondB#121 : 'erased = field#114 in
       equalsData secondA#116 secondB#121
       False -> false in
-let eq#24 : list 'erased -> list 'erased -> bool = (\self#100 : 'erased -> self#100 self#100) (\self#100 : 'erased xs#43 : list 'erased ys#44 : list 'erased -> let match#56 : list 'erased = xs#43 in
+let eq#24 : list 'erased -> list 'erased -> bool = (\self#100 : @self (list 'erased -> list 'erased -> bool) -> self#100 self#100) (\self#100 : @self (list 'erased -> list 'erased -> bool) xs#43 : list 'erased ys#44 : list 'erased -> let match#56 : list 'erased = xs#43 in
 case@List match#56 of
   Nil -> let match#45 : list 'erased = ys#44 in
   case@List match#45 of
@@ -107,7 +108,7 @@ case@Pair match#131 of
       let secondB#146 : 'erased = field#138 in
       eq#139 secondA#141 secondB#146
       False -> false in
-let eq#25 : list 'erased -> list 'erased -> bool = (\self#94 : 'erased -> self#94 self#94) (\self#94 : 'erased xs#59 : list 'erased ys#60 : list 'erased -> let match#72 : list 'erased = xs#59 in
+let eq#25 : list 'erased -> list 'erased -> bool = (\self#94 : @self (list 'erased -> list 'erased -> bool) -> self#94 self#94) (\self#94 : @self (list 'erased -> list 'erased -> bool) xs#59 : list 'erased ys#60 : list 'erased -> let match#72 : list 'erased = xs#59 in
 case@List match#72 of
   Nil -> let match#61 : list 'erased = ys#60 in
   case@List match#61 of
@@ -127,10 +128,10 @@ let eqMapEntries#21 : list (pair 'erased 'erased) -> list (pair 'erased 'erased)
 let eq#15 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#21 in
 let same#8 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#15 in
 let fromInt#16 : int -> int = \value#22 : int -> value#22 in
-let evaluated#152 : 'erased = constrData (fromInt#16 1) (con (list data) []) in
+let evaluated#152 : Data = constrData (fromInt#16 1) (con (list data) []) in
 let projection#153 : pair int (list Data) = unConstrData evaluated#152 in
 let littleLittle#9 : list (pair int (list Data)) = mkCons projection#153 (con (list (pair integer (list data))) []) in
-let evaluated#154 : 'erased = constrData (fromInt#16 2) (con (list data) []) in
+let evaluated#154 : Data = constrData (fromInt#16 2) (con (list data) []) in
 let projection#155 : pair int (list Data) = unConstrData evaluated#154 in
 let different#10 : list (pair int (list Data)) = mkCons projection#155 (con (list (pair integer (list data))) []) in
 let main#1 : (bool, bool, bool, bool) = constr 0 (same#2 bigBig#3 bigBig#3) (same#4 bigLittle#5 bigLittle#5) (same#6 littleBig#7 littleBig#7) (same#8 littleLittle#9 different#10) in

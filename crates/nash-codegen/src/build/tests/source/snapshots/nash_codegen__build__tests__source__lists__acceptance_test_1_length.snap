@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 1
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nlength xs =\n    case xs of\n        [] -> 0\n        _ :: rest -> addInteger 1 (length rest)\nmain = equalsInteger (length [1, 2, 3]) 3\n"
 ---
 --- core
 let fromInt#3 : int -> int = \value#9 : int -> value#9 in
-let length#2 : list 'erased -> int = (\self#10 : 'erased -> self#10 self#10) (\self#10 : 'erased xs#4 : list 'erased -> let match#6 : list 'erased = xs#4 in
+let length#2 : list 'erased -> int = (\self#10 : @self (list 'erased -> int) -> self#10 self#10) (\self#10 : @self (list 'erased -> int) xs#4 : list 'erased -> let match#6 : list 'erased = xs#4 in
 case@List match#6 of
   Nil -> fromInt#3 0
   Cons field#7 field#8 -> let rest#5 : list 'erased = field#8 in

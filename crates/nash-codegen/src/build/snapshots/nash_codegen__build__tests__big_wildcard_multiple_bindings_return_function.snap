@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : (Choice, int, int) -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _, _) -> \\n -> n\n        (_, z, a) -> trace \"shared\" (\\n -> subtractInteger (addInteger z n) a)\nmain = (choose (Stop, 90, 80) 1, choose (Zero, 21, 3) 1, choose (One 2, 31, 4) 1, choose (Two 3 4, 41, 5) 1)\n"
 ---
 --- core
@@ -7,7 +8,7 @@ let message#35 : string = "subject" in
 let message#36 : string = "shared" in
 let fromString#9 : string -> string = \value#33 : string -> value#33 in
 let choose#2 : (Main.Choice, int, int) -> int -> int = \subject#8 : (Main.Choice, int, int) -> let match#14 : (Main.Choice, int, int) = trace (fromString#9 message#35) in subject#8 in
-let leaf#23 : 'erased = \a#12 : int z#11 : int -> trace (fromString#9 message#36) in \n#13 : int -> subtractInteger (addInteger z#11 n#13) a#12 in
+let leaf#23 : int -> int -> int -> int = \a#12 : int z#11 : int -> trace (fromString#9 message#36) in \n#13 : int -> subtractInteger (addInteger z#11 n#13) a#12 in
 case@Tag match#14 of
   0 field#24 field#25 field#26 -> let projection#34 : pair int (list Data) = unConstrData field#24 in
   case@Pair projection#34 of

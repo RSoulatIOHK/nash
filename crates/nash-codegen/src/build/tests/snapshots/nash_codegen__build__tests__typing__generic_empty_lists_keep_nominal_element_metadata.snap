@@ -1,0 +1,9 @@
+---
+source: crates/nash-codegen/src/build/tests/typing.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Token = Token Int\nempty : list 'a\nempty = []\ntokens : list Token\ntokens = empty\nintegers : list Int\nintegers = empty\nnatives : list int\nnatives = empty\nfilled : list Token\nfilled = [Token 1]\nmain = (tokens, integers, natives, filled)\n"
+---
+tokens: list Main.Token
+integers: list Int
+natives: list int
+filled: list Main.Token
+empty constants: list Data, list Main.Token, list int

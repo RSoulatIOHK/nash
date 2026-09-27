@@ -1,6 +1,10 @@
 //! Remove recursive function groups using self-application and dispatchers.
 //! Generated names share the builder's supply and avoid every input unique.
-use nash_ir::{build::Builder, core::*, ty::Ty};
+use nash_ir::{
+    build::Builder,
+    core::*,
+    ty::{DispatchArm, RuntimeTy, TermTy, Ty},
+};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -21,20 +25,28 @@ pub fn static_params(f: Name<'_>, params: &[Binder<'_>], body: &Core<'_>) -> Vec
         .collect::<Vec<_>>();
     let mut calls = 0;
     let mut uses = 0;
-    visit(body, &HashSet::new(), &mut |node, shadowed| match node {
-        Core::App {
-            func: Core::Var(g),
-            args,
-        } if *g == f && !shadowed.contains(g) => {
-            calls += 1;
-            if args.len() < params.len() {
-                candidates.clear();
+    visit(
+        body,
+        &HashSet::new(),
+        &mut |node, shadowed| match &node.kind {
+            CoreKind::App {
+                func:
+                    Core {
+                        kind: CoreKind::Var(g),
+                        ..
+                    },
+                args,
+            } if *g == f && !shadowed.contains(g) => {
+                calls += 1;
+                if args.len() < params.len() {
+                    candidates.clear();
+                }
+                candidates.retain(|&i| matches!(args.get(i as usize),Some(Core { kind: CoreKind::Var(v), .. }) if *v == params[i as usize].name && !shadowed.contains(v)));
             }
-            candidates.retain(|&i| matches!(args.get(i as usize),Some(Core::Var(v)) if *v == params[i as usize].name && !shadowed.contains(v)));
-        }
-        Core::Var(g) if *g == f && !shadowed.contains(g) => uses += 1,
-        _ => {}
-    });
+            CoreKind::Var(g) if *g == f && !shadowed.contains(g) => uses += 1,
+            _ => {}
+        },
+    );
     if calls > 0 && calls == uses {
         candidates
     } else {
@@ -46,7 +58,7 @@ pub fn rewrite<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> Result<&'a Core<'
     let mut used = HashSet::new();
     visit(core, &HashSet::new(), &mut |node, scope| {
         used.extend(scope.iter().map(|n| n.unique));
-        if let Core::Var(n) = node {
+        if let CoreKind::Var(n) = &node.kind {
             used.insert(n.unique);
         }
     });
@@ -57,7 +69,7 @@ pub fn rewrite<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> Result<&'a Core<'
 struct Replacement<'a> {
     value: &'a Core<'a>,
     /// Direct calls can omit arguments proved to be unchanged variables.
-    packet: Option<(Name<'a>, u16, usize)>,
+    packet: Option<(Binder<'a>, u16, &'a [DispatchArm<'a>])>,
     direct: Option<(&'a Core<'a>, Vec<u16>)>,
 }
 type Environment<'a> = HashMap<Name<'a>, Replacement<'a>>;
@@ -67,58 +79,62 @@ struct Rewriter<'b, 'a> {
 }
 
 impl<'a> Rewriter<'_, 'a> {
-    fn fresh(&mut self, text: &'a str) -> Binder<'a> {
+    fn fresh(&mut self, text: &'a str, ty: Ty<'a>) -> Binder<'a> {
         loop {
             let name = self.build.fresh(text);
             if self.used.insert(name.unique) {
-                return Binder {
-                    name,
-                    ty: Ty::Erased,
-                };
+                return Binder { name, ty };
             }
         }
     }
-    fn eta(&mut self, func: &'a Core<'a>, params: &[Binder<'a>]) -> &'a Core<'a> {
+    fn eta(&mut self, func: &'a Core<'a>, params: &[Binder<'a>], result: Ty<'a>) -> &'a Core<'a> {
         let params = params
             .iter()
             .map(|p| Binder {
                 ty: p.ty,
-                ..self.fresh(p.name.text)
+                ..self.fresh(p.name.text, p.ty)
             })
             .collect::<Vec<_>>();
         let args = params
             .iter()
-            .map(|p| self.build.var(p.name))
+            .map(|p| self.build.var(p.name, p.ty))
             .collect::<Vec<_>>();
-        self.build.lam(&params, self.build.app(func, &args))
+        self.build.lam(&params, self.build.app(func, &args, result))
     }
     fn term(&mut self, core: &'a Core<'a>, env: &Environment<'a>) -> Result<&'a Core<'a>, Error> {
         let b = self.build;
-        Ok(match core {
-            Core::Var(n) => env.get(n).map_or(core, |r| r.value),
-            Core::Lit(_) | Core::Error => core,
-            Core::Lam { params, body } => b.lam(
+        let result = match &core.kind {
+            CoreKind::Var(n) => env.get(n).map_or(core, |r| r.value),
+            CoreKind::Lit(_) | CoreKind::Error => core,
+            CoreKind::Lam { params, body } => b.lam(
                 params,
                 self.term(body, &without(env, params.iter().map(|p| p.name)))?,
             ),
-            Core::App { func, args } => {
-                if let Core::Var(n) = func
-                    && let Some((dispatcher, tag, arity)) = env.get(n).and_then(|r| r.packet)
-                    && args.len() >= arity
+            CoreKind::App { func, args } => {
+                if let CoreKind::Var(n) = &func.kind
+                    && let Some((dispatcher, tag, arms)) = env.get(n).and_then(|r| r.packet)
+                    && args.len() >= arms[usize::from(tag)].params.len()
                 {
                     let args = args
                         .iter()
                         .map(|arg| self.term(arg, env))
                         .collect::<Result<Vec<_>, _>>()?;
-                    let mut fields = vec![b.var(dispatcher)];
+                    let arm = &arms[usize::from(tag)];
+                    let arity = arm.params.len();
+                    let mut fields = vec![b.var(dispatcher.name, dispatcher.ty)];
                     fields.extend_from_slice(&args[..arity]);
-                    let call = b.app(b.var(dispatcher), &[b.constr(tag, &fields)]);
+                    let packet_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::Packet { arms, tag }));
+                    let call = b.app(
+                        b.var(dispatcher.name, dispatcher.ty),
+                        &[b.constr(tag, &fields, packet_ty)],
+                        arm.result,
+                    );
                     if args.len() == arity {
                         call
                     } else {
-                        b.app(call, &args[arity..])
+                        b.app(call, &args[arity..], core.ty)
                     }
-                } else if let Core::Var(n) = func
+                } else if let CoreKind::Var(n) = &func.kind
                     && let Some(Replacement {
                         direct: Some((target, excluded)),
                         ..
@@ -130,17 +146,17 @@ impl<'a> Rewriter<'_, 'a> {
                         .filter(|(i, _)| !excluded.iter().any(|x| usize::from(*x) == *i))
                         .map(|(_, arg)| self.term(arg, env))
                         .collect::<Result<Vec<_>, _>>()?;
-                    b.app(target, &args)
+                    b.app(target, &args, core.ty)
                 } else {
                     let func = self.term(func, env)?;
                     let args = args
                         .iter()
                         .map(|arg| self.term(arg, env))
                         .collect::<Result<Vec<_>, _>>()?;
-                    b.app(func, &args)
+                    b.app(func, &args, core.ty)
                 }
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -149,8 +165,8 @@ impl<'a> Rewriter<'_, 'a> {
                 self.term(value, env)?,
                 self.term(body, &without(env, [binder.name]))?,
             ),
-            Core::LetRec { binders, body } => self.group(binders, body, env)?,
-            Core::Case {
+            CoreKind::LetRec { binders, body } => self.group(binders, body, env)?,
+            CoreKind::Case {
                 kind,
                 scrutinee,
                 branches,
@@ -170,40 +186,47 @@ impl<'a> Rewriter<'_, 'a> {
                     })
                     .collect::<Result<Vec<_>, Error>>()?;
                 let default = default.map(|d| self.term(d, env)).transpose()?;
-                b.case(*kind, scrutinee, &branches, default)
+                b.case(*kind, scrutinee, &branches, default, core.ty)
             }
-            Core::Constr { tag, fields } => {
+            CoreKind::Constr { tag, fields } => {
                 let fields = fields
                     .iter()
                     .map(|f| self.term(f, env))
                     .collect::<Result<Vec<_>, _>>()?;
-                b.constr(*tag, &fields)
+                b.constr(*tag, &fields, core.ty)
             }
-            Core::Field {
+            CoreKind::Field {
                 record,
                 index,
                 arity,
-            } => b.arena.alloc(Core::Field {
-                record: self.term(record, env)?,
-                index: *index,
-                arity: *arity,
-            }),
-            Core::Builtin { func, args } => {
+            } => b.alloc(
+                core.ty,
+                CoreKind::Field {
+                    record: self.term(record, env)?,
+                    index: *index,
+                    arity: *arity,
+                },
+            ),
+            CoreKind::Builtin { func, args } => {
                 let args = args
                     .iter()
                     .map(|a| self.term(a, env))
                     .collect::<Result<Vec<_>, _>>()?;
-                b.arena.alloc(Core::Builtin {
-                    func: *func,
-                    args: b.arena.alloc_slice_copy(&args),
-                })
+                b.alloc(
+                    core.ty,
+                    CoreKind::Builtin {
+                        func: *func,
+                        args: b.arena.alloc_slice_copy(&args),
+                    },
+                )
             }
-            Core::Trace { message, body } => {
+            CoreKind::Trace { message, body } => {
                 b.trace(self.term(message, env)?, self.term(body, env)?)
             }
-            Core::Delay(body) => b.delay(self.term(body, env)?),
-            Core::Force(body) => b.force(self.term(body, env)?),
-        })
+            CoreKind::Delay(body) => b.delay(self.term(body, env)?),
+            CoreKind::Force(body) => b.force(self.term(body, env)?, core.ty),
+        };
+        Ok(b.with_type(result, core.ty))
     }
     fn group(
         &mut self,
@@ -243,15 +266,30 @@ impl<'a> Rewriter<'_, 'a> {
                 .filter(|(i, _)| !statics.iter().any(|x| usize::from(*x) == *i))
                 .map(|(_, p)| *p)
                 .collect::<Vec<_>>();
-            let self_arg = self.fresh("self");
-            let raw_self_call = b.app(b.var(self_arg.name), &[b.var(self_arg.name)]);
+            let result_ty = single.body.ty;
+            let worker_ty = if dynamic.is_empty() {
+                Ty::Runtime(b.arena.alloc(RuntimeTy::Delay(result_ty)))
+            } else {
+                let params = dynamic.iter().map(|p| p.ty).collect::<Vec<_>>();
+                Ty::Term(
+                    b.arena
+                        .alloc(TermTy::Fun(b.arena.alloc_slice_copy(&params), result_ty)),
+                )
+            };
+            let self_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::SelfFunction(worker_ty)));
+            let self_arg = self.fresh("self", self_ty);
+            let raw_self_call = b.app(
+                b.var(self_arg.name, self_arg.ty),
+                &[b.var(self_arg.name, self_arg.ty)],
+                worker_ty,
+            );
             let self_call = if dynamic.is_empty() {
-                b.force(raw_self_call)
+                b.force(raw_self_call, result_ty)
             } else {
                 raw_self_call
             };
             let value = if statics.is_empty() {
-                self.eta(self_call, single.params)
+                self.eta(self_call, single.params, result_ty)
             } else {
                 self_call
             };
@@ -276,16 +314,21 @@ impl<'a> Rewriter<'_, 'a> {
                     inner_body
                 },
             );
-            let knot = b.app(b.lam(&[self_arg], raw_self_call), &[inner]);
+            let inner = b.with_type(inner, self_ty);
+            let knot = b.app(b.lam(&[self_arg], raw_self_call), &[inner], worker_ty);
             let definition = if statics.is_empty() {
                 knot
             } else {
                 let applied = if dynamic.is_empty() {
-                    b.force(knot)
+                    b.force(knot, result_ty)
                 } else {
                     b.app(
                         knot,
-                        &dynamic.iter().map(|p| b.var(p.name)).collect::<Vec<_>>(),
+                        &dynamic
+                            .iter()
+                            .map(|p| b.var(p.name, p.ty))
+                            .collect::<Vec<_>>(),
+                        result_ty,
                     )
                 };
                 b.lam(single.params, applied)
@@ -298,19 +341,33 @@ impl<'a> Rewriter<'_, 'a> {
         if binders.len() > usize::from(u16::MAX) + 1 {
             return Err(Error::TooManyFunctions);
         }
-        let dispatcher = self.fresh("dispatch");
-        let request = self.fresh("request");
+        let arms = binders
+            .iter()
+            .map(|rb| {
+                let params = rb.params.iter().map(|p| p.ty).collect::<Vec<_>>();
+                DispatchArm {
+                    params: b.arena.alloc_slice_copy(&params),
+                    result: rb.body.ty,
+                }
+            })
+            .collect::<Vec<_>>();
+        let arms = b.arena.alloc_slice_copy(&arms);
+        let dispatcher_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::Dispatcher(arms)));
+        let request_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::Request(arms)));
+        let results_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::Results(arms)));
+        let dispatcher = self.fresh("dispatch", dispatcher_ty);
+        let request = self.fresh("request", request_ty);
         let mut branches = Vec::new();
         for (index, rb) in binders.iter().enumerate() {
-            let self_arg = self.fresh("self");
+            let self_arg = self.fresh("self", dispatcher_ty);
             let mut recursive_env = outer.clone();
             for (target, callee) in binders.iter().enumerate() {
-                let alias = self.packet_alias(self_arg.name, target as u16, callee.params);
+                let alias = self.packet_alias(self_arg, target as u16, callee.params, arms);
                 recursive_env.insert(
                     callee.binder.name,
                     Replacement {
                         value: alias,
-                        packet: Some((self_arg.name, target as u16, callee.params.len())),
+                        packet: Some((self_arg, target as u16, arms)),
                         direct: None,
                     },
                 );
@@ -329,11 +386,18 @@ impl<'a> Rewriter<'_, 'a> {
         }
         let dispatch = b.lam(
             &[request],
-            b.case(CaseKind::Tag, b.var(request.name), &branches, None),
+            b.case(
+                CaseKind::Tag,
+                b.var(request.name, request.ty),
+                &branches,
+                None,
+                results_ty,
+            ),
         );
+        let dispatch = b.with_type(dispatch, dispatcher_ty);
         let mut result = continuation;
         for (index, rb) in binders.iter().enumerate().rev() {
-            let alias = self.packet_alias(dispatcher.name, index as u16, rb.params);
+            let alias = self.packet_alias(dispatcher, index as u16, rb.params, arms);
             result = b.let_(rb.binder, alias, result);
         }
         Ok(b.let_(dispatcher, dispatch, result))
@@ -341,21 +405,30 @@ impl<'a> Rewriter<'_, 'a> {
 
     fn packet_alias(
         &mut self,
-        dispatcher: Name<'a>,
+        dispatcher: Binder<'a>,
         tag: u16,
         params: &[Binder<'a>],
+        arms: &'a [DispatchArm<'a>],
     ) -> &'a Core<'a> {
         let params = params
             .iter()
             .map(|p| Binder {
                 ty: p.ty,
-                ..self.fresh(p.name.text)
+                ..self.fresh(p.name.text, p.ty)
             })
             .collect::<Vec<_>>();
         let b = self.build;
-        let mut fields = vec![b.var(dispatcher)];
-        fields.extend(params.iter().map(|p| b.var(p.name)));
-        b.lam(&params, b.app(b.var(dispatcher), &[b.constr(tag, &fields)]))
+        let mut fields = vec![b.var(dispatcher.name, dispatcher.ty)];
+        fields.extend(params.iter().map(|p| b.var(p.name, p.ty)));
+        let packet_ty = Ty::Runtime(b.arena.alloc(RuntimeTy::Packet { arms, tag }));
+        b.lam(
+            &params,
+            b.app(
+                b.var(dispatcher.name, dispatcher.ty),
+                &[b.constr(tag, &fields, packet_ty)],
+                arms[usize::from(tag)].result,
+            ),
+        )
     }
 }
 fn without<'a>(
@@ -382,17 +455,17 @@ fn visit<'a>(
         s.extend(names);
         s
     };
-    match core {
-        Core::Lam { params, body } => {
+    match &core.kind {
+        CoreKind::Lam { params, body } => {
             visit(body, &extended(params.iter().map(|p| p.name).collect()), f)
         }
-        Core::App { func, args } => {
+        CoreKind::App { func, args } => {
             visit(func, scope, f);
             for arg in *args {
                 visit(arg, scope, f);
             }
         }
-        Core::Let {
+        CoreKind::Let {
             binder,
             value,
             body,
@@ -400,7 +473,7 @@ fn visit<'a>(
             visit(value, scope, f);
             visit(body, &extended(vec![binder.name]), f);
         }
-        Core::LetRec { binders, body } => {
+        CoreKind::LetRec { binders, body } => {
             let group = extended(binders.iter().map(|b| b.binder.name).collect());
             for rb in *binders {
                 let mut inner = group.clone();
@@ -409,7 +482,7 @@ fn visit<'a>(
             }
             visit(body, &group, f);
         }
-        Core::Case {
+        CoreKind::Case {
             scrutinee,
             branches,
             default,
@@ -427,21 +500,143 @@ fn visit<'a>(
                 visit(d, scope, f);
             }
         }
-        Core::Constr { fields: args, .. } | Core::Builtin { args, .. } => {
+        CoreKind::Constr { fields: args, .. } | CoreKind::Builtin { args, .. } => {
             for arg in *args {
                 visit(arg, scope, f);
             }
         }
-        Core::Field { record, .. } => visit(record, scope, f),
-        Core::Trace { message, body } => {
+        CoreKind::Field { record, .. } => visit(record, scope, f),
+        CoreKind::Trace { message, body } => {
             visit(message, scope, f);
             visit(body, scope, f);
         }
-        Core::Delay(body) | Core::Force(body) => visit(body, scope, f),
-        Core::Var(_) | Core::Lit(_) | Core::Error => {}
+        CoreKind::Delay(body) | CoreKind::Force(body) => visit(body, scope, f),
+        CoreKind::Var(_) | CoreKind::Lit(_) | CoreKind::Error => {}
     }
 }
 
 #[cfg(test)]
 #[path = "recursion_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod metadata_tests {
+    use super::*;
+    use nash_ir::ty::ConstTy;
+    use nash_plutus::arena::Arena;
+
+    fn binder<'a>(b: &Builder<'a>, text: &'a str, ty: Ty<'a>) -> Binder<'a> {
+        Binder {
+            name: b.fresh(text),
+            ty,
+        }
+    }
+
+    fn function_ty<'a>(b: &Builder<'a>, params: &[Ty<'a>], result: Ty<'a>) -> Ty<'a> {
+        Ty::Term(
+            b.arena
+                .alloc(TermTy::Fun(b.arena.alloc_slice_copy(params), result)),
+        )
+    }
+
+    #[test]
+    fn single_worker_types_follow_dynamic_and_static_parameters() {
+        let arena = Arena::new();
+        let b = Builder::new(&arena);
+        let int = Ty::Const(&ConstTy::Int);
+        for statics in [&[][..], &[0][..], &[0, 1][..]] {
+            let f = binder(&b, "f", function_ty(&b, &[int, int], int));
+            let x = binder(&b, "x", int);
+            let y = binder(&b, "y", int);
+            let source = b.let_rec(
+                &[RecBinder {
+                    binder: f,
+                    params: arena.alloc_slice_copy(&[x, y]),
+                    static_params: statics,
+                    body: b.app(
+                        b.var(f.name, f.ty),
+                        &[b.var(x.name, x.ty), b.var(y.name, y.ty)],
+                        int,
+                    ),
+                }],
+                b.int(0),
+            );
+            let result = rewrite(&b, source).unwrap();
+            assert_eq!(result.ty, int);
+            let mut workers = 0;
+            result.walk(&mut |node| {
+                if let Ty::Runtime(RuntimeTy::SelfFunction(worker)) = node.ty {
+                    workers += 1;
+                    if statics.len() == 2 {
+                        assert_eq!(*worker, Ty::Runtime(&RuntimeTy::Delay(int)));
+                    } else {
+                        assert_eq!(*worker, function_ty(&b, &vec![int; 2 - statics.len()], int));
+                    }
+                }
+                if let CoreKind::Force(_) = node.kind {
+                    assert_eq!(node.ty, int);
+                }
+            });
+            assert!(workers > 0);
+        }
+    }
+
+    #[test]
+    fn mutual_dispatch_retains_heterogeneous_result_and_packet_types() {
+        let arena = Arena::new();
+        let b = Builder::new(&arena);
+        let int = Ty::Const(&ConstTy::Int);
+        let boolean = Ty::Const(&ConstTy::Bool);
+        let result_function = function_ty(&b, &[boolean], boolean);
+        let f = binder(&b, "f", function_ty(&b, &[int], int));
+        let g = binder(&b, "g", function_ty(&b, &[int], result_function));
+        let x = binder(&b, "x", int);
+        let y = binder(&b, "y", int);
+        let z = binder(&b, "z", boolean);
+        // f overapplies g: the dispatcher call returns a function; only the
+        // following application returns bool. This distinction must survive.
+        let call_g = b.app(
+            b.var(g.name, g.ty),
+            &[b.var(x.name, x.ty), b.error(boolean)],
+            boolean,
+        );
+        let unused = binder(&b, "unused", boolean);
+        let source = b.let_rec(
+            &[
+                RecBinder {
+                    binder: f,
+                    params: arena.alloc_slice_copy(&[x]),
+                    static_params: &[],
+                    body: b.let_(unused, call_g, b.int(0)),
+                },
+                RecBinder {
+                    binder: g,
+                    params: arena.alloc_slice_copy(&[y]),
+                    static_params: &[],
+                    body: b.lam(&[z], b.var(z.name, z.ty)),
+                },
+            ],
+            b.var(g.name, g.ty),
+        );
+        let result = rewrite(&b, source).unwrap();
+        assert_eq!(result.ty, g.ty);
+        let mut packet_calls = 0;
+        let mut dispatchers = 0;
+        result.walk(&mut |node| {
+            if let Ty::Runtime(RuntimeTy::Dispatcher(arms)) = node.ty {
+                dispatchers += 1;
+                assert_eq!(arms[0].result, int);
+                assert_eq!(arms[1].result, result_function);
+            }
+            if let CoreKind::App { func, args } = &node.kind
+                && let Ty::Runtime(RuntimeTy::Dispatcher(arms)) = func.ty
+                && let Ty::Runtime(RuntimeTy::Packet { tag, .. }) = args[0].ty
+            {
+                packet_calls += 1;
+                assert_eq!(node.ty, arms[usize::from(*tag)].result);
+            }
+        });
+        assert!(dispatchers > 0);
+        assert!(packet_calls >= 3);
+    }
+}

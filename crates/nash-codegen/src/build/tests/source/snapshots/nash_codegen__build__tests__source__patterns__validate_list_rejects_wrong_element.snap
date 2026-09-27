@@ -1,19 +1,20 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 1112
 description: "module Main exposing (..)\nimport Data exposing (ToData, Validate)\nmain : List Int\nmain = validate (toData (Builtin.listData [Builtin.bData #\"ff\"]))\n"
 ---
 --- core
 let applyForward#7 : 'erased -> ('erased -> 'erased) -> 'erased = \x#13 : 'erased (f#14 : 'erased -> 'erased) -> f#14 x#13 in
-let mapList#8 : ('erased -> Data) -> list 'erased -> list Data = \(f#15 : 'erased -> Data) values#16 : list 'erased -> (\self#26 : 'erased -> self#26 self#26) (\self#26 : 'erased values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
+let mapList#8 : ('erased -> Data) -> list 'erased -> list Data = \(f#15 : 'erased -> Data) values#16 : list 'erased -> (\self#26 : @self (list 'erased -> list Data) -> self#26 self#26) (\self#26 : @self (list 'erased -> list Data) values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
 case@List match#19 of
   Nil -> (con (list data) [])
   Cons field#20 field#21 -> let first#17 : 'erased = field#20 in
   let rest#18 : list 'erased = field#21 in
   mkCons (f#15 first#17) (self#26 self#26 rest#18)) values#16 in
-let validate#9 : Data -> Int = \value#22 : Data -> let candidate#23 : Int = (\coerce#25 : 'erased -> coerce#25) value#22 in
+let validate#9 : Data -> Int = \value#22 : Data -> let candidate#23 : Int = (\coerce#25 : Data -> coerce#25) value#22 in
 let destruct#24 : int = unIData candidate#23 in
 candidate#23 in
-let validate#2 : Data -> List Data = \value#5 : Data -> let candidate#6 : List Data = (\coerce#10 : 'erased -> coerce#10) value#5 in
+let validate#2 : Data -> List Data = \value#5 : Data -> let candidate#6 : List Data = (\coerce#10 : Data -> coerce#10) value#5 in
 applyForward#7 (applyForward#7 (applyForward#7 candidate#6 unListData) (mapList#8 validate#9)) listData in
 let toData#3 : 'erased -> Data = \coerce#11 : 'erased -> coerce#11 in
 let fromBytes#4 : bytes -> bytes = \value#12 : bytes -> value#12 in

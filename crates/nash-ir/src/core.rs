@@ -1,4 +1,4 @@
-//! The Core IR. One tree with explicit binder types and erased parametric binders. See
+//! The Core IR. Every expression carries a result type; binders also retain their types. See
 //! docs/codegen.md for node semantics and lowering.
 
 use nash_plutus::builtin::DefaultFunction;
@@ -18,8 +18,14 @@ pub struct Binder<'a> {
     pub ty: Ty<'a>,
 }
 
-#[derive(Debug)]
-pub enum Core<'a> {
+#[derive(Clone, Copy, Debug)]
+pub struct Core<'a> {
+    pub ty: Ty<'a>,
+    pub kind: CoreKind<'a>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum CoreKind<'a> {
     Var(Name<'a>),
     Lit(&'a Constant<'a>),
     Lam {
@@ -130,26 +136,28 @@ impl<'a> Core<'a> {
     /// then default. Shared subtrees are visited once per occurrence.
     pub fn walk<'tree>(&'tree self, f: &mut impl FnMut(&'tree Core<'a>)) {
         f(self);
-        match self {
-            Core::Var(_) | Core::Lit(_) | Core::Error => {}
-            Core::Lam { body, .. } | Core::Delay(body) | Core::Force(body) => body.walk(f),
-            Core::App { func, args } => {
+        match &self.kind {
+            CoreKind::Var(_) | CoreKind::Lit(_) | CoreKind::Error => {}
+            CoreKind::Lam { body, .. } | CoreKind::Delay(body) | CoreKind::Force(body) => {
+                body.walk(f)
+            }
+            CoreKind::App { func, args } => {
                 func.walk(f);
                 for arg in *args {
                     arg.walk(f);
                 }
             }
-            Core::Let { value, body, .. } => {
+            CoreKind::Let { value, body, .. } => {
                 value.walk(f);
                 body.walk(f);
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 for binder in *binders {
                     binder.body.walk(f);
                 }
                 body.walk(f);
             }
-            Core::Case {
+            CoreKind::Case {
                 scrutinee,
                 branches,
                 default,
@@ -163,18 +171,18 @@ impl<'a> Core<'a> {
                     body.walk(f);
                 }
             }
-            Core::Constr { fields, .. } => {
+            CoreKind::Constr { fields, .. } => {
                 for field in *fields {
                     field.walk(f);
                 }
             }
-            Core::Builtin { args, .. } => {
+            CoreKind::Builtin { args, .. } => {
                 for arg in *args {
                     arg.walk(f);
                 }
             }
-            Core::Field { record, .. } => record.walk(f),
-            Core::Trace { message, body } => {
+            CoreKind::Field { record, .. } => record.walk(f),
+            CoreKind::Trace { message, body } => {
                 message.walk(f);
                 body.walk(f);
             }

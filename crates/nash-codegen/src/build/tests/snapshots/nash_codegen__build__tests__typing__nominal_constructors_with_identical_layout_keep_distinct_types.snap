@@ -1,0 +1,9 @@
+---
+source: crates/nash-codegen/src/build/tests/typing.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype apple = Apple unit\ntype orange = Orange unit\ntype AppleBig = AppleBig Int\ntype OrangeBig = OrangeBig Int\nmain = (Apple (), Orange (), AppleBig 1, OrangeBig 1)\n"
+---
+root: (Main.apple, Main.orange, Main.AppleBig, Main.OrangeBig)
+tag 0: Main.apple
+tag 0: Main.orange
+constrData: Main.AppleBig
+constrData: Main.OrangeBig

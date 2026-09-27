@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 264
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype Option = Some Int | None\ndoInit self =\n    case self of\n        [] -> trace \"unreachable\" fail\n        [_] as a -> a\n        [(Some _) as n, x] -> [n]\n        [a, x] -> [x]\n        a :: b :: c -> c\nmain = eq (doInit [Some 1, None]) [Some 1]\n"
 ---
 --- core
@@ -7,7 +8,7 @@ let message#45 : string = "unreachable" in
 let eq#2 : list 'erased -> list 'erased -> bool = \xs#7 : list 'erased ys#8 : list 'erased -> equalsData (listData xs#7) (listData ys#8) in
 let fromString#10 : string -> string = \value#43 : string -> value#43 in
 let doInit#3 : list Main.Option -> list Main.Option = \self#9 : list Main.Option -> let match#19 : list Main.Option = self#9 in
-let leaf#31 : 'erased = \a#16 : Main.Option b#17 : Main.Option c#18 : list Main.Option -> c#18 in
+let leaf#31 : Main.Option -> Main.Option -> list Main.Option -> list Main.Option = \a#16 : Main.Option b#17 : Main.Option c#18 : list Main.Option -> c#18 in
 case@List match#19 of
   Nil -> trace (fromString#10 message#45) in error
   Cons field#32 field#33 -> case@List field#33 of

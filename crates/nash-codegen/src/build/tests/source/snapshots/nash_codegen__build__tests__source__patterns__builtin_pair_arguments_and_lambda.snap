@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 660
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nfirst pair(a, _) = a\nmain : int\nmain =\n    let\n        value = Builtin.unConstrData (Builtin.constrData 7 [])\n        pair = first value\n    in\n    (\\pair(a, _) -> Builtin.addInteger pair a) value\n"
 ---
 --- core
@@ -8,7 +9,7 @@ case@Pair match#13 of
   Pair field#14 field#15 -> let a#12 : 'erased = field#14 in
   a#12 in
 let fromInt#10 : int -> int = \value#16 : int -> value#16 in
-let evaluated#17 : 'erased = constrData (fromInt#10 7) (con (list data) []) in
+let evaluated#17 : Data = constrData (fromInt#10 7) (con (list data) []) in
 let projection#18 : pair int (list Data) = unConstrData evaluated#17 in
 let value#2 : pair int (list Data) = projection#18 in
 let pair#3 : int = first#9 value#2 in

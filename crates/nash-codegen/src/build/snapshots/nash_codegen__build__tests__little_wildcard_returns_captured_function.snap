@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : int -> choice -> (int -> int)\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" (\\n -> n)\n        _ -> trace \"fallback\" (\\n -> addInteger outer n)\nmain = (choose 10 Stop 5, choose 10 Zero 5, choose 10 (One 2) 5, choose 10 (Two 3 4) 5)\n"
 ---
 --- core
@@ -8,7 +9,7 @@ let message#23 : string = "fallback" in
 let message#24 : string = "explicit" in
 let fromString#9 : string -> string = \value#21 : string -> value#21 in
 let choose#2 : int -> Main.choice -> int -> int = \outer#7 : int subject#8 : Main.choice -> let match#12 : Main.choice = trace (fromString#9 message#22) in subject#8 in
-let leaf#16 : 'erased = delay (trace (fromString#9 message#23) in \n#11 : int -> addInteger outer#7 n#11) in
+let leaf#16 : @delay (int -> int) = delay (trace (fromString#9 message#23) in \n#11 : int -> addInteger outer#7 n#11) in
 case@Tag match#12 of
   0 -> trace (fromString#9 message#24) in \n#10 : int -> n#10
   1 -> force leaf#16

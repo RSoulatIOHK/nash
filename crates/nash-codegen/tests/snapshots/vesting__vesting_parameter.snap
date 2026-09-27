@@ -1,7 +1,73 @@
 ---
 source: crates/nash-codegen/tests/vesting.rs
+assertion_line: 211
 description: "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n\nvalidator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : int -> Datum -> Redeemer -> Data -> unit\nmain minimumLock datum redeemer ctx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n"
 ---
+--- core
+let message#109 : string = "assertion failed" in
+let lower#6 : Int -> int = \value#22 : Int -> unIData value#22 in
+let currentSlot#13 : Data -> int = \ctx#23 : Data -> let match#25 : Data = ctx#23 in
+let leaf#44 : @delay int = delay error in
+case@Data match#25 of
+  DataConstr field#45 -> case@Pair field#45 of
+    Pair field#46 field#47 -> case@List field#47 of
+      Nil -> force leaf#44
+      Cons field#48 field#49 -> case@Data field#48 of
+        DataConstr field#50 -> force leaf#44
+        DataMap field#51 -> force leaf#44
+        DataList field#52 -> force leaf#44
+        DataI field#53 -> case@List field#49 of
+          Nil -> force leaf#44
+          Cons field#54 field#55 -> case@List field#55 of
+            Nil -> let slot#24 : int = field#53 in
+            slot#24
+            Cons field#56 field#57 -> force leaf#44
+        DataB field#58 -> force leaf#44
+  DataMap field#59 -> force leaf#44
+  DataList field#60 -> force leaf#44
+  DataI field#61 -> force leaf#44
+  DataB field#62 -> force leaf#44 in
+let lower#66 : Bytes -> bytes = \value#105 : Bytes -> unBData value#105 in
+let signedBy#14 : Data -> Bytes -> bool = \ctx#63 : Data owner#64 : Bytes -> let match#67 : Data = ctx#63 in
+let leaf#86 : @delay bool = delay error in
+case@Data match#67 of
+  DataConstr field#87 -> case@Pair field#87 of
+    Pair field#88 field#89 -> case@List field#89 of
+      Nil -> force leaf#86
+      Cons field#90 field#91 -> case@List field#91 of
+        Nil -> force leaf#86
+        Cons field#92 field#93 -> case@Data field#92 of
+          DataConstr field#94 -> force leaf#86
+          DataMap field#95 -> force leaf#86
+          DataList field#96 -> force leaf#86
+          DataI field#97 -> force leaf#86
+          DataB field#98 -> case@List field#93 of
+            Nil -> let signer#65 : bytes = field#98 in
+            equalsByteString signer#65 (lower#66 owner#64)
+            Cons field#99 field#100 -> force leaf#86
+  DataMap field#101 -> force leaf#86
+  DataList field#102 -> force leaf#86
+  DataI field#103 -> force leaf#86
+  DataB field#104 -> force leaf#86 in
+let main#1 : int -> VestingParam.Datum -> VestingParam.Redeemer -> Data -> unit = \minimumLock#2 : int datum#3 : VestingParam.Datum redeemer#4 : VestingParam.Redeemer ctx#5 : Data -> let match#19 : VestingParam.Redeemer = redeemer#4 in
+let projection#106 : pair int (list Data) = unConstrData match#19 in
+case@Pair projection#106 of
+  Pair tag#20 fields#21 -> case@Tag tag#20 of
+    0 -> let projection#107 : pair int (list Data) = unConstrData datum#3 in
+    case@Pair projection#107 of
+      Pair tag#7 fields#8 -> case@List fields#8 of
+        Cons head#9 tail#10 -> case@List tail#10 of
+          Cons head#11 tail#12 -> case@Bool lessThanInteger (addInteger (lower#6 head#11) minimumLock#2) (currentSlot#13 ctx#5) of
+            True -> ()
+            False -> trace message#109 in error
+    1 -> let projection#108 : pair int (list Data) = unConstrData datum#3 in
+    case@Pair projection#108 of
+      Pair tag#15 fields#16 -> case@List fields#16 of
+        Cons head#17 tail#18 -> case@Bool signedBy#14 ctx#5 head#17 of
+          True -> ()
+          False -> trace message#109 in error in
+main#1
+--- uplc
 (program 1.1.0
   [(lam i0
     [(lam i1
@@ -144,3 +210,35 @@ description: "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primi
             i2])])
       (lam i1 [(builtin unIData) i1])])
     (con string "assertion failed")])
+--- scenario
+claim after deadline
+--- result
+unit
+--- logs
+[]
+--- budget
+cpu: 2834600, memory: 15227
+--- scenario
+claim before deadline
+--- result
+error
+--- logs
+["assertion failed"]
+--- budget
+cpu: 510098, memory: 359
+--- scenario
+cancel signed by owner
+--- result
+unit
+--- logs
+[]
+--- budget
+cpu: 2636434, memory: 14725
+--- scenario
+cancel unsigned
+--- result
+error
+--- logs
+["assertion failed"]
+--- budget
+cpu: 391932, memory: 357

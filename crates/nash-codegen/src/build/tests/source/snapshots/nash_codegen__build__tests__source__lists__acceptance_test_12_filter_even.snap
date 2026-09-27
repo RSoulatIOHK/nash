@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 392
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nfilter xs f =\n    case xs of\n        [] -> []\n        x :: rest ->\n            if f x then mkCons x (filter rest f)\n            else filter rest f\nmain = eq (filter [1, 2, 3, 4, 5, 6] (\\x -> equalsInteger (modInteger x 2) 0)) [2, 4, 6]\n"
 ---
 --- core
 let fromBool#8 : bool -> bool = \value#31 : bool -> value#31 in
 let eq#16 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#33 : 'erased -> self#33 self#33) (\self#33 : 'erased xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#33 : @self (list 'erased -> list 'erased -> bool) -> self#33 self#33) (\self#33 : @self (list 'erased -> list 'erased -> bool) xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
 case@List match#20 of
   Nil -> let match#9 : list 'erased = ys#7 in
   case@List match#9 of
@@ -21,7 +22,7 @@ case@List match#20 of
     case@Bool eq#16 x#12 y#14 of
       True -> self#33 self#33 restX#13 restY#15
       False -> false) in
-let filter#3 : list int -> (int -> bool) -> list int = \xs#23 : list int (f#24 : int -> bool) -> (\self#32 : 'erased -> self#32 self#32) (\self#32 : 'erased xs#23 : list int -> let match#27 : list int = xs#23 in
+let filter#3 : list int -> (int -> bool) -> list int = \xs#23 : list int (f#24 : int -> bool) -> (\self#32 : @self (list int -> list int) -> self#32 self#32) (\self#32 : @self (list int -> list int) xs#23 : list int -> let match#27 : list int = xs#23 in
 case@List match#27 of
   Nil -> (con (list integer) [])
   Cons field#28 field#29 -> let x#25 : int = field#28 in

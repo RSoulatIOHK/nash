@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 93
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\nimpl Eq 'a => Eq (option 'a) where\n    eq a b =\n        case (a, b) of\n            (None, None) -> True\n            (Some x, Some y) -> eq x y\n            _ -> False\nmain =\n    let\n        head = \\xs ->\n            case xs of\n                [] -> None\n                [a] -> Some xs\n                a :: b :: rest -> Some [a, b]\n    in\n    eq (head [1, 2, 3]) (Some [1, 2])\n"
 ---
 --- core
 let fromBool#20 : bool -> bool = \value#37 : bool -> value#37 in
 let eq#47 : int -> int -> bool = equalsInteger in
-let eq#23 : list 'erased -> list 'erased -> bool = (\self#25 : 'erased -> self#25 self#25) (\self#25 : 'erased xs#38 : list 'erased ys#39 : list 'erased -> let match#51 : list 'erased = xs#38 in
+let eq#23 : list 'erased -> list 'erased -> bool = (\self#25 : @self (list 'erased -> list 'erased -> bool) -> self#25 self#25) (\self#25 : @self (list 'erased -> list 'erased -> bool) xs#38 : list 'erased ys#39 : list 'erased -> let match#51 : list 'erased = xs#38 in
 case@List match#51 of
   Nil -> let match#40 : list 'erased = ys#39 in
   case@List match#40 of
@@ -22,7 +23,7 @@ case@List match#51 of
       True -> self#25 self#25 restX#44 restY#46
       False -> false) in
 let eq#2 : Main.option 'erased -> Main.option 'erased -> bool = \a#18 : Main.option 'erased b#19 : Main.option 'erased -> let match#24 : (Main.option 'erased, Main.option 'erased) = constr 0 a#18 b#19 in
-let leaf#30 : 'erased = delay (fromBool#20 false) in
+let leaf#30 : @delay bool = delay (fromBool#20 false) in
 case@Tag match#24 of
   0 field#31 field#32 -> case@Tag field#31 of
     0 -> case@Tag field#32 of

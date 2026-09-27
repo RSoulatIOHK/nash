@@ -1,19 +1,20 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-description: "module Main exposing (..)\nimport Primitive exposing (type bool(..), coerce)\nimport Bool\nimport Lift exposing (Lift)\ntype alias flag = bool\nimpl Lift bool flag where\n    lift value = coerce value\n    lower value = if coerce value then False else True\noff : flag\noff = coerce True\nboth : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool\nboth a b = Bool.and a b\nmain : bool\nmain = if Bool.and off True then True else both off True\n"
+assertion_line: 849
+description: "module Main exposing (..)\nimport Primitive exposing (type bool(..), coerce)\nimport Bool\nimport Logic\nimport Lift exposing (Lift)\ntype alias flag = bool\nimpl Lift bool flag where\n    lift value = coerce value\n    lower value = if coerce value then False else True\noff : flag\noff = coerce True\nboth : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool\nboth a b = Logic.and a b\nmain : bool\nmain = if Logic.and off True then True else both off True\n"
 ---
 --- core
 let both#2 : 'erased -> 'erased -> bool = \a#10 : 'erased b#11 : 'erased -> let fromBool#14 : bool -> bool = \value#16 : bool -> value#16 in
-let lower#12 : bool -> bool = \value#13 : bool -> case@Bool (\coerce#15 : 'erased -> coerce#15) value#13 of
+let lower#12 : bool -> bool = \value#13 : bool -> case@Bool (\coerce#15 : bool -> coerce#15) value#13 of
   True -> fromBool#14 false
   False -> fromBool#14 true in
 case@Bool lower#12 a#10 of
   True -> b#11
   False -> false in
 let fromBool#4 : bool -> bool = \value#18 : bool -> value#18 in
-let off#3 : bool = (\coerce#17 : 'erased -> coerce#17) (fromBool#4 true) in
+let off#3 : bool = (\coerce#17 : bool -> coerce#17) (fromBool#4 true) in
 let fromBool#7 : bool -> bool = \value#9 : bool -> value#9 in
-let lower#5 : bool -> bool = \value#6 : bool -> case@Bool (\coerce#8 : 'erased -> coerce#8) value#6 of
+let lower#5 : bool -> bool = \value#6 : bool -> case@Bool (\coerce#8 : bool -> coerce#8) value#6 of
   True -> fromBool#7 false
   False -> fromBool#7 true in
 let main#1 : bool = case@Bool (case@Bool lower#5 off#3 of

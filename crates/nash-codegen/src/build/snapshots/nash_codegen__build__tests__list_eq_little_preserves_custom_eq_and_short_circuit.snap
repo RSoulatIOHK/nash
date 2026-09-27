@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1903
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nvalues : list int\nvalues = [1, 2]\nmain = eq values values\n"
 ---
 --- core
@@ -9,7 +10,7 @@ let fromString#25 : string -> string = \value#29 : string -> value#29 in
 let eq#14 : int -> int -> bool = \arg#23 : int arg#24 : int -> let match#27 : int = arg#23 in
 let match#26 : int = arg#24 in
 trace (fromString#25 message#30) in fromBool#6 false in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#31 : 'erased -> self#31 self#31) (\self#31 : 'erased xs#4 : list 'erased ys#5 : list 'erased -> let match#18 : list 'erased = xs#4 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#31 : @self (list 'erased -> list 'erased -> bool) -> self#31 self#31) (\self#31 : @self (list 'erased -> list 'erased -> bool) xs#4 : list 'erased ys#5 : list 'erased -> let match#18 : list 'erased = xs#4 in
 case@List match#18 of
   Nil -> let match#7 : list 'erased = ys#5 in
   case@List match#7 of

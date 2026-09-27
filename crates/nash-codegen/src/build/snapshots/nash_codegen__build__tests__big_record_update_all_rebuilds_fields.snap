@@ -1,15 +1,16 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1642
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nreplace : Record -> Record\nreplace r = { r | a = 10, b = 20, c = 30, d = 40 }\ntotal : Record -> int\ntotal r = Builtin.addInteger (Builtin.unIData r.a)\n    (Builtin.addInteger (Builtin.unIData r.b)\n        (Builtin.addInteger (Builtin.unIData r.c) (Builtin.unIData r.d)))\nmain = total (replace { a = 1, b = 2, c = 3, d = 4 })\n"
 ---
 --- core
 let total#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#5 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let projection#18 : list Data = unListData r#5 in
 case@List projection#18 of
-  Cons head#6 tail#7 -> let evaluated#21 : 'erased = unIData head#6 in
+  Cons head#6 tail#7 -> let evaluated#21 : int = unIData head#6 in
   case@List tail#7 of
-    Cons head#10 tail#11 -> let evaluated#20 : 'erased = unIData head#10 in
+    Cons head#10 tail#11 -> let evaluated#20 : int = unIData head#10 in
     case@List tail#11 of
-      Cons head#12 tail#13 -> let evaluated#19 : 'erased = unIData head#12 in
+      Cons head#12 tail#13 -> let evaluated#19 : int = unIData head#12 in
       case@List tail#13 of
         Cons head#14 tail#15 -> addInteger evaluated#21 (addInteger evaluated#20 (addInteger evaluated#19 (unIData head#14))) in
 let fromInt#4 : int -> Int = iData in

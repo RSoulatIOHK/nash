@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : (choice, int) -> int\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _) -> 0\n        (_, value) -> trace \"shared\" value\nmain = (choose (Stop, 1), choose (Zero, 11), choose (One 2, 22), choose (Two 3 4, 33))\n"
 ---
 --- core
@@ -8,7 +9,7 @@ let message#25 : string = "shared" in
 let fromInt#3 : int -> int = \value#22 : int -> value#22 in
 let fromString#8 : string -> string = \value#23 : string -> value#23 in
 let choose#2 : (Main.choice, int) -> int = \subject#7 : (Main.choice, int) -> let match#10 : (Main.choice, int) = trace (fromString#8 message#24) in subject#7 in
-let leaf#16 : 'erased = \value#9 : int -> trace (fromString#8 message#25) in value#9 in
+let leaf#16 : int -> int = \value#9 : int -> trace (fromString#8 message#25) in value#9 in
 case@Tag match#10 of
   0 field#17 field#18 -> case@Tag field#17 of
     0 -> fromInt#3 0

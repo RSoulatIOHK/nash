@@ -22,31 +22,31 @@ fn newline(out: &mut String, indent: usize) {
     }
 }
 fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
-    let precedence = match core {
-        Core::Var(_) | Core::Lit(_) | Core::Error => 2,
-        Core::App { args, .. } | Core::Builtin { args, .. } if args.is_empty() => 2,
-        Core::App { .. }
-        | Core::Builtin { .. }
-        | Core::Constr { .. }
-        | Core::Field { .. }
-        | Core::Delay(_)
-        | Core::Force(_) => 1,
+    let precedence = match &core.kind {
+        CoreKind::Var(_) | CoreKind::Lit(_) | CoreKind::Error => 2,
+        CoreKind::App { args, .. } | CoreKind::Builtin { args, .. } if args.is_empty() => 2,
+        CoreKind::App { .. }
+        | CoreKind::Builtin { .. }
+        | CoreKind::Constr { .. }
+        | CoreKind::Field { .. }
+        | CoreKind::Delay(_)
+        | CoreKind::Force(_) => 1,
         _ => 0,
     };
     let parens = precedence < context;
     if parens {
         out.push('(');
     }
-    match core {
-        Core::Var(n) => name(out, *n),
-        Core::Lit(c) => match c {
+    match &core.kind {
+        CoreKind::Var(n) => name(out, *n),
+        CoreKind::Lit(c) => match c {
             nash_plutus::constant::Constant::Integer(i) => write!(out, "{i}").unwrap(),
             nash_plutus::constant::Constant::String(s) => write!(out, "{s:?}").unwrap(),
             nash_plutus::constant::Constant::Boolean(b) => write!(out, "{b}").unwrap(),
             nash_plutus::constant::Constant::Unit => out.push_str("()"),
             _ => out.push_str(&nash_plutus::pretty::constant(c)),
         },
-        Core::Lam { params, body } => {
+        CoreKind::Lam { params, body } => {
             out.push('\\');
             for (index, p) in params.iter().enumerate() {
                 if index > 0 {
@@ -65,11 +65,11 @@ fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
             out.push_str(" -> ");
             write_core(out, body, indent, 0);
         }
-        Core::App { func, args } => {
+        CoreKind::App { func, args } => {
             write_core(out, func, indent, 1);
             arguments(out, args, indent);
         }
-        Core::Let {
+        CoreKind::Let {
             binder: b,
             value,
             body,
@@ -82,7 +82,7 @@ fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
             newline(out, indent);
             write_core(out, body, indent, 0);
         }
-        Core::LetRec { binders, body } => {
+        CoreKind::LetRec { binders, body } => {
             out.push_str("letrec");
             for rec in *binders {
                 newline(out, indent + 1);
@@ -90,9 +90,12 @@ fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
                 write!(out, " [static {:?}] = ", rec.static_params).unwrap();
                 write_core(
                     out,
-                    &Core::Lam {
-                        params: rec.params,
-                        body: rec.body,
+                    &Core {
+                        ty: rec.binder.ty,
+                        kind: CoreKind::Lam {
+                            params: rec.params,
+                            body: rec.body,
+                        },
                     },
                     indent + 1,
                     0,
@@ -103,7 +106,7 @@ fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
             newline(out, indent);
             write_core(out, body, indent, 0);
         }
-        Core::Case {
+        CoreKind::Case {
             kind,
             scrutinee,
             branches,
@@ -128,11 +131,11 @@ fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
                 write_core(out, body, indent + 1, 0);
             }
         }
-        Core::Constr { tag, fields } => {
+        CoreKind::Constr { tag, fields } => {
             write!(out, "constr {tag}").unwrap();
             arguments(out, fields, indent);
         }
-        Core::Field {
+        CoreKind::Field {
             record,
             index,
             arity,
@@ -140,22 +143,22 @@ fn write_core(out: &mut String, core: &Core<'_>, indent: usize, context: u8) {
             write!(out, "field@{index}/{arity} ").unwrap();
             write_core(out, record, indent, 2);
         }
-        Core::Builtin { func, args } => {
+        CoreKind::Builtin { func, args } => {
             out.push_str(nash_plutus::pretty::builtin(*func));
             arguments(out, args, indent);
         }
-        Core::Trace { message, body } => {
+        CoreKind::Trace { message, body } => {
             out.push_str("trace ");
             write_core(out, message, indent, 2);
             out.push_str(" in ");
             write_core(out, body, indent, 0);
         }
-        Core::Error => out.push_str("error"),
-        Core::Delay(body) => {
+        CoreKind::Error => out.push_str("error"),
+        CoreKind::Delay(body) => {
             out.push_str("delay ");
             write_core(out, body, indent, 2);
         }
-        Core::Force(body) => {
+        CoreKind::Force(body) => {
             out.push_str("force ");
             write_core(out, body, indent, 2);
         }
@@ -215,8 +218,20 @@ mod tests {
         let b = Builder::new(&arena);
         let x = int(&b, "x");
         let y = int(&b, "y");
-        let sum = b.builtin(DefaultFunction::AddInteger, &[b.var(x.name), b.var(y.name)]);
-        assert_core_snapshot!(b.let_(x, b.int(1), b.app(b.lam(&[y], sum), &[b.int(2)])));
+        let sum = b.builtin(
+            DefaultFunction::AddInteger,
+            &[b.var(x.name, x.ty), b.var(y.name, y.ty)],
+            Ty::Const(&crate::ty::ConstTy::Int),
+        );
+        assert_core_snapshot!(b.let_(
+            x,
+            b.int(1),
+            b.app(
+                b.lam(&[y], sum),
+                &[b.int(2)],
+                Ty::Const(&crate::ty::ConstTy::Int)
+            )
+        ));
     }
 
     #[test]
@@ -229,20 +244,33 @@ mod tests {
         let other = int(&b, "a");
         assert_core_snapshot!(b.case(
             CaseKind::Tag,
-            b.var(s),
+            b.var(
+                s,
+                Ty::Term(&TermTy::Adt(AdtRef {
+                    name: nash_ast::QualifiedName {
+                        home: nash_ast::ModuleName {
+                            package: None,
+                            name: "Test"
+                        },
+                        name: "Choice"
+                    },
+                    args: &[],
+                }))
+            ),
             &[
                 Branch {
                     test: Test::Tag(0),
                     binders: arena.alloc_slice_copy(&[a]),
-                    body: b.var(a.name)
+                    body: b.var(a.name, a.ty)
                 },
                 Branch {
                     test: Test::Tag(1),
                     binders: arena.alloc_slice_copy(&[n, other]),
-                    body: b.var(other.name)
+                    body: b.var(other.name, other.ty)
                 },
             ],
-            None
+            None,
+            Ty::Const(&crate::ty::ConstTy::Int)
         ));
     }
 
@@ -278,20 +306,21 @@ mod tests {
         };
         assert_core_snapshot!(b.case(
             CaseKind::Data,
-            b.var(data),
+            b.var(data, Ty::Big(&BigTy::Data)),
             &[
                 Branch {
                     test: Test::DataConstr,
                     binders: arena.alloc_slice_copy(&[pair]),
                     body: b.case(
                         CaseKind::Pair,
-                        b.var(pair.name),
+                        b.var(pair.name, pair.ty),
                         &[Branch {
                             test: Test::Pair,
                             binders: arena.alloc_slice_copy(&[tag, fields]),
                             body: b.int(0),
                         }],
-                        None
+                        None,
+                        Ty::Const(&crate::ty::ConstTy::Int)
                     )
                 },
                 Branch {
@@ -315,7 +344,8 @@ mod tests {
                     body: b.int(4)
                 },
             ],
-            Some(b.error())
+            Some(b.error(Ty::Const(&crate::ty::ConstTy::Int))),
+            Ty::Const(&crate::ty::ConstTy::Int)
         ));
     }
 
@@ -334,16 +364,25 @@ mod tests {
         let n = int(&b, "n");
         let next = b.builtin(
             DefaultFunction::SubtractInteger,
-            &[b.var(n.name), b.var(step.name)],
+            &[b.var(n.name, n.ty), b.var(step.name, step.ty)],
+            Ty::Const(&crate::ty::ConstTy::Int),
         );
         assert_core_snapshot!(b.let_rec(
             &[RecBinder {
                 binder: f,
                 params: arena.alloc_slice_copy(&[step, n]),
                 static_params: &[0],
-                body: b.app(b.var(f.name), &[b.var(step.name), next])
+                body: b.app(
+                    b.var(f.name, f.ty),
+                    &[b.var(step.name, step.ty), next],
+                    Ty::Const(&crate::ty::ConstTy::Int)
+                )
             }],
-            b.app(b.var(f.name), &[b.int(1), b.int(5)])
+            b.app(
+                b.var(f.name, f.ty),
+                &[b.int(1), b.int(5)],
+                Ty::Const(&crate::ty::ConstTy::Int)
+            )
         ));
     }
 }

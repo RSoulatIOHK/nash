@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 2069
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Literal exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nvalues : map int (list Data)\nvalues = [Builtin.unConstrData (Builtin.constrData 1 []), Builtin.unConstrData (Builtin.constrData 2 [])]\nmain = eq values values\n"
 ---
 --- core
@@ -29,7 +30,7 @@ case@Pair match#33 of
       let secondB#48 : 'erased = field#40 in
       eq#41 secondA#43 secondB#48
       False -> false in
-let eq#6 : list 'erased -> list 'erased -> bool = (\self#45 : 'erased -> self#45 self#45) (\self#45 : 'erased xs#8 : list 'erased ys#9 : list 'erased -> let match#22 : list 'erased = xs#8 in
+let eq#6 : list 'erased -> list 'erased -> bool = (\self#45 : @self (list 'erased -> list 'erased -> bool) -> self#45 self#45) (\self#45 : @self (list 'erased -> list 'erased -> bool) xs#8 : list 'erased ys#9 : list 'erased -> let match#22 : list 'erased = xs#8 in
 case@List match#22 of
   Nil -> let match#11 : list 'erased = ys#9 in
   case@List match#11 of
@@ -48,9 +49,9 @@ case@List match#22 of
 let eqMapEntries#4 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#6 in
 let eq#2 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#4 in
 let fromInt#5 : int -> int = \value#7 : int -> value#7 in
-let evaluated#60 : 'erased = constrData (fromInt#5 1) (con (list data) []) in
+let evaluated#60 : Data = constrData (fromInt#5 1) (con (list data) []) in
 let projection#61 : pair int (list Data) = unConstrData evaluated#60 in
-let evaluated#62 : 'erased = constrData (fromInt#5 2) (con (list data) []) in
+let evaluated#62 : Data = constrData (fromInt#5 2) (con (list data) []) in
 let projection#63 : pair int (list Data) = unConstrData evaluated#62 in
 let values#3 : list (pair int (list Data)) = mkCons projection#61 (mkCons projection#63 (con (list (pair integer (list data))) [])) in
 let main#1 : bool = eq#2 values#3 values#3 in

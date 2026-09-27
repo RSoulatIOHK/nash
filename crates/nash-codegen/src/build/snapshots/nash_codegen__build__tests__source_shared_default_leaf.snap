@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1297
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : bool\nmain =\n    case (False, False) of\n        (True, True) -> True\n        _ -> trace \"default\" False\n"
 ---
 --- core
@@ -7,7 +8,7 @@ let message#12 : string = "default" in
 let fromBool#2 : bool -> bool = \value#10 : bool -> value#10 in
 let fromString#3 : string -> string = \value#11 : string -> value#11 in
 let match#4 : (bool, bool) = constr 0 (fromBool#2 false) (fromBool#2 false) in
-let leaf#7 : 'erased = delay (trace (fromString#3 message#12) in fromBool#2 false) in
+let leaf#7 : @delay bool = delay (trace (fromString#3 message#12) in fromBool#2 false) in
 let main#1 : bool = case@Tag match#4 of
   0 field#8 field#9 -> case@Bool field#8 of
     False -> force leaf#7

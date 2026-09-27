@@ -1,0 +1,8 @@
+---
+source: crates/nash-codegen/src/build/tests/typing.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\npartial : int -> int\npartial = addInteger 1\ncoerced : int -> int\ncoerced = coerce partial\nmain = coerced 2\n"
+---
+builtin: int -> int applied arguments: 1
+partial: int -> int
+coerced: int -> int
+root: int

@@ -1,13 +1,14 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias box 'a = { value : 'a }\ntrait Pass 'f where\n    pass : 'f 'a -> 'f 'a\n    pass x = x\n    other : 'f 'a -> 'f 'a\nimpl Pass box where\n    other x = x\nboxed : box unit\nboxed = { value = () }\nmain = (pass boxed).value\n"
 ---
 --- core
 let pass#2 : 'erased -> 'erased = \x#4 : 'erased -> x#4 in
 let fromUnit#5 : unit -> unit = \value#6 : unit -> value#6 in
 let boxed#3 : { _0 : unit } = constr 0 (fromUnit#5 ()) in
-let evaluated#7 : 'erased = pass#2 boxed#3 in
-let projection#8 : 'erased = field@0/1 evaluated#7 in
+let evaluated#7 : { _0 : unit } = pass#2 boxed#3 in
+let projection#8 : unit = field@0/1 evaluated#7 in
 let main#1 : unit = projection#8 in
 main#1
 --- uplc

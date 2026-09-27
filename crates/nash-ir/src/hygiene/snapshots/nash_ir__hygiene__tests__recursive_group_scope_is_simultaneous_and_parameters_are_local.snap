@@ -3,7 +3,7 @@ source: crates/nash-ir/src/hygiene/tests.rs
 expression: pretty(result)
 ---
 letrec
-  f#4 : 'erased [static [0]] = \p#6 : 'erased -> g#5 p#6
-  g#5 : 'erased [static []] = \ -> f#4
+  f#4 : 'erased -> 'erased [static [0]] = \p#6 : 'erased -> g#5 p#6
+  g#5 : 'erased -> 'erased [static []] = \ -> f#4
 in
 g#5

@@ -58,8 +58,11 @@ pub fn freshen<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
 /// shadows substitution. The replacement is not recursively substituted. Use the
 /// whole program's shared Builder to avoid IDs outside these two input trees.
 ///
-/// This is syntactic substitution, not permission to inline: callers must prove
-/// preservation of strict evaluation, effects, termination and use counts.
+/// The replacement must have the target binding's type. Explicitly coerced views
+/// on its occurrences are retained; substitution does not re-typecheck the
+/// expression. This is syntactic substitution, not permission to
+/// inline: callers must prove preservation of strict evaluation, effects,
+/// termination and use counts.
 pub fn substitute<'a>(
     build: &Builder<'a>,
     core: &'a Core<'a>,
@@ -82,21 +85,21 @@ impl<'b, 'a> Rewriter<'b, 'a> {
     fn new(build: &'b Builder<'a>, roots: &[&Core<'a>]) -> Self {
         let mut used = HashSet::new();
         for root in roots {
-            root.walk(&mut |node| match node {
-                Core::Var(name) => {
+            root.walk(&mut |node| match &node.kind {
+                CoreKind::Var(name) => {
                     used.insert(name.unique);
                 }
-                Core::Lam { params, .. } => used.extend(params.iter().map(|b| b.name.unique)),
-                Core::Let { binder, .. } => {
+                CoreKind::Lam { params, .. } => used.extend(params.iter().map(|b| b.name.unique)),
+                CoreKind::Let { binder, .. } => {
                     used.insert(binder.name.unique);
                 }
-                Core::LetRec { binders, .. } => {
+                CoreKind::LetRec { binders, .. } => {
                     for rec in *binders {
                         used.insert(rec.binder.name.unique);
                         used.extend(rec.params.iter().map(|b| b.name.unique));
                     }
                 }
-                Core::Case { branches, .. } => {
+                CoreKind::Case { branches, .. } => {
                     for branch in *branches {
                         used.extend(branch.binders.iter().map(|b| b.name.unique));
                     }
@@ -146,26 +149,27 @@ impl<'b, 'a> Rewriter<'b, 'a> {
         substitution: Option<(u32, &'a Core<'a>)>,
     ) -> &'a Core<'a> {
         let b = self.build;
-        match core {
-            Core::Var(name) => {
+        let rewritten = match &core.kind {
+            CoreKind::Var(name) => {
                 if let Some(renamed) = scope.get(&name.unique) {
-                    return b.var(*renamed);
+                    return b.var(*renamed, core.ty);
                 }
                 if let Some((target, replacement)) = substitution
                     && name.unique == target
                 {
-                    return self.term(replacement, &HashMap::new(), None);
+                    let replacement = self.term(replacement, &HashMap::new(), None);
+                    return b.with_type(replacement, core.ty);
                 }
                 core
             }
-            Core::Lit(_) | Core::Error => core,
-            Core::Lam { params, body } => {
+            CoreKind::Lit(_) | CoreKind::Error => core,
+            CoreKind::Lam { params, body } => {
                 let mut inner = scope.clone();
                 let params = self.binders(params, &mut inner);
                 let body = self.term(body, &inner, substitution);
                 b.lam(params, body)
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -176,7 +180,7 @@ impl<'b, 'a> Rewriter<'b, 'a> {
                 let body = self.term(body, &inner, substitution);
                 b.let_(binder, value, body)
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 let mut group = scope.clone();
                 let names: Vec<_> = binders
                     .iter()
@@ -200,7 +204,7 @@ impl<'b, 'a> Rewriter<'b, 'a> {
                 let body = self.term(body, &group, substitution);
                 b.let_rec(&recs, body)
             }
-            Core::Case {
+            CoreKind::Case {
                 kind,
                 scrutinee,
                 branches,
@@ -221,43 +225,44 @@ impl<'b, 'a> Rewriter<'b, 'a> {
                     })
                     .collect();
                 let default = default.map(|d| self.term(d, scope, substitution));
-                b.case(*kind, scrutinee, &branches, default)
+                b.case(*kind, scrutinee, &branches, default, core.ty)
             }
-            Core::App { func, args } => {
+            CoreKind::App { func, args } => {
                 let func = self.term(func, scope, substitution);
                 let args = self.terms(args, scope, substitution);
-                b.app(func, &args)
+                b.app(func, &args, core.ty)
             }
-            Core::Constr { tag, fields } => {
+            CoreKind::Constr { tag, fields } => {
                 let fields = self.terms(fields, scope, substitution);
-                b.constr(*tag, &fields)
+                b.constr(*tag, &fields, core.ty)
             }
-            Core::Builtin { func, args } => {
+            CoreKind::Builtin { func, args } => {
                 let args = self.terms(args, scope, substitution);
-                b.builtin(*func, &args)
+                b.builtin(*func, &args, core.ty)
             }
-            Core::Field {
+            CoreKind::Field {
                 record,
                 index,
                 arity,
             } => {
                 let record = self.term(record, scope, substitution);
-                b.field(record, *index, *arity)
+                b.field(record, *index, *arity, core.ty)
             }
-            Core::Trace { message, body } => {
+            CoreKind::Trace { message, body } => {
                 let message = self.term(message, scope, substitution);
                 let body = self.term(body, scope, substitution);
                 b.trace(message, body)
             }
-            Core::Delay(body) => {
+            CoreKind::Delay(body) => {
                 let body = self.term(body, scope, substitution);
                 b.delay(body)
             }
-            Core::Force(body) => {
+            CoreKind::Force(body) => {
                 let body = self.term(body, scope, substitution);
-                b.force(body)
+                b.force(body, core.ty)
             }
-        }
+        };
+        b.with_type(rewritten, core.ty)
     }
 }
 

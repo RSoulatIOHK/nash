@@ -3,6 +3,7 @@ use nash_ast::primitives;
 use std::collections::BTreeMap;
 
 mod source;
+mod typing;
 mod wildcard_cases;
 
 fn fixture<'a>(arena: &'a Arena, source: &str) -> (nash_can::CanResult<'a>, SolvedTypes<'a>) {

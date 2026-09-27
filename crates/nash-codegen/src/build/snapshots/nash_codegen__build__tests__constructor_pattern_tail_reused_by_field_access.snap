@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1517
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype Record = Record { a : Int, b : Int, c : Int, d : Int }\nselect : Record -> int\nselect r =\n    case r of\n        Record { b } -> Builtin.addInteger (Builtin.unIData b) (Builtin.unIData r.c)\nmain = select (Record { a = 1, b = 2, c = 3, d = 4 })\n"
 ---
 --- core
@@ -9,7 +10,7 @@ case@Pair projection#24 of
   Pair tag#19 fields#20 -> case@List fields#20 of
     Cons ignored#21 fieldTail#22 -> case@List fieldTail#22 of
       Cons field#16 fieldTail#23 -> let b#9 : Int = field#16 in
-      let evaluated#25 : 'erased = unIData b#9 in
+      let evaluated#25 : int = unIData b#9 in
       case@List fieldTail#23 of
         Cons head#12 tail#13 -> addInteger evaluated#25 (unIData head#12) in
 let fromInt#7 : int -> Int = iData in

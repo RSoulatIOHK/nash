@@ -90,12 +90,12 @@ impl<'a> Engine<'a, '_, '_> {
         *remaining -= 1;
         let Some(index) = definitions
             .iter()
-            .position(|(_, v)| !matches!(v, Core::Lam { .. }))
+            .position(|(_, v)| !matches!(v.kind, CoreKind::Lam { .. }))
         else {
             let binders = definitions
                 .iter()
                 .map(|(binder, value)| {
-                    let Core::Lam { params, body } = value else {
+                    let CoreKind::Lam { params, body } = &value.kind else {
                         unreachable!()
                     };
                     RecBinder {
@@ -119,14 +119,14 @@ impl<'a> Engine<'a, '_, '_> {
             changed[index].1 = value;
             changed
         };
-        Ok(match definitions[index].1 {
-            Core::Let {
+        Ok(match &definitions[index].1.kind {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
             } => {
                 let mut changed = replace(*body);
-                if matches!(value, Core::Lam { .. }) {
+                if matches!(value.kind, CoreKind::Lam { .. }) {
                     changed.push((*binder, *value));
                     self.recursive_bindings(&changed, root, remaining)?
                 } else if names(value).is_disjoint(&recursive_names) {
@@ -139,7 +139,7 @@ impl<'a> Engine<'a, '_, '_> {
                     return Err(Error::RecursiveValue);
                 }
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 let mut changed = replace(*body);
                 changed.extend(
                     binders
@@ -148,13 +148,13 @@ impl<'a> Engine<'a, '_, '_> {
                 );
                 self.recursive_bindings(&changed, root, remaining)?
             }
-            Core::Trace { message, body } if names(message).is_disjoint(&recursive_names) => {
+            CoreKind::Trace { message, body } if names(message).is_disjoint(&recursive_names) => {
                 self.ir.trace(
                     message,
                     self.recursive_bindings(&replace(*body), root, remaining)?,
                 )
             }
-            Core::Case {
+            CoreKind::Case {
                 kind,
                 scrutinee,
                 branches,
@@ -176,10 +176,11 @@ impl<'a> Engine<'a, '_, '_> {
                 let default = default
                     .map(|body| self.recursive_bindings(&replace(body), root, remaining))
                     .transpose()?;
-                self.ir.case(*kind, scrutinee, &branches, default)
+                self.ir.case(*kind, scrutinee, &branches, default, root.ty)
             }
-            Core::Error => self.ir.error(),
-            value if names(value).is_disjoint(&recursive_names) => {
+            CoreKind::Error => self.ir.error(root.ty),
+            _ if names(definitions[index].1).is_disjoint(&recursive_names) => {
+                let value = definitions[index].1;
                 let binder = definitions[index].0;
                 let mut rest = definitions.to_vec();
                 rest.remove(index);
@@ -207,25 +208,25 @@ pub(crate) fn names(core: &Core<'_>) -> HashSet<u32> {
     let mut result = HashSet::new();
     let mut pending = vec![(core, HashSet::new())];
     while let Some((core, mut bound)) = pending.pop() {
-        match core {
-            Core::Var(n) => {
+        match &core.kind {
+            CoreKind::Var(n) => {
                 if !bound.contains(&n.unique) {
                     result.insert(n.unique);
                 }
             }
-            Core::Lit(_) | Core::Error => {}
-            Core::Lam { params, body } => {
+            CoreKind::Lit(_) | CoreKind::Error => {}
+            CoreKind::Lam { params, body } => {
                 bound.extend(params.iter().map(|p| p.name.unique));
                 pending.push((body, bound));
             }
-            Core::Delay(body) | Core::Force(body) => pending.push((body, bound)),
-            Core::App { func, args } => {
+            CoreKind::Delay(body) | CoreKind::Force(body) => pending.push((body, bound)),
+            CoreKind::App { func, args } => {
                 for arg in *args {
                     pending.push((arg, bound.clone()));
                 }
                 pending.push((func, bound));
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -234,7 +235,7 @@ pub(crate) fn names(core: &Core<'_>) -> HashSet<u32> {
                 bound.insert(binder.name.unique);
                 pending.push((body, bound));
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 bound.extend(binders.iter().map(|b| b.binder.name.unique));
                 pending.push((body, bound.clone()));
                 for b in *binders {
@@ -243,7 +244,7 @@ pub(crate) fn names(core: &Core<'_>) -> HashSet<u32> {
                     pending.push((b.body, inner));
                 }
             }
-            Core::Case {
+            CoreKind::Case {
                 scrutinee,
                 branches,
                 default,
@@ -259,18 +260,18 @@ pub(crate) fn names(core: &Core<'_>) -> HashSet<u32> {
                     pending.push((d, bound));
                 }
             }
-            Core::Constr { fields, .. } => {
+            CoreKind::Constr { fields, .. } => {
                 for f in *fields {
                     pending.push((f, bound.clone()));
                 }
             }
-            Core::Builtin { args, .. } => {
+            CoreKind::Builtin { args, .. } => {
                 for a in *args {
                     pending.push((a, bound.clone()));
                 }
             }
-            Core::Field { record, .. } => pending.push((record, bound)),
-            Core::Trace { message, body } => {
+            CoreKind::Field { record, .. } => pending.push((record, bound)),
+            CoreKind::Trace { message, body } => {
                 pending.push((message, bound.clone()));
                 pending.push((body, bound));
             }
@@ -345,8 +346,12 @@ pub(super) fn hoist_strings<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a 
     }
     impl<'a> Hoist<'a, '_> {
         fn term(&mut self, core: &'a Core<'a>) -> &'a Core<'a> {
-            match core {
-                Core::Lit(Constant::String(text)) => {
+            let result = self.term_inner(core);
+            self.build.with_type(result, core.ty)
+        }
+        fn term_inner(&mut self, core: &'a Core<'a>) -> &'a Core<'a> {
+            match &core.kind {
+                CoreKind::Lit(Constant::String(text)) => {
                     let binder = *self.strings.entry(text).or_insert_with(|| {
                         let binder = Binder {
                             name: self.build.fresh("message"),
@@ -355,19 +360,19 @@ pub(super) fn hoist_strings<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a 
                         self.bindings.push((binder, core));
                         binder
                     });
-                    self.build.var(binder.name)
+                    self.build.var(binder.name, binder.ty)
                 }
-                Core::Var(_) | Core::Lit(_) | Core::Error => core,
-                Core::Lam { params, body } => {
+                CoreKind::Var(_) | CoreKind::Lit(_) | CoreKind::Error => core,
+                CoreKind::Lam { params, body } => {
                     let body = self.term(body);
                     self.build.lam(params, body)
                 }
-                Core::App { func, args } => {
+                CoreKind::App { func, args } => {
                     let func = self.term(func);
                     let args = args.iter().map(|a| self.term(a)).collect::<Vec<_>>();
-                    self.build.app(func, &args)
+                    self.build.app(func, &args, core.ty)
                 }
-                Core::Let {
+                CoreKind::Let {
                     binder,
                     value,
                     body,
@@ -376,7 +381,7 @@ pub(super) fn hoist_strings<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a 
                     let body = self.term(body);
                     self.build.let_(*binder, value, body)
                 }
-                Core::LetRec { binders, body } => {
+                CoreKind::LetRec { binders, body } => {
                     let binders = binders
                         .iter()
                         .map(|b| RecBinder {
@@ -387,7 +392,7 @@ pub(super) fn hoist_strings<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a 
                     let body = self.term(body);
                     self.build.let_rec(&binders, body)
                 }
-                Core::Case {
+                CoreKind::Case {
                     kind,
                     scrutinee,
                     branches,
@@ -402,36 +407,37 @@ pub(super) fn hoist_strings<'a>(build: &Builder<'a>, core: &'a Core<'a>) -> &'a 
                         })
                         .collect::<Vec<_>>();
                     let default = default.map(|d| self.term(d));
-                    self.build.case(*kind, scrutinee, &branches, default)
+                    self.build
+                        .case(*kind, scrutinee, &branches, default, core.ty)
                 }
-                Core::Constr { tag, fields } => {
+                CoreKind::Constr { tag, fields } => {
                     let fields = fields.iter().map(|f| self.term(f)).collect::<Vec<_>>();
-                    self.build.constr(*tag, &fields)
+                    self.build.constr(*tag, &fields, core.ty)
                 }
-                Core::Field {
+                CoreKind::Field {
                     record,
                     index,
                     arity,
                 } => {
                     let record = self.term(record);
-                    self.build.field(record, *index, *arity)
+                    self.build.field(record, *index, *arity, core.ty)
                 }
-                Core::Builtin { func, args } => {
+                CoreKind::Builtin { func, args } => {
                     let args = args.iter().map(|a| self.term(a)).collect::<Vec<_>>();
-                    self.build.builtin(*func, &args)
+                    self.build.builtin(*func, &args, core.ty)
                 }
-                Core::Trace { message, body } => {
+                CoreKind::Trace { message, body } => {
                     let message = self.term(message);
                     let body = self.term(body);
                     self.build.trace(message, body)
                 }
-                Core::Delay(body) => {
+                CoreKind::Delay(body) => {
                     let body = self.term(body);
                     self.build.delay(body)
                 }
-                Core::Force(body) => {
+                CoreKind::Force(body) => {
                     let body = self.term(body);
-                    self.build.force(body)
+                    self.build.force(body, core.ty)
                 }
             }
         }

@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 585
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (Validate)\ntype Datum = Datum Int\nimpl Validate Datum where\n    validate value =\n        case value of\n            Constr pair(0, [I _]) -> coerce value\n            _ -> fail\ndecoded : Datum\ndecoded = validate (Builtin.constrData 0 [B #\"aa\"])\nmain =\n    case decoded of\n        Datum number -> unIData number\n"
 ---
 --- core
 let fromInt#10 : int -> int = \value#51 : int -> value#51 in
 let eq#14 : int -> int -> bool = equalsInteger in
 let validate#9 : Data -> Main.Datum = \value#13 : Data -> let match#17 : Data = value#13 in
-let leaf#34 : 'erased = delay error in
+let leaf#34 : @delay Main.Datum = delay error in
 case@Data match#17 of
   DataConstr field#35 -> case@Pair field#35 of
     Pair field#36 field#37 -> case@Bool (\literal#15 : int -> eq#14 literal#15 (fromInt#10 0)) field#36 of
@@ -17,7 +18,7 @@ case@Data match#17 of
           DataMap field#41 -> force leaf#34
           DataList field#42 -> force leaf#34
           DataI field#43 -> case@List field#39 of
-            Nil -> (\coerce#16 : 'erased -> coerce#16) value#13
+            Nil -> (\coerce#16 : Data -> coerce#16) value#13
             Cons field#44 field#45 -> force leaf#34
           DataB field#46 -> force leaf#34
       False -> force leaf#34

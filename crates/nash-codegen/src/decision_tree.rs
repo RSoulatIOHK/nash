@@ -179,20 +179,24 @@ pub fn compile<'a>(
             continue;
         }
         let params = row.bindings.values().copied().collect::<Vec<_>>();
-        // Join results are passed through without inspecting their representation.
+        let result_ty = row.body.ty;
+        let value = if params.is_empty() {
+            build.delay(row.body)
+        } else {
+            build.lam(&params, row.body)
+        };
         let binder = Binder {
             name: build.fresh("leaf"),
-            ty: Ty::Erased,
+            ty: value.ty,
         };
-        let value = if params.is_empty() {
-            let value = build.delay(row.body);
-            row.body = build.force(build.var(binder.name));
-            value
+        row.body = if params.is_empty() {
+            build.force(build.var(binder.name, binder.ty), result_ty)
         } else {
-            let value = build.lam(&params, row.body);
-            let args = params.iter().map(|p| build.var(p.name)).collect::<Vec<_>>();
-            row.body = build.app(build.var(binder.name), &args);
-            value
+            let args = params
+                .iter()
+                .map(|p| build.var(p.name, p.ty))
+                .collect::<Vec<_>>();
+            build.app(build.var(binder.name, binder.ty), &args, result_ty)
         };
         joins.push((binder, value));
     }
@@ -238,8 +242,10 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                     };
                     if let Some(name) = name {
                         let binder = *row.bindings.get(name).ok_or(Error::Binding(name))?;
-                        row.assignments
-                            .push((binder, self.build.var(subject.binder.name)));
+                        row.assignments.push((
+                            binder,
+                            self.build.var(subject.binder.name, subject.binder.ty),
+                        ));
                     }
                     row.patterns[index] = next;
                 }
@@ -267,9 +273,13 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                 .literal_tests
                 .get(&NodeId::pattern(pattern))
                 .ok_or(Error::LiteralMatcher)?;
-            let condition = self
-                .build
-                .app(matcher, &[self.build.var(subjects[column].binder.name)]);
+            let condition = self.build.app(
+                matcher,
+                &[self
+                    .build
+                    .var(subjects[column].binder.name, subjects[column].binder.ty)],
+                Ty::Const(&ConstTy::Bool),
+            );
             let mut yes = rows.clone();
             yes[0].patterns[column] = Pat::Any;
             let yes = self.compile(subjects.clone(), yes)?;
@@ -322,7 +332,8 @@ impl<'a> Matrix<'a, '_, '_, '_> {
         subject: Subject<'a>,
         branches: Vec<(Shape, Vec<Binder<'a>>, &'a Core<'a>)>,
     ) -> Result<&'a Core<'a>, Error<'a>> {
-        let value = self.build.var(subject.binder.name);
+        let result_ty = self.fallback.ty;
+        let value = self.build.var(subject.binder.name, subject.binder.ty);
         let ty = subject.binder.ty;
         if let Ty::Big(BigTy::List(element)) = ty {
             let mut arms = Vec::new();
@@ -346,7 +357,8 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                                 *tail,
                                 self.build.builtin(
                                     DefaultFunction::ListData,
-                                    &[self.build.var(raw_tail.name)],
+                                    &[self.build.var(raw_tail.name, raw_tail.ty)],
+                                    tail.ty,
                                 ),
                                 body,
                             )
@@ -364,9 +376,14 @@ impl<'a> Matrix<'a, '_, '_, '_> {
             }
             return Ok(self.build.case(
                 CaseKind::List,
-                self.build.builtin(DefaultFunction::UnListData, &[value]),
+                self.build.builtin(
+                    DefaultFunction::UnListData,
+                    &[value],
+                    Ty::Const(self.build.arena.alloc(ConstTy::List(*element))),
+                ),
                 &arms,
                 None,
+                result_ty,
             ));
         }
         if let [(Shape::Tag(_), fields, body)] = branches.as_slice()
@@ -381,7 +398,14 @@ impl<'a> Matrix<'a, '_, '_, '_> {
             return Ok(body);
         }
         if matches!(ty, Ty::Big(BigTy::Adt(_))) {
-            let unwrapped = self.build.builtin(DefaultFunction::UnConstrData, &[value]);
+            let unwrapped = self.build.builtin(
+                DefaultFunction::UnConstrData,
+                &[value],
+                Ty::Const(self.build.arena.alloc(ConstTy::Pair(
+                    Ty::Const(&ConstTy::Int),
+                    data_list(self.build),
+                ))),
+            );
             let tag = Binder {
                 name: self.build.fresh("tag"),
                 ty: Ty::Const(&ConstTy::Int),
@@ -391,7 +415,7 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                 ty: data_list(self.build),
             };
             let body = if let [(Shape::Tag(_), fields, body)] = branches.as_slice() {
-                self.list_fields(self.build.var(list.name), fields, body)
+                self.list_fields(self.build.var(list.name, list.ty), fields, body)
             } else {
                 let arms = branches
                     .into_iter()
@@ -402,12 +426,21 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                         Ok(Branch {
                             test: Test::Tag(index),
                             binders: &[],
-                            body: self.list_fields(self.build.var(list.name), &fields, body),
+                            body: self.list_fields(
+                                self.build.var(list.name, list.ty),
+                                &fields,
+                                body,
+                            ),
                         })
                     })
                     .collect::<Result<Vec<_>, Error>>()?;
-                self.build
-                    .case(CaseKind::Tag, self.build.var(tag.name), &arms, None)
+                self.build.case(
+                    CaseKind::Tag,
+                    self.build.var(tag.name, tag.ty),
+                    &arms,
+                    None,
+                    result_ty,
+                )
             };
             return Ok(self.build.case(
                 CaseKind::Pair,
@@ -418,6 +451,7 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                     body,
                 }],
                 None,
+                result_ty,
             ));
         }
         if matches!(ty, Ty::Big(BigTy::Record(_))) {
@@ -425,7 +459,8 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                 return Err(Error::PatternType);
             };
             return Ok(self.list_fields(
-                self.build.builtin(DefaultFunction::UnListData, &[value]),
+                self.build
+                    .builtin(DefaultFunction::UnListData, &[value], data_list(self.build)),
                 fields,
                 body,
             ));
@@ -457,9 +492,13 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
-        Ok(self
-            .build
-            .case(kind.ok_or(Error::PatternType)?, value, &arms, None))
+        Ok(self.build.case(
+            kind.ok_or(Error::PatternType)?,
+            value,
+            &arms,
+            None,
+            result_ty,
+        ))
     }
     fn list_fields(
         &self,
@@ -480,6 +519,7 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                 tail = self.build.builtin(
                     DefaultFunction::DropList,
                     &[self.build.int(gap as i128), tail],
+                    tail.ty,
                 );
             } else if gap == 1 {
                 let ignored = Binder {
@@ -491,14 +531,14 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                     ty: data_list(self.build),
                 };
                 cases.push((tail, ignored, rest));
-                tail = self.build.var(rest.name);
+                tail = self.build.var(rest.name, rest.ty);
             }
             let rest = Binder {
                 name: self.build.fresh("fieldTail"),
                 ty: data_list(self.build),
             };
             cases.push((tail, *field, rest));
-            tail = self.build.var(rest.name);
+            tail = self.build.var(rest.name, rest.ty);
             previous = index + 1;
         }
         cases
@@ -514,6 +554,7 @@ impl<'a> Matrix<'a, '_, '_, '_> {
                         body,
                     }],
                     None,
+                    body.ty,
                 )
             })
     }

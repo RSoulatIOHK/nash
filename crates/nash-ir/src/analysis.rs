@@ -1,5 +1,5 @@
 //! Shared, conservative Core analyses. These report facts; they enable no rewrite.
-use crate::core::{Binder, Core, Name};
+use crate::core::{Binder, Core, CoreKind, Name};
 use std::collections::HashSet;
 
 /// IDs are preorder node occurrences, not pointers: shared subtrees get distinct IDs.
@@ -81,8 +81,8 @@ impl<'a> Collector<'a> {
         let node = self.next_node;
         self.next_node += 1;
         let depth = self.scope.len();
-        match core {
-            Core::Var(name) => {
+        match &core.kind {
+            CoreKind::Var(name) => {
                 let binding = self
                     .scope
                     .iter()
@@ -97,7 +97,7 @@ impl<'a> Collector<'a> {
                     execution_scope: self.boundaries.clone(),
                 });
             }
-            Core::Lam { params, body } => {
+            CoreKind::Lam { params, body } => {
                 if params.is_empty() {
                     self.visit(body);
                 } else {
@@ -109,7 +109,7 @@ impl<'a> Collector<'a> {
                     self.boundaries.pop();
                 }
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -118,7 +118,7 @@ impl<'a> Collector<'a> {
                 self.bind(*binder);
                 self.visit(body);
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 for rb in *binders {
                     self.bind(rb.binder);
                 }
@@ -135,7 +135,7 @@ impl<'a> Collector<'a> {
                 }
                 self.visit(body);
             }
-            Core::Case {
+            CoreKind::Case {
                 scrutinee,
                 branches,
                 default,
@@ -158,25 +158,25 @@ impl<'a> Collector<'a> {
                     self.within(Boundary::Branch { node, index: None }, body);
                 }
             }
-            Core::App { func, args } => {
+            CoreKind::App { func, args } => {
                 self.visit(func);
                 for arg in *args {
                     self.visit(arg);
                 }
             }
-            Core::Constr { fields: args, .. } | Core::Builtin { args, .. } => {
+            CoreKind::Constr { fields: args, .. } | CoreKind::Builtin { args, .. } => {
                 for arg in *args {
                     self.visit(arg);
                 }
             }
-            Core::Field { record, .. } => self.visit(record),
-            Core::Trace { message, body } => {
+            CoreKind::Field { record, .. } => self.visit(record),
+            CoreKind::Trace { message, body } => {
                 self.visit(message);
                 self.visit(body);
             }
-            Core::Delay(body) => self.within(Boundary::Delay(node), body),
-            Core::Force(body) => self.visit(body),
-            Core::Lit(_) | Core::Error => {}
+            CoreKind::Delay(body) => self.within(Boundary::Delay(node), body),
+            CoreKind::Force(body) => self.visit(body),
+            CoreKind::Lit(_) | CoreKind::Error => {}
         }
         self.scope.truncate(depth);
     }
@@ -187,21 +187,21 @@ impl<'a> Collector<'a> {
 /// in the surrounding environment. Does not prove duplication or motion safe.
 /// Saturated builtins and arbitrary calls are deliberately not evaluated here.
 pub fn safe_to_discard(core: &Core<'_>) -> bool {
-    match core {
-        Core::Var(_) | Core::Lit(_) | Core::Delay(_) => true,
-        Core::Lam { params, body } => !params.is_empty() || safe_to_discard(body),
-        Core::Builtin { func, args } => {
+    match &core.kind {
+        CoreKind::Var(_) | CoreKind::Lit(_) | CoreKind::Delay(_) => true,
+        CoreKind::Lam { params, body } => !params.is_empty() || safe_to_discard(body),
+        CoreKind::Builtin { func, args } => {
             args.len() < func.arity() && args.iter().all(|a| safe_to_discard(a))
         }
-        Core::Constr { fields, .. } => fields.iter().all(|a| safe_to_discard(a)),
-        Core::Let { value, body, .. } => safe_to_discard(value) && safe_to_discard(body),
-        Core::App { .. }
-        | Core::LetRec { .. }
-        | Core::Case { .. }
-        | Core::Field { .. }
-        | Core::Trace { .. }
-        | Core::Error
-        | Core::Force(_) => false,
+        CoreKind::Constr { fields, .. } => fields.iter().all(|a| safe_to_discard(a)),
+        CoreKind::Let { value, body, .. } => safe_to_discard(value) && safe_to_discard(body),
+        CoreKind::App { .. }
+        | CoreKind::LetRec { .. }
+        | CoreKind::Case { .. }
+        | CoreKind::Field { .. }
+        | CoreKind::Trace { .. }
+        | CoreKind::Error
+        | CoreKind::Force(_) => false,
     }
 }
 
@@ -218,11 +218,11 @@ pub fn size_estimate(core: &Core<'_>) -> CoreSize {
     let mut size = CoreSize::default();
     core.walk(&mut |node| {
         size.nodes += 1;
-        size.binders += match node {
-            Core::Lam { params, .. } => params.len(),
-            Core::Let { .. } => 1,
-            Core::LetRec { binders, .. } => binders.iter().map(|b| 1 + b.params.len()).sum(),
-            Core::Case { branches, .. } => branches.iter().map(|b| b.binders.len()).sum(),
+        size.binders += match &node.kind {
+            CoreKind::Lam { params, .. } => params.len(),
+            CoreKind::Let { .. } => 1,
+            CoreKind::LetRec { binders, .. } => binders.iter().map(|b| 1 + b.params.len()).sum(),
+            CoreKind::Case { branches, .. } => branches.iter().map(|b| b.binders.len()).sum(),
             _ => 0,
         };
     });
@@ -243,23 +243,23 @@ fn free<'a>(
     out: &mut Vec<Name<'a>>,
 ) {
     let depth = scope.len();
-    match core {
-        Core::Var(name) => {
+    match &core.kind {
+        CoreKind::Var(name) => {
             if !scope.contains(&name.unique) && seen.insert(name.unique) {
                 out.push(*name);
             }
         }
-        Core::Lam { params, body } => {
+        CoreKind::Lam { params, body } => {
             scope.extend(params.iter().map(|p| p.name.unique));
             free(body, scope, seen, out);
         }
-        Core::App { func, args } => {
+        CoreKind::App { func, args } => {
             free(func, scope, seen, out);
             for arg in *args {
                 free(arg, scope, seen, out);
             }
         }
-        Core::Let {
+        CoreKind::Let {
             binder,
             value,
             body,
@@ -268,7 +268,7 @@ fn free<'a>(
             scope.push(binder.name.unique);
             free(body, scope, seen, out);
         }
-        Core::LetRec { binders, body } => {
+        CoreKind::LetRec { binders, body } => {
             scope.extend(binders.iter().map(|rb| rb.binder.name.unique));
             let group_depth = scope.len();
             for rb in *binders {
@@ -278,7 +278,7 @@ fn free<'a>(
             }
             free(body, scope, seen, out);
         }
-        Core::Case {
+        CoreKind::Case {
             scrutinee,
             branches,
             default,
@@ -294,23 +294,23 @@ fn free<'a>(
                 free(body, scope, seen, out);
             }
         }
-        Core::Constr { fields, .. } => {
+        CoreKind::Constr { fields, .. } => {
             for field in *fields {
                 free(field, scope, seen, out);
             }
         }
-        Core::Builtin { args, .. } => {
+        CoreKind::Builtin { args, .. } => {
             for arg in *args {
                 free(arg, scope, seen, out);
             }
         }
-        Core::Field { record, .. } => free(record, scope, seen, out),
-        Core::Trace { message, body } => {
+        CoreKind::Field { record, .. } => free(record, scope, seen, out),
+        CoreKind::Trace { message, body } => {
             free(message, scope, seen, out);
             free(body, scope, seen, out);
         }
-        Core::Delay(body) | Core::Force(body) => free(body, scope, seen, out),
-        Core::Lit(_) | Core::Error => {}
+        CoreKind::Delay(body) | CoreKind::Force(body) => free(body, scope, seen, out),
+        CoreKind::Lit(_) | CoreKind::Error => {}
     }
     scope.truncate(depth);
 }

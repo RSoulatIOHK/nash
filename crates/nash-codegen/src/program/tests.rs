@@ -17,12 +17,16 @@ fn optimizer_substitution_preserves_free_names_at_runtime() {
     let recipient = b.let_(
         y,
         b.int(10),
-        b.builtin(F::AddInteger, &[b.var(target.name), b.var(y.name)]),
+        b.builtin(
+            F::AddInteger,
+            &[b.var(target.name, target.ty), b.var(y.name, y.ty)],
+            Ty::Const(&ConstTy::Int),
+        ),
     );
-    let replaced = hygiene::substitute(&b, recipient, target.name.unique, b.var(y.name));
+    let replaced = hygiene::substitute(&b, recipient, target.name.unique, b.var(y.name, y.ty));
     let candidate = b.let_(y, b.int(20), replaced);
     hygiene::validate(candidate, &[]).unwrap();
-    let reference = b.let_(y, b.int(20), b.let_(target, b.var(y.name), recipient));
+    let reference = b.let_(y, b.int(20), b.let_(target, b.var(y.name, y.ty), recipient));
     let original_program = assemble_core(&arena, reference).unwrap();
     let changed_program = assemble_core(&arena, candidate).unwrap();
     insta::assert_debug_snapshot!((
@@ -52,15 +56,35 @@ fn optimizer_substitution_freshens_each_inserted_function() {
         &[x],
         b.trace(
             b.lit(Constant::string(&arena, "called")),
-            b.builtin(F::AddInteger, &[b.var(x.name), b.int(1)]),
+            b.builtin(
+                F::AddInteger,
+                &[b.var(x.name, x.ty), b.int(1)],
+                Ty::Const(&ConstTy::Int),
+            ),
         ),
     );
     let recipient = b.constr(
         0,
         &[
-            b.app(b.var(target.name), &[b.int(20)]),
-            b.app(b.var(target.name), &[b.int(21)]),
+            b.app(
+                b.var(target.name, target.ty),
+                &[b.int(20)],
+                Ty::Const(&ConstTy::Int),
+            ),
+            b.app(
+                b.var(target.name, target.ty),
+                &[b.int(21)],
+                Ty::Const(&ConstTy::Int),
+            ),
         ],
+        Ty::Runtime(
+            b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                tag: 0,
+                fields: b
+                    .arena
+                    .alloc_slice_copy(&[Ty::Const(&ConstTy::Int), Ty::Const(&ConstTy::Int)]),
+            }),
+        ),
     );
     let candidate = hygiene::substitute(&b, recipient, target.name.unique, replacement);
     hygiene::validate(candidate, &[]).unwrap();
@@ -89,18 +113,65 @@ fn optimizer_discard_analysis_respects_runtime_staging() {
     let unused = binder(&b, "unused");
     let traced = b.trace(b.lit(Constant::string(&arena, "strict")), b.int(1));
     let fixtures = [
-        ("partial builtin", b.builtin(F::AddInteger, &[b.int(1)])),
+        (
+            "partial builtin",
+            b.builtin(
+                F::AddInteger,
+                &[b.int(1)],
+                Ty::Term(&TermTy::Fun(
+                    &[Ty::Const(&ConstTy::Int)],
+                    Ty::Const(&ConstTy::Int),
+                )),
+            ),
+        ),
         (
             "strict partial argument",
-            b.builtin(F::AddInteger, &[traced]),
+            b.builtin(
+                F::AddInteger,
+                &[traced],
+                Ty::Term(&TermTy::Fun(
+                    &[Ty::Const(&ConstTy::Int)],
+                    Ty::Const(&ConstTy::Int),
+                )),
+            ),
         ),
-        ("delayed failure", b.delay(b.error())),
-        ("empty lambda", b.lam(&[], b.error())),
-        ("strict constructor field", b.constr(0, &[traced])),
-        ("failing constructor field", b.constr(0, &[b.error()])),
+        (
+            "delayed failure",
+            b.delay(b.error(Ty::Const(&ConstTy::Int))),
+        ),
+        (
+            "empty lambda",
+            b.lam(&[], b.error(Ty::Const(&ConstTy::Int))),
+        ),
+        (
+            "strict constructor field",
+            b.constr(
+                0,
+                &[traced],
+                Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                    tag: 0,
+                    fields: b.arena.alloc_slice_copy(&[Ty::Const(&ConstTy::Int)]),
+                })),
+            ),
+        ),
+        (
+            "failing constructor field",
+            b.constr(
+                0,
+                &[b.error(Ty::Const(&ConstTy::Int))],
+                Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                    tag: 0,
+                    fields: b.arena.alloc_slice_copy(&[Ty::Const(&ConstTy::Int)]),
+                })),
+            ),
+        ),
     ];
     let mut results = Vec::new();
     for (label, value) in fixtures {
+        let unused = Binder {
+            ty: value.ty,
+            ..unused
+        };
         let evaluated = assemble_core(&arena, b.let_(unused, value, b.int(42)))
             .unwrap()
             .program
@@ -142,14 +213,21 @@ fn assemble_lets_chain() {
     let unused = binder(&b, "unused");
     let bindings = &[
         (x, b.int(40)),
-        (y, b.builtin(F::AddInteger, &[b.var(x.name), b.int(2)])),
-        (unused, b.error()),
+        (
+            y,
+            b.builtin(
+                F::AddInteger,
+                &[b.var(x.name, x.ty), b.int(2)],
+                Ty::Const(&ConstTy::Int),
+            ),
+        ),
+        (unused, b.error(Ty::Const(&ConstTy::Int))),
     ];
     let compiled = assemble(
         &a,
         &Module {
             bindings: a.alloc_slice_copy(bindings),
-            root: b.var(y.name),
+            root: b.var(y.name, y.ty),
         },
     )
     .unwrap();
@@ -166,43 +244,63 @@ fn reachable_keeps_transitive_bindings_and_cycles() {
     let x = binder(&b, "x");
     let y = binder(&b, "y");
     let dead = binder(&b, "dead");
-    let bindings = &[(x, b.int(1)), (y, b.var(x.name)), (dead, b.error())];
+    let bindings = &[
+        (x, b.int(1)),
+        (y, b.var(x.name, x.ty)),
+        (dead, b.error(Ty::Const(&ConstTy::Int))),
+    ];
     assert_eq!(
-        reachable(bindings, b.var(y.name))
+        reachable(bindings, b.var(y.name, y.ty))
             .iter()
             .map(|(binder, _)| binder.name)
             .collect::<Vec<_>>(),
         vec![x.name, y.name]
     );
-    let cycle = &[(x, b.var(y.name)), (y, b.var(x.name)), (dead, b.error())];
-    assert_eq!(reachable(cycle, b.var(x.name)).len(), 2);
+    let cycle = &[
+        (x, b.var(y.name, y.ty)),
+        (y, b.var(x.name, x.ty)),
+        (dead, b.error(Ty::Const(&ConstTy::Int))),
+    ];
+    assert_eq!(reachable(cycle, b.var(x.name, x.ty)).len(), 2);
 }
 #[test]
 fn lexical_binders_do_not_reach_shadowed_globals() {
     let a = Arena::new();
     let b = Builder::new(&a);
     let x = binder(&b, "x");
-    let bindings = &[(x, b.error())];
-    assert!(reachable(bindings, b.lam(&[x], b.var(x.name))).is_empty());
+    let bindings = &[(x, b.error(Ty::Const(&ConstTy::Int)))];
+    assert!(reachable(bindings, b.lam(&[x], b.var(x.name, x.ty))).is_empty());
     assert!(
         reachable(
             bindings,
             b.case(
                 CaseKind::Tag,
-                b.constr(0, &[b.int(1)]),
+                b.constr(
+                    0,
+                    &[b.int(1)],
+                    Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                        tag: 0,
+                        fields: b.arena.alloc_slice_copy(&[Ty::Const(&ConstTy::Int)])
+                    }))
+                ),
                 &[Branch {
                     test: Test::Tag(0),
                     binders: a.alloc_slice_copy(&[x]),
-                    body: b.var(x.name)
+                    body: b.var(x.name, x.ty)
                 }],
-                None
+                None,
+                Ty::Const(&ConstTy::Int)
             )
         )
         .is_empty()
     );
     // A strict let's value is outside the new binder's scope.
     assert_eq!(
-        reachable(bindings, b.let_(x, b.var(x.name), b.var(x.name))).len(),
+        reachable(
+            bindings,
+            b.let_(x, b.var(x.name, x.ty), b.var(x.name, x.ty))
+        )
+        .len(),
         1
     );
 }
@@ -220,16 +318,20 @@ fn recursive_scopes_bind_group_and_parameters() {
                 binder: f,
                 params: a.alloc_slice_copy(&[n]),
                 static_params: &[],
-                body: b.app(b.var(g.name), &[b.var(n.name)]),
+                body: b.app(
+                    b.var(g.name, g.ty),
+                    &[b.var(n.name, n.ty)],
+                    Ty::Const(&ConstTy::Int),
+                ),
             },
             RecBinder {
                 binder: g,
                 params: a.alloc_slice_copy(&[n]),
                 static_params: &[],
-                body: b.var(outside.name),
+                body: b.var(outside.name, outside.ty),
             },
         ],
-        b.app(b.var(f.name), &[b.int(0)]),
+        b.app(b.var(f.name, f.ty), &[b.int(0)], Ty::Const(&ConstTy::Int)),
     );
     assert_eq!(free_variables(group), vec![outside.name]);
     let compiled = assemble(
@@ -250,10 +352,10 @@ fn closedness_and_duplicate_bindings_are_reported() {
     let a = Arena::new();
     let b = Builder::new(&a);
     let x = binder(&b, "missing");
-    assert!(matches!(assemble_core(&a,b.var(x.name)),Err(Error::NotClosed(n)) if n==x.name));
+    assert!(matches!(assemble_core(&a,b.var(x.name, x.ty)),Err(Error::NotClosed(n)) if n==x.name));
     let module = Module {
         bindings: a.alloc_slice_copy(&[(x, b.int(1)), (x, b.int(2))]),
-        root: b.var(x.name),
+        root: b.var(x.name, x.ty),
     };
     assert!(matches!(assemble(&a,&module),Err(Error::DuplicateBinding(n)) if n==x.name));
 }
@@ -269,9 +371,13 @@ fn validator_style_lambda_arguments_remain_callable() {
     let root = b.lam(
         &[threshold, datum],
         b.if_(
-            b.builtin(F::EqualsInteger, &[b.var(threshold.name), b.int(41)]),
+            b.builtin(
+                F::EqualsInteger,
+                &[b.var(threshold.name, threshold.ty), b.int(41)],
+                Ty::Const(&ConstTy::Bool),
+            ),
             b.lit(Constant::unit(&a)),
-            b.error(),
+            b.error(Ty::Const(&ConstTy::Unit)),
         ),
     );
     let compiled = assemble_core(&a, root).unwrap();
@@ -290,8 +396,17 @@ fn comptime_folds_with_reachable_dependencies() {
     let b = Builder::new(&a);
     let x = binder(&b, "x");
     let dead = binder(&b, "dead");
-    let core = b.builtin(F::AddInteger, &[b.var(x.name), b.int(2)]);
-    let c = comptime::eval_closed(&a, &[(x, b.int(40)), (dead, b.error())], core).unwrap();
+    let core = b.builtin(
+        F::AddInteger,
+        &[b.var(x.name, x.ty), b.int(2)],
+        Ty::Const(&ConstTy::Int),
+    );
+    let c = comptime::eval_closed(
+        &a,
+        &[(x, b.int(40)), (dead, b.error(Ty::Const(&ConstTy::Int)))],
+        core,
+    )
+    .unwrap();
     assert_eq!(nash_ir::pretty::pretty(b.lit(c)), "42");
 }
 #[test]
@@ -300,13 +415,16 @@ fn comptime_reports_open_terms_errors_and_nonconstants() {
     let b = Builder::new(&a);
     let x = binder(&b, "x");
     assert!(
-        matches!(comptime::eval_closed(&a,&[],b.var(x.name)),Err(ComptimeError::NotClosed(n)) if n==x.name)
+        matches!(comptime::eval_closed(&a,&[],b.var(x.name, x.ty)),Err(ComptimeError::NotClosed(n)) if n==x.name)
     );
     assert!(matches!(
-        comptime::eval_closed(&a, &[], b.lam(&[x], b.var(x.name))),
+        comptime::eval_closed(&a, &[], b.lam(&[x], b.var(x.name, x.ty))),
         Err(ComptimeError::NotAConstant)
     ));
-    let fail = b.trace(b.lit(Constant::string(&a, "x")), b.error());
+    let fail = b.trace(
+        b.lit(Constant::string(&a, "x")),
+        b.error(Ty::Const(&ConstTy::Int)),
+    );
     assert_eq!(
         comptime::eval_closed(&a, &[], fail)
             .unwrap_err()
@@ -325,9 +443,13 @@ fn comptime_infinite_recursion_exhausts_default_budget() {
             binder: f,
             params: a.alloc_slice_copy(&[n]),
             static_params: &[0],
-            body: b.app(b.var(f.name), &[b.var(n.name)]),
+            body: b.app(
+                b.var(f.name, f.ty),
+                &[b.var(n.name, n.ty)],
+                Ty::Const(&ConstTy::Int),
+            ),
         }],
-        b.app(b.var(f.name), &[b.int(0)]),
+        b.app(b.var(f.name, f.ty), &[b.int(0)], Ty::Const(&ConstTy::Int)),
     );
     let Err(ComptimeError::Evaluation(reason)) = comptime::eval_closed(&a, &[], core) else {
         panic!("expected bounded evaluation failure")
@@ -348,9 +470,20 @@ fn assemble_selected_ledger_language() {
         );
     }
     for version in [PlutusVersion::V1, PlutusVersion::V2, PlutusVersion::V3] {
-        let constr = b.constr(0, &[b.int(1)]);
+        let constr = b.constr(
+            0,
+            &[b.int(1)],
+            Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                tag: 0,
+                fields: b.arena.alloc_slice_copy(&[Ty::Const(&ConstTy::Int)]),
+            })),
+        );
         assert!(assemble_core_for_version(&a, constr, version).is_ok());
-        let newer = b.builtin(F::ExpModInteger, &[b.int(2), b.int(3), b.int(5)]);
+        let newer = b.builtin(
+            F::ExpModInteger,
+            &[b.int(2), b.int(3), b.int(5)],
+            Ty::Const(&ConstTy::Int),
+        );
         assert!(assemble_core_for_version(&a, newer, version).is_ok());
     }
 }

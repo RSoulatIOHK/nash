@@ -1,15 +1,16 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1707
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int }\nempty : list Data\nempty = []\noriginal : Record\noriginal = Primitive.coerce (Builtin.listData empty)\nmain : Record\nmain = { original | a = (trace \"before tail\" 10) }\n"
 ---
 --- core
 let message#13 : string = "before tail" in
 let empty#9 : list Data = (con (list data) []) in
-let original#2 : { _0 : Int, _1 : Int } = (\coerce#8 : 'erased -> coerce#8) (listData empty#9) in
+let original#2 : { _0 : Int, _1 : Int } = (\coerce#8 : List Data -> coerce#8) (listData empty#9) in
 let fromInt#4 : int -> Int = iData in
 let fromString#5 : string -> string = \value#10 : string -> value#10 in
 let base#3 : { _0 : Int, _1 : Int } = original#2 in
-let evaluated#12 : 'erased = trace (fromString#5 message#13) in fromInt#4 10 in
+let evaluated#12 : Int = trace (fromString#5 message#13) in fromInt#4 10 in
 let projection#11 : list Data = unListData base#3 in
 case@List projection#11 of
   Cons head#6 tail#7 -> let main#1 : { _0 : Int, _1 : Int } = listData (mkCons evaluated#12 tail#7) in

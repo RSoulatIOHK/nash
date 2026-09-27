@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 312
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\nimpl Eq 'a => Eq (option 'a) where\n    eq a b =\n        case (a, b) of\n            (None, None) -> True\n            (Some x, Some y) -> eq x y\n            _ -> False\nmap opt f =\n    case opt of\n        None -> None\n        Some a -> Some (f a)\naddOne n = addInteger n 1\nmain = eq (map None addOne) None\n"
 ---
 --- core
 let fromBool#7 : bool -> bool = \value#31 : bool -> value#31 in
 let eq#10 : int -> int -> bool = equalsInteger in
 let eq#2 : Main.option 'erased -> Main.option 'erased -> bool = \a#5 : Main.option 'erased b#6 : Main.option 'erased -> let match#11 : (Main.option 'erased, Main.option 'erased) = constr 0 a#5 b#6 in
-let leaf#17 : 'erased = delay (fromBool#7 false) in
+let leaf#17 : @delay bool = delay (fromBool#7 false) in
 case@Tag match#11 of
   0 field#18 field#19 -> case@Tag field#18 of
     0 -> case@Tag field#19 of

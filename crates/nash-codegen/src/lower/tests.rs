@@ -2,7 +2,7 @@ use super::*;
 use nash_ir::{
     build::Builder,
     core::{Binder, Branch, CaseKind, Core, Test},
-    ty::{ConstTy, Ty},
+    ty::{BigTy, ConstTy, Ty},
 };
 use nash_plutus::{
     constant::Constant,
@@ -31,8 +31,16 @@ fn let_application_evaluates() {
         name: b.fresh("y"),
         ty: int,
     };
-    let add = b.builtin(DefaultFunction::AddInteger, &[b.var(x.name), b.var(y.name)]);
-    let core = b.let_(x, b.int(1), b.app(b.lam(&[y], add), &[b.int(2)]));
+    let add = b.builtin(
+        DefaultFunction::AddInteger,
+        &[b.var(x.name, x.ty), b.var(y.name, y.ty)],
+        Ty::Const(&ConstTy::Int),
+    );
+    let core = b.let_(
+        x,
+        b.int(1),
+        b.app(b.lam(&[y], add), &[b.int(2)], Ty::Const(&ConstTy::Int)),
+    );
     let result = evaluate(&arena, core);
     assert_eq!(result.term.unwrap(), Term::integer_from(&arena, 3));
     assert!(result.info.consumed_budget.cpu > 0);
@@ -42,7 +50,11 @@ fn let_application_evaluates() {
 fn boolean_case_does_not_evaluate_unselected_failure() {
     let arena = Arena::new();
     let b = Builder::new(&arena);
-    let core = b.if_(b.lit(Constant::bool(&arena, true)), b.int(42), b.error());
+    let core = b.if_(
+        b.lit(Constant::bool(&arena, true)),
+        b.int(42),
+        b.error(Ty::Const(&ConstTy::Int)),
+    );
     assert!(matches!(lower(&arena, core).unwrap(), Term::Case { .. }));
     assert_eq!(
         evaluate(&arena, core).term.unwrap(),
@@ -69,12 +81,12 @@ fn unused_unit_binding_uses_case_and_preserves_sequencing() {
     assert_eq!(result.term.unwrap(), Term::integer_from(&arena, 42));
     assert_eq!(result.info.logs, ["subject", "body"]);
 
-    let failing = b.let_(unit, b.error(), body);
+    let failing = b.let_(unit, b.error(unit.ty), body);
     let result = evaluate(&arena, failing);
     assert!(result.term.is_err());
     assert!(result.info.logs.is_empty());
 
-    let used = b.let_(unit, subject, b.var(unit.name));
+    let used = b.let_(unit, subject, b.var(unit.name, unit.ty));
     assert_eq!(evaluate(&arena, used).term.unwrap(), Term::unit(&arena));
 }
 
@@ -82,7 +94,10 @@ fn unused_unit_binding_uses_case_and_preserves_sequencing() {
 fn trace_precedes_failure() {
     let arena = Arena::new();
     let b = Builder::new(&arena);
-    let core = b.trace(b.lit(Constant::string(&arena, "before failure")), b.error());
+    let core = b.trace(
+        b.lit(Constant::string(&arena, "before failure")),
+        b.error(Ty::Const(&ConstTy::Int)),
+    );
     let result = evaluate(&arena, core);
     assert!(result.term.is_err());
     assert_eq!(result.info.logs, ["before failure"]);
@@ -94,30 +109,54 @@ fn field_projection_and_tag_order_are_semantic() {
     let b = Builder::new(&arena);
     let x = Binder {
         name: b.fresh("x"),
-        ty: Ty::Erased,
+        ty: Ty::Const(&ConstTy::Int),
     };
     let core = b.case(
         CaseKind::Tag,
-        b.constr(1, &[b.int(17)]),
+        b.constr(
+            1,
+            &[b.int(17)],
+            Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                tag: 1,
+                fields: b.arena.alloc_slice_copy(&[Ty::Const(&ConstTy::Int)]),
+            })),
+        ),
         &[
             Branch {
                 test: Test::Tag(1),
                 binders: arena.alloc_slice_copy(&[x]),
-                body: b.var(x.name),
+                body: b.var(x.name, x.ty),
             },
             Branch {
                 test: Test::Tag(0),
                 binders: &[],
-                body: b.error(),
+                body: b.error(Ty::Const(&ConstTy::Int)),
             },
         ],
         None,
+        Ty::Const(&ConstTy::Int),
     );
     assert_eq!(
         evaluate(&arena, core).term.unwrap(),
         Term::integer_from(&arena, 17)
     );
-    let field = b.field(b.constr(0, &[b.int(1), b.int(2)]), 1, 2);
+    let field = b.field(
+        b.constr(
+            0,
+            &[b.int(1), b.int(2)],
+            Ty::Runtime(
+                b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                    tag: 0,
+                    fields: b
+                        .arena
+                        .alloc_slice_copy(&[Ty::Const(&ConstTy::Int), Ty::Const(&ConstTy::Int)]),
+                }),
+            ),
+        ),
+        1,
+        2,
+        Ty::Const(&ConstTy::Int),
+    );
     assert_eq!(
         evaluate(&arena, field).term.unwrap(),
         Term::integer_from(&arena, 2)
@@ -128,24 +167,42 @@ fn field_projection_and_tag_order_are_semantic() {
 fn malformed_core_cases_are_rejected() {
     let arena = Arena::new();
     let b = Builder::new(&arena);
-    let malformed = arena.alloc(Core::Field {
-        record: b.constr(0, &[]),
-        index: 1,
-        arity: 1,
-    });
+    let malformed = b.alloc(
+        Ty::Const(&ConstTy::Int),
+        CoreKind::Field {
+            record: b.constr(
+                0,
+                &[],
+                Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                    tag: 0,
+                    fields: b.arena.alloc_slice_copy(&[]),
+                })),
+            ),
+            index: 1,
+            arity: 1,
+        },
+    );
     assert!(matches!(
         lower(&arena, malformed),
         Err(Error::InvalidField { .. })
     ));
     let sparse = b.case(
         CaseKind::Tag,
-        b.constr(2, &[]),
+        b.constr(
+            2,
+            &[],
+            Ty::Runtime(b.arena.alloc(nash_ir::ty::RuntimeTy::Constr {
+                tag: 2,
+                fields: b.arena.alloc_slice_copy(&[]),
+            })),
+        ),
         &[Branch {
             test: Test::Tag(2),
             binders: &[],
             body: b.int(1),
         }],
         None,
+        Ty::Const(&ConstTy::Int),
     );
     assert!(matches!(lower(&arena, sparse), Err(Error::InvalidCase(_))));
 }
@@ -156,11 +213,11 @@ fn list_case_only_unpacks_a_nonempty_list() {
     let b = Builder::new(&arena);
     let head = Binder {
         name: b.fresh("head"),
-        ty: Ty::Erased,
+        ty: Ty::Const(&ConstTy::Int),
     };
     let tail = Binder {
         name: b.fresh("tail"),
-        ty: Ty::Erased,
+        ty: Ty::Const(&ConstTy::List(Ty::Const(&ConstTy::Int))),
     };
     let branches = arena.alloc_slice_copy(&[
         Branch {
@@ -171,7 +228,7 @@ fn list_case_only_unpacks_a_nonempty_list() {
         Branch {
             test: Test::Cons,
             binders: arena.alloc_slice_copy(&[head, tail]),
-            body: b.var(head.name),
+            body: b.var(head.name, head.ty),
         },
     ]);
     let nil = b.lit(Constant::proto_list(
@@ -179,9 +236,19 @@ fn list_case_only_unpacks_a_nonempty_list() {
         nash_plutus::typ::Type::integer(&arena),
         &[],
     ));
-    let list = b.builtin(DefaultFunction::MkCons, &[b.int(42), nil]);
+    let list = b.builtin(
+        DefaultFunction::MkCons,
+        &[b.int(42), nil],
+        Ty::Const(b.arena.alloc(ConstTy::List(Ty::Const(&ConstTy::Int)))),
+    );
     for (value, expected) in [(nil, 7), (list, 42)] {
-        let core = b.case(CaseKind::List, value, branches, None);
+        let core = b.case(
+            CaseKind::List,
+            value,
+            branches,
+            None,
+            Ty::Const(&ConstTy::Int),
+        );
         assert!(matches!(lower(&arena, core).unwrap(), Term::Case { .. }));
         assert_eq!(
             evaluate(&arena, core).term.unwrap(),
@@ -196,7 +263,7 @@ fn data_case_default_does_not_unpack_wrong_shape() {
     let b = Builder::new(&arena);
     let value = Binder {
         name: b.fresh("value"),
-        ty: Ty::Erased,
+        ty: Ty::Const(&ConstTy::Bytes),
     };
     let core = b.case(
         CaseKind::Data,
@@ -207,9 +274,10 @@ fn data_case_default_does_not_unpack_wrong_shape() {
         &[Branch {
             test: Test::DataB,
             binders: arena.alloc_slice_copy(&[value]),
-            body: b.error(),
+            body: b.error(Ty::Const(&ConstTy::Int)),
         }],
         Some(b.int(3)),
+        Ty::Const(&ConstTy::Int),
     );
     assert_eq!(
         evaluate(&arena, core).term.unwrap(),
@@ -224,11 +292,11 @@ fn data_shapes_evaluate_once_and_only_unpack_the_selected_branch() {
     let b = Builder::new(&arena);
     let field = Binder {
         name: b.fresh("field"),
-        ty: Ty::Erased,
+        ty: Ty::Const(&ConstTy::Int),
     };
     let fields = Binder {
         name: b.fresh("fields"),
-        ty: Ty::Erased,
+        ty: Ty::Const(&ConstTy::List(Ty::Big(&BigTy::Data))),
     };
     let cases = [
         (Test::DataConstr, PlutusData::constr(&arena, 17, &[]), 2),
@@ -240,20 +308,33 @@ fn data_shapes_evaluate_once_and_only_unpack_the_selected_branch() {
     for (selected, data, _) in cases {
         let pair = Binder {
             name: b.fresh("pair"),
-            ty: Ty::Erased,
+            ty: Ty::Const(arena.alloc(ConstTy::Pair(field.ty, fields.ty))),
         };
         let branches = arena.alloc_slice_fill_iter(cases.iter().map(|(test, _, arity)| {
+            let field = Binder {
+                name: field.name,
+                ty: match test {
+                    Test::DataConstr | Test::DataI => Ty::Const(&ConstTy::Int),
+                    Test::DataB => Ty::Const(&ConstTy::Bytes),
+                    Test::DataList => fields.ty,
+                    Test::DataMap => Ty::Const(&ConstTy::List(Ty::Const(&ConstTy::Pair(
+                        Ty::Big(&BigTy::Data),
+                        Ty::Big(&BigTy::Data),
+                    )))),
+                    _ => unreachable!(),
+                },
+            };
             let body = if *test == selected {
                 b.trace(
                     b.lit(Constant::string(&arena, "branch")),
                     if matches!(selected, Test::DataConstr | Test::DataI) {
-                        b.var(field.name)
+                        b.var(field.name, field.ty)
                     } else {
                         b.int(17)
                     },
                 )
             } else {
-                b.error()
+                b.error(Ty::Const(&ConstTy::Int))
             };
             Branch {
                 test: *test,
@@ -261,13 +342,14 @@ fn data_shapes_evaluate_once_and_only_unpack_the_selected_branch() {
                 body: if *arity == 2 {
                     b.case(
                         CaseKind::Pair,
-                        b.var(pair.name),
+                        b.var(pair.name, pair.ty),
                         &[Branch {
                             test: Test::Pair,
                             binders: arena.alloc_slice_copy(&[field, fields]),
                             body,
                         }],
                         None,
+                        Ty::Const(&ConstTy::Int),
                     )
                 } else {
                     body
@@ -278,7 +360,16 @@ fn data_shapes_evaluate_once_and_only_unpack_the_selected_branch() {
             b.lit(Constant::string(&arena, "scrutinee")),
             b.lit(Constant::data(&arena, data)),
         );
-        let result = evaluate(&arena, b.case(CaseKind::Data, scrutinee, branches, None));
+        let result = evaluate(
+            &arena,
+            b.case(
+                CaseKind::Data,
+                scrutinee,
+                branches,
+                None,
+                Ty::Const(&ConstTy::Int),
+            ),
+        );
         assert_eq!(result.term.unwrap(), Term::integer_from(&arena, 17));
         assert_eq!(result.info.logs, ["scrutinee", "branch"]);
     }

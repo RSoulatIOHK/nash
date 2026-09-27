@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 772
 description: "module Main exposing (..)\nimport Builtin exposing (..)\nrun captured =\n    let\n        first n =\n            if equalsInteger n 0 then captured\n            else\n                let next = second (subtractInteger n 1) in\n                next captured\n        second n value =\n            if equalsInteger n 0 then value\n            else (\\f -> f (subtractInteger n 1)) first\n    in\n    first 7\nmain : int\nmain = run 42\n"
 ---
 --- core
 let fromInt#3 : int -> int = \value#12 : int -> value#12 in
-let run#2 : 'erased -> 'erased = \captured#4 : 'erased -> let dispatch#13 : 'erased = \request#14 : 'erased -> case@Tag request#14 of
+let run#2 : 'erased -> 'erased = \captured#4 : 'erased -> let dispatch#13 : @dispatch[(int) -> 'erased, (int, 'erased) -> 'erased] = \request#14 : @request[(int) -> 'erased, (int, 'erased) -> 'erased] -> case@Tag request#14 of
   0 self#15 n#7 -> case@Bool equalsInteger n#7 (fromInt#3 0) of
     True -> captured#4
     False -> let next#8 : 'erased -> 'erased = (\n#17 : int value#18 : 'erased -> self#15 (constr 1 self#15 n#17 value#18)) (subtractInteger n#7 (fromInt#3 1)) in

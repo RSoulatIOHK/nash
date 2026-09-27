@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1674
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int }\nreplace : Record -> Record\nreplace r = { r | a = (trace \"first\" 10) }\noriginal : Record\noriginal = Primitive.coerce (Builtin.listData [Builtin.iData 1, Builtin.iData 2, Builtin.iData 3])\nmain = Builtin.equalsData (Primitive.coerce (replace original))\n    (Primitive.coerce (Builtin.listData [Builtin.iData 10, Builtin.iData 2, Builtin.iData 3]))\n"
 ---
 --- core
@@ -7,13 +8,13 @@ let message#18 : string = "first" in
 let fromInt#9 : int -> Int = iData in
 let fromString#10 : string -> string = \value#15 : string -> value#15 in
 let replace#3 : { _0 : Int, _1 : Int } -> { _0 : Int, _1 : Int } = \r#7 : { _0 : Int, _1 : Int } -> let base#8 : { _0 : Int, _1 : Int } = r#7 in
-let evaluated#17 : 'erased = trace (fromString#10 message#18) in fromInt#9 10 in
+let evaluated#17 : Int = trace (fromString#10 message#18) in fromInt#9 10 in
 let projection#16 : list Data = unListData base#8 in
 case@List projection#16 of
   Cons head#11 tail#12 -> listData (mkCons evaluated#17 tail#12) in
 let fromInt#6 : int -> int = \value#14 : int -> value#14 in
-let original#4 : { _0 : Int, _1 : Int } = (\coerce#13 : 'erased -> coerce#13) (listData (mkCons (iData (fromInt#6 1)) (mkCons (iData (fromInt#6 2)) (mkCons (iData (fromInt#6 3)) (con (list data) []))))) in
-let main#1 : bool = equalsData ((\coerce#2 : 'erased -> coerce#2) (replace#3 original#4)) ((\coerce#5 : 'erased -> coerce#5) (listData (mkCons (iData (fromInt#6 10)) (mkCons (iData (fromInt#6 2)) (mkCons (iData (fromInt#6 3)) (con (list data) [])))))) in
+let original#4 : { _0 : Int, _1 : Int } = (\coerce#13 : List Int -> coerce#13) (listData (mkCons (iData (fromInt#6 1)) (mkCons (iData (fromInt#6 2)) (mkCons (iData (fromInt#6 3)) (con (list data) []))))) in
+let main#1 : bool = equalsData ((\coerce#2 : { _0 : Int, _1 : Int } -> coerce#2) (replace#3 original#4)) ((\coerce#5 : List Int -> coerce#5) (listData (mkCons (iData (fromInt#6 10)) (mkCons (iData (fromInt#6 2)) (mkCons (iData (fromInt#6 3)) (con (list data) [])))))) in
 main#1
 --- uplc
 (program 1.1.0

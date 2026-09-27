@@ -2,5 +2,5 @@
 source: crates/nash-ir/src/hygiene/tests.rs
 expression: pretty(result)
 ---
-let x#2 : 'erased = 42 in
+let x#2 : int = 42 in
 x#2

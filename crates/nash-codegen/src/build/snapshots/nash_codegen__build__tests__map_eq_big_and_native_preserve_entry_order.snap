@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nentries : list (pair Int Int)\nentries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]\nreversed : list (pair Int Int)\nreversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]\nmain =\n    ( eq (Builtin.mapData entries) (Builtin.mapData entries)\n    , eq (Builtin.mapData entries) (Builtin.mapData reversed)\n    , eq entries entries\n    , eq entries reversed\n    )\n"
 ---
 --- core
@@ -26,7 +27,7 @@ case@Pair match#30 of
       let secondB#44 : 'erased = field#37 in
       equalsData secondA#39 secondB#44
       False -> false in
-let eq#4 : list 'erased -> list 'erased -> bool = (\self#41 : 'erased -> self#41 self#41) (\self#41 : 'erased xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
+let eq#4 : list 'erased -> list 'erased -> bool = (\self#41 : @self (list 'erased -> list 'erased -> bool) -> self#41 self#41) (\self#41 : @self (list 'erased -> list 'erased -> bool) xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
 case@List match#20 of
   Nil -> let match#9 : list 'erased = ys#7 in
   case@List match#9 of

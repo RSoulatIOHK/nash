@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias person = { age : int, active : bool }\nread : person -> int\nread = .age\noriginal : person\noriginal = { active = True, age = 1 }\nmain : int\nmain = read { original | age = 42 }\n"
 ---
 --- core
@@ -9,7 +10,7 @@ let fromInt#5 : int -> int = \value#8 : int -> value#8 in
 let fromBool#7 : bool -> bool = \value#9 : bool -> value#9 in
 let original#3 : { _0 : int, _1 : bool } = constr 0 (fromInt#5 1) (fromBool#7 true) in
 let base#4 : { _0 : int, _1 : bool } = original#3 in
-let evaluated#12 : 'erased = fromInt#5 42 in
+let evaluated#12 : int = fromInt#5 42 in
 let projection#11 : bool = field@1/2 base#4 in
 let main#1 : int = read#2 (constr 0 evaluated#12 projection#11) in
 main#1

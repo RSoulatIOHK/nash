@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 97
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype thing = Thing { idx : int }\ntype datum = A thing | B\ntype redSpend = Spend int | Buy\nmain : bool\nmain =\n    case (A (Thing { idx = 42 }), Buy) of\n        (A a, Spend x) ->\n            if equalsInteger a.idx x then True\n            else trace \"a.idx == x ? False\" False\n        (_, _) -> True\n"
 ---
 --- core
@@ -8,13 +9,13 @@ let fromInt#4 : int -> int = \value#19 : int -> value#19 in
 let fromBool#7 : bool -> bool = \value#20 : bool -> value#20 in
 let fromString#8 : string -> string = \value#21 : string -> value#21 in
 let match#9 : (Main.datum, Main.redSpend) = constr 0 ((\field#2 : Main.thing -> constr 0 field#2) ((\field#3 : int -> constr 0 field#3) (fromInt#4 42))) (constr 1) in
-let leaf#14 : 'erased = delay (fromBool#7 true) in
+let leaf#14 : @delay bool = delay (fromBool#7 true) in
 let main#1 : bool = case@Tag match#9 of
   0 field#15 field#16 -> case@Tag field#15 of
     0 field#17 -> case@Tag field#16 of
       0 field#18 -> let a#5 : Main.thing = field#17 in
       let x#6 : int = field#18 in
-      let projection#22 : 'erased = field@0/1 a#5 in
+      let projection#22 : int = field@0/1 a#5 in
       case@Bool equalsInteger projection#22 x#6 of
         True -> fromBool#7 true
         False -> trace (fromString#8 message#23) in fromBool#7 false

@@ -1,9 +1,10 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 1054
 description: "module Main exposing (..)\nimport Data exposing (ToData, Validate)\nmain : Int\nmain = validate (toData (Builtin.iData 42))\n"
 ---
 --- core
-let validate#2 : Data -> Int = \value#5 : Data -> let candidate#6 : Int = (\coerce#8 : 'erased -> coerce#8) value#5 in
+let validate#2 : Data -> Int = \value#5 : Data -> let candidate#6 : Int = (\coerce#8 : Data -> coerce#8) value#5 in
 let destruct#7 : int = unIData candidate#6 in
 candidate#6 in
 let toData#3 : 'erased -> Data = \coerce#9 : 'erased -> coerce#9 in

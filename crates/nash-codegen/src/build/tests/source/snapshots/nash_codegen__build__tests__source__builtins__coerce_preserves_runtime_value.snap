@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 394
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nclaimed : bytes\nclaimed = coerce original\noriginal : int\noriginal = 42\nmain : int\nmain = coerce claimed\n"
 ---
 --- core
 let fromInt#6 : int -> int = \value#7 : int -> value#7 in
 let original#5 : int = fromInt#6 42 in
-let claimed#3 : bytes = (\coerce#4 : 'erased -> coerce#4) original#5 in
-let main#1 : int = (\coerce#2 : 'erased -> coerce#2) claimed#3 in
+let claimed#3 : bytes = (\coerce#4 : int -> coerce#4) original#5 in
+let main#1 : int = (\coerce#2 : bytes -> coerce#2) claimed#3 in
 main#1
 --- uplc
 (program 1.1.0

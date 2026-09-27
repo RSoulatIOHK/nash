@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/collections.rs
+assertion_line: 199
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nfilter xs f =\n    case xs of\n        [] -> []\n        x :: rest ->\n            if f x then mkCons x (filter rest f)\n            else filter rest f\nunique xs =\n    case xs of\n        [] -> []\n        x :: rest -> mkCons x (unique (filter rest (\\y -> neq y x)))\nempty : list int\nempty = []\nmain = eq (unique empty) []\n"
 ---
 --- core
 let fromBool#7 : bool -> bool = \value#31 : bool -> value#31 in
 let eq#15 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#47 : 'erased -> self#47 self#47) (\self#47 : 'erased xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#47 : @self (list 'erased -> list 'erased -> bool) -> self#47 self#47) (\self#47 : @self (list 'erased -> list 'erased -> bool) xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
 case@List match#19 of
   Nil -> let match#8 : list 'erased = ys#6 in
   case@List match#8 of
@@ -21,7 +22,7 @@ case@List match#19 of
     case@Bool eq#15 x#11 y#13 of
       True -> self#47 self#47 restX#12 restY#14
       False -> false) in
-let filter#25 : list int -> (int -> bool) -> list int = \xs#32 : list int (f#33 : int -> bool) -> (\self#46 : 'erased -> self#46 self#46) (\self#46 : 'erased xs#32 : list int -> let match#36 : list int = xs#32 in
+let filter#25 : list int -> (int -> bool) -> list int = \xs#32 : list int (f#33 : int -> bool) -> (\self#46 : @self (list int -> list int) -> self#46 self#46) (\self#46 : @self (list int -> list int) xs#32 : list int -> let match#36 : list int = xs#32 in
 case@List match#36 of
   Nil -> (con (list integer) [])
   Cons field#37 field#38 -> let x#34 : int = field#37 in
@@ -29,11 +30,11 @@ case@List match#36 of
   case@Bool f#33 x#34 of
     True -> mkCons x#34 (self#46 self#46 rest#35)
     False -> self#46 self#46 rest#35) xs#32 in
-let not#41 : 'erased -> bool = \value#42 : 'erased -> case@Bool (\identity#43 : 'erased -> identity#43) value#42 of
+let not#41 : 'erased -> bool = \value#42 : 'erased -> case@Bool (\identity#43 : bool -> identity#43) value#42 of
   True -> false
   False -> true in
 let neq#27 : 'erased -> 'erased -> bool = \a#39 : 'erased b#40 : 'erased -> not#41 (eq#15 a#39 b#40) in
-let unique#3 : list int -> list int = (\self#44 : 'erased -> self#44 self#44) (\self#44 : 'erased xs#22 : list int -> let match#28 : list int = xs#22 in
+let unique#3 : list int -> list int = (\self#44 : @self (list int -> list int) -> self#44 self#44) (\self#44 : @self (list int -> list int) xs#22 : list int -> let match#28 : list int = xs#22 in
 case@List match#28 of
   Nil -> (con (list integer) [])
   Cons field#29 field#30 -> let x#23 : int = field#29 in

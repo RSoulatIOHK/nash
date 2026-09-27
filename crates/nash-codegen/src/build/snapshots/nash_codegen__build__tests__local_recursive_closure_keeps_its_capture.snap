@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nrun captured =\n    let\n        loop : int -> int\n        loop n = if Builtin.equalsInteger n 0 then captured else loop (Builtin.subtractInteger n 1)\n    in\n    loop 3\nmain : int\nmain = run 42\n"
 ---
 --- core
 let fromInt#3 : int -> int = \value#7 : int -> value#7 in
-let run#2 : int -> int = \captured#4 : int -> let loop#5 : int -> int = (\self#8 : 'erased -> self#8 self#8) (\self#8 : 'erased n#6 : int -> case@Bool equalsInteger n#6 (fromInt#3 0) of
+let run#2 : int -> int = \captured#4 : int -> let loop#5 : int -> int = (\self#8 : @self (int -> int) -> self#8 self#8) (\self#8 : @self (int -> int) n#6 : int -> case@Bool equalsInteger n#6 (fromInt#3 0) of
   True -> captured#4
   False -> self#8 self#8 (subtractInteger n#6 (fromInt#3 1))) in
 loop#5 (fromInt#3 3) in

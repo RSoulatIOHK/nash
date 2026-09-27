@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1740
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\nwrong : list int\nwrong = Primitive.coerce ()\nmain : unit\nmain =\n    let\n        xs = Builtin.dropList 0 wrong\n    in\n    ()\n"
 ---
 --- core
 let fromUnit#3 : unit -> unit = \value#6 : unit -> value#6 in
 let fromInt#4 : int -> int = \value#7 : int -> value#7 in
-let wrong#5 : list int = (\coerce#8 : 'erased -> coerce#8) (fromUnit#3 ()) in
+let wrong#5 : list int = (\coerce#8 : unit -> coerce#8) (fromUnit#3 ()) in
 let xs#2 : list int = dropList (fromInt#4 0) wrong#5 in
 let main#1 : unit = fromUnit#3 () in
 main#1

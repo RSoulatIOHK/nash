@@ -1,35 +1,36 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 380
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (validate)\ndecoded : Map Bytes (List Int)\ndecoded = validate (Map [mkPairData (B #\"aa\") (List [B #\"bb\"])])\nmain = nullList (unMapData decoded)\n"
 ---
 --- core
 let applyForward#11 : 'erased -> ('erased -> 'erased) -> 'erased = \x#16 : 'erased (f#17 : 'erased -> 'erased) -> f#17 x#16 in
-let mapList#12 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#18 : 'erased -> pair Data Data) values#19 : list 'erased -> (\self#54 : 'erased -> self#54 self#54) (\self#54 : 'erased values#19 : list 'erased -> let match#22 : list 'erased = values#19 in
+let mapList#12 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#18 : 'erased -> pair Data Data) values#19 : list 'erased -> (\self#54 : @self (list 'erased -> list (pair Data Data)) -> self#54 self#54) (\self#54 : @self (list 'erased -> list (pair Data Data)) values#19 : list 'erased -> let match#22 : list 'erased = values#19 in
 case@List match#22 of
   Nil -> (con (list (pair data data)) [])
   Cons field#23 field#24 -> let first#20 : 'erased = field#23 in
   let rest#21 : list 'erased = field#24 in
   mkCons (f#18 first#20) (self#54 self#54 rest#21)) values#19 in
-let validate#28 : Data -> Bytes = \value#33 : Data -> let candidate#34 : Bytes = (\coerce#36 : 'erased -> coerce#36) value#33 in
+let validate#28 : Data -> Bytes = \value#33 : Data -> let candidate#34 : Bytes = (\coerce#36 : Data -> coerce#36) value#33 in
 let destruct#35 : bytes = unBData candidate#34 in
 candidate#34 in
-let mapList#39 : ('erased -> Data) -> list 'erased -> list Data = \(f#42 : 'erased -> Data) values#43 : list 'erased -> (\self#53 : 'erased -> self#53 self#53) (\self#53 : 'erased values#43 : list 'erased -> let match#46 : list 'erased = values#43 in
+let mapList#39 : ('erased -> Data) -> list 'erased -> list Data = \(f#42 : 'erased -> Data) values#43 : list 'erased -> (\self#53 : @self (list 'erased -> list Data) -> self#53 self#53) (\self#53 : @self (list 'erased -> list Data) values#43 : list 'erased -> let match#46 : list 'erased = values#43 in
 case@List match#46 of
   Nil -> (con (list data) [])
   Cons field#47 field#48 -> let first#44 : 'erased = field#47 in
   let rest#45 : list 'erased = field#48 in
   mkCons (f#42 first#44) (self#53 self#53 rest#45)) values#43 in
-let validate#40 : Data -> Int = \value#49 : Data -> let candidate#50 : Int = (\coerce#52 : 'erased -> coerce#52) value#49 in
+let validate#40 : Data -> Int = \value#49 : Data -> let candidate#50 : Int = (\coerce#52 : Data -> coerce#52) value#49 in
 let destruct#51 : int = unIData candidate#50 in
 candidate#50 in
-let validate#29 : Data -> List Data = \value#37 : Data -> let candidate#38 : List Data = (\coerce#41 : 'erased -> coerce#41) value#37 in
+let validate#29 : Data -> List Data = \value#37 : Data -> let candidate#38 : List Data = (\coerce#41 : Data -> coerce#41) value#37 in
 applyForward#11 (applyForward#11 (applyForward#11 candidate#38 unListData) (mapList#39 validate#40)) listData in
 let pairValidate#13 : pair Data Data -> pair Data Data = \arg#25 : pair Data Data -> let match#30 : pair Data Data = arg#25 in
 case@Pair match#30 of
   Pair field#31 field#32 -> let key#26 : Data = field#31 in
   let value#27 : Data = field#32 in
   mkPairData (validate#28 key#26) (validate#29 value#27) in
-let validate#3 : Data -> Map Data Data = \value#9 : Data -> let candidate#10 : Map Data Data = (\coerce#14 : 'erased -> coerce#14) value#9 in
+let validate#3 : Data -> Map Data Data = \value#9 : Data -> let candidate#10 : Map Data Data = (\coerce#14 : Data -> coerce#14) value#9 in
 applyForward#11 (applyForward#11 (applyForward#11 candidate#10 unMapData) (mapList#12 pairValidate#13)) mapData in
 let fromBytes#6 : bytes -> bytes = \value#15 : bytes -> value#15 in
 let decoded#2 : Map Bytes (List Int) = validate#3 ((\field#4 : list (pair Data Data) -> mapData field#4) (mkCons (mkPairData ((\field#5 : bytes -> bData field#5) (fromBytes#6 (con bytestring #aa))) ((\field#7 : list Data -> listData field#7) (mkCons ((\field#8 : bytes -> bData field#8) (fromBytes#6 (con bytestring #bb))) (con (list data) [])))) (con (list (pair data data)) []))) in

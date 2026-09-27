@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 712
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nrewrap value =\n    case value of\n        Constr payload -> Constr payload\n        _ -> fail\nmain : int\nmain =\n    case rewrap (Builtin.constrData 7 [I 42]) of\n        Constr pair(index, [I number]) -> Builtin.addInteger index number\n        _ -> fail\n"
 ---
 --- core
 let rewrap#2 : Data -> Data = \value#41 : Data -> let match#46 : Data = value#41 in
-let leaf#52 : 'erased = delay error in
+let leaf#52 : @delay Data = delay error in
 case@Data match#46 of
   DataConstr field#53 -> let payload#42 : pair int (list Data) = field#53 in
   (\field#43 : pair int (list Data) -> case@Pair field#43 of
@@ -15,7 +16,7 @@ case@Data match#46 of
   DataB field#57 -> force leaf#52 in
 let fromInt#3 : int -> int = \value#58 : int -> value#58 in
 let match#7 : Data = rewrap#2 (constrData (fromInt#3 7) (mkCons ((\field#4 : int -> iData field#4) (fromInt#3 42)) (con (list data) []))) in
-let leaf#24 : 'erased = delay error in
+let leaf#24 : @delay int = delay error in
 let main#1 : int = case@Data match#7 of
   DataConstr field#25 -> case@Pair field#25 of
     Pair field#26 field#27 -> case@List field#27 of

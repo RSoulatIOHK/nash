@@ -10,13 +10,14 @@ fn fixture<'a>(b: &Builder<'a>, leaf: &'a Core<'a>) -> &'a Core<'a> {
         name: b.fresh("x"),
         ty: Ty::Const(&ConstTy::Int),
     };
-    b.constr(
+    crate::test_support::constr(
+        b,
         7,
         &[
-            b.var(binder.name),
+            b.var(binder.name, binder.ty),
             b.int(2),
             b.lam(&[binder], leaf),
-            b.app(leaf, &[leaf]),
+            b.app(leaf, &[leaf], Ty::Const(&crate::ty::ConstTy::Int)),
             b.let_(binder, leaf, leaf),
             b.let_rec(
                 &[RecBinder {
@@ -36,14 +37,19 @@ fn fixture<'a>(b: &Builder<'a>, leaf: &'a Core<'a>) -> &'a Core<'a> {
                     body: leaf,
                 }],
                 Some(leaf),
+                Ty::Const(&crate::ty::ConstTy::Int),
             ),
-            b.constr(4, &[leaf]),
-            b.field(leaf, 0, 1),
-            b.builtin(DefaultFunction::AddInteger, &[leaf, leaf]),
+            crate::test_support::constr(b, 4, &[leaf]),
+            b.field(leaf, 0, 1, Ty::Const(&crate::ty::ConstTy::Int)),
+            b.builtin(
+                DefaultFunction::AddInteger,
+                &[leaf, leaf],
+                Ty::Const(&crate::ty::ConstTy::Int),
+            ),
             b.trace(leaf, leaf),
-            b.error(),
+            b.error(Ty::Const(&crate::ty::ConstTy::Int)),
             b.delay(leaf),
-            b.force(leaf),
+            b.force(leaf, Ty::Const(&crate::ty::ConstTy::Int)),
         ],
     )
 }
@@ -57,7 +63,7 @@ fn every_variant_is_walked_and_noop_map_reuses_root() {
     assert!(std::ptr::eq(preorder[0], root));
     let variants = preorder
         .iter()
-        .map(|node| std::mem::discriminant(*node))
+        .map(|node| std::mem::discriminant(&node.kind))
         .collect::<std::collections::HashSet<_>>();
     assert_eq!(variants.len(), 14);
     let mut postorder = Vec::new();
@@ -81,18 +87,22 @@ fn replacement_reaches_all_child_positions_and_preserves_metadata() {
     });
     assert!(!std::ptr::eq(mapped, root));
     mapped.walk(&mut |node| assert!(!std::ptr::eq(node, leaf)));
-    let (Core::Constr { fields: old, .. }, Core::Constr { tag, fields: new }) = (root, mapped)
+    let (CoreKind::Constr { fields: old, .. }, CoreKind::Constr { tag, fields: new }) =
+        (&root.kind, &mapped.kind)
     else {
         panic!()
     };
     assert_eq!(*tag, 7);
     assert!(std::ptr::eq(old[0], new[0]));
     assert!(std::ptr::eq(old[1], new[1]));
-    let (Core::Lam { params: p, .. }, Core::Lam { params: q, .. }) = (old[2], new[2]) else {
+    let (CoreKind::Lam { params: p, .. }, CoreKind::Lam { params: q, .. }) =
+        (&old[2].kind, &new[2].kind)
+    else {
         panic!()
     };
     assert!(std::ptr::eq(*p, *q));
-    let (Core::LetRec { binders: p, .. }, Core::LetRec { binders: q, .. }) = (old[5], new[5])
+    let (CoreKind::LetRec { binders: p, .. }, CoreKind::LetRec { binders: q, .. }) =
+        (&old[5].kind, &new[5].kind)
     else {
         panic!()
     };
@@ -100,7 +110,9 @@ fn replacement_reaches_all_child_positions_and_preserves_metadata() {
     assert_eq!(p[0].binder.ty, q[0].binder.ty);
     assert!(std::ptr::eq(p[0].params, q[0].params));
     assert!(std::ptr::eq(p[0].static_params, q[0].static_params));
-    let (Core::Case { branches: p, .. }, Core::Case { branches: q, .. }) = (old[6], new[6]) else {
+    let (CoreKind::Case { branches: p, .. }, CoreKind::Case { branches: q, .. }) =
+        (&old[6].kind, &new[6].kind)
+    else {
         panic!()
     };
     assert_eq!(p[0].test, q[0].test);
@@ -121,6 +133,7 @@ fn unchanged_child_slices_survive_parent_rebuild_and_replacements_are_not_revisi
             body: other,
         }],
         Some(leaf),
+        Ty::Const(&crate::ty::ConstTy::Int),
     );
     let replacement = b.delay(leaf);
     let mut replacements = 0;
@@ -133,7 +146,9 @@ fn unchanged_child_slices_survive_parent_rebuild_and_replacements_are_not_revisi
         }
     });
     assert_eq!(replacements, 1);
-    let (Core::Case { branches: p, .. }, Core::Case { branches: q, .. }) = (root, mapped) else {
+    let (CoreKind::Case { branches: p, .. }, CoreKind::Case { branches: q, .. }) =
+        (&root.kind, &mapped.kind)
+    else {
         panic!()
     };
     assert!(std::ptr::eq(*p, *q));
@@ -151,7 +166,7 @@ fn visitor_observes_mapped_children_and_identity_replacement_is_a_noop() {
     let mapped = root.map(&build, &mut |node| {
         if std::ptr::eq(node, leaf) {
             Some(child)
-        } else if matches!(node, Core::Delay(body) if std::ptr::eq(*body, child)) {
+        } else if matches!(&node.kind, CoreKind::Delay(body) if std::ptr::eq(*body, child)) {
             Some(result)
         } else {
             None

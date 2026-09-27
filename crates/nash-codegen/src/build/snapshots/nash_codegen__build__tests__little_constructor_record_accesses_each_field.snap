@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1471
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype entry = Entry { count : int, enabled : bool, label : bytes }\nmain =\n    let\n        item = Entry { label = #\"aabb\", enabled = True, count = 42 }\n    in\n    if item.enabled then addInteger item.count (lengthOfByteString item.label) else 0\n"
 ---
 --- core
@@ -7,10 +8,10 @@ let fromInt#3 : int -> int = \value#9 : int -> value#9 in
 let fromBool#7 : bool -> bool = \value#10 : bool -> value#10 in
 let fromBytes#8 : bytes -> bytes = \value#11 : bytes -> value#11 in
 let item#2 : Main.entry = (\field#4 : int field#5 : bool field#6 : bytes -> constr 0 field#4 field#5 field#6) (fromInt#3 42) (fromBool#7 true) (fromBytes#8 (con bytestring #aabb)) in
-let projection#12 : 'erased = field@1/3 item#2 in
+let projection#12 : bool = field@1/3 item#2 in
 let main#1 : int = case@Bool projection#12 of
-  True -> let projection#13 : 'erased = field@0/3 item#2 in
-  let projection#14 : 'erased = field@2/3 item#2 in
+  True -> let projection#13 : int = field@0/3 item#2 in
+  let projection#14 : bytes = field@2/3 item#2 in
   addInteger projection#13 (lengthOfByteString projection#14)
   False -> fromInt#3 0 in
 main#1

@@ -1,9 +1,10 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 470
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (validate)\ndecoded : Int\ndecoded = validate (B #\"aa\")\nmain = unIData decoded\n"
 ---
 --- core
-let validate#3 : Data -> Int = \value#6 : Data -> let candidate#7 : Int = (\coerce#9 : 'erased -> coerce#9) value#6 in
+let validate#3 : Data -> Int = \value#6 : Data -> let candidate#7 : Int = (\coerce#9 : Data -> coerce#9) value#6 in
 let destruct#8 : int = unIData candidate#7 in
 candidate#7 in
 let fromBytes#5 : bytes -> bytes = \value#10 : bytes -> value#10 in

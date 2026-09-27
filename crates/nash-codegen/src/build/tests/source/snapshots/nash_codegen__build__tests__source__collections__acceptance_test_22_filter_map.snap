@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/collections.rs
+assertion_line: 77
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\nimpl Eq 'a => Eq (option 'a) where\n    eq a b =\n        case (a, b) of\n            (None, None) -> True\n            (Some x, Some y) -> eq x y\n            _ -> False\nfoldr xs f zero =\n    case xs of\n        [] -> zero\n        x :: rest -> f x (foldr rest f zero)\nfilterMap xs f =\n    foldr xs (\\x ys ->\n        case f x of\n            None -> ys\n            Some y -> mkCons y ys\n    ) []\nempty : list int\nempty = []\nmain = eq (filterMap empty (\\_ -> Some 42)) []\n"
 ---
 --- core
 let fromBool#11 : bool -> bool = \value#35 : bool -> value#35 in
 let eq#19 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#45 : 'erased -> self#45 self#45) (\self#45 : 'erased xs#9 : list 'erased ys#10 : list 'erased -> let match#23 : list 'erased = xs#9 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#45 : @self (list 'erased -> list 'erased -> bool) -> self#45 self#45) (\self#45 : @self (list 'erased -> list 'erased -> bool) xs#9 : list 'erased ys#10 : list 'erased -> let match#23 : list 'erased = xs#9 in
 case@List match#23 of
   Nil -> let match#12 : list 'erased = ys#10 in
   case@List match#12 of
@@ -21,7 +22,7 @@ case@List match#23 of
     case@Bool eq#19 x#15 y#17 of
       True -> self#45 self#45 restX#16 restY#18
       False -> false) in
-let foldr#28 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#36 : list 'erased (f#37 : 'erased -> 'erased -> 'erased) zero#38 : 'erased -> (\self#44 : 'erased -> self#44 self#44) (\self#44 : 'erased xs#36 : list 'erased -> let match#41 : list 'erased = xs#36 in
+let foldr#28 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#36 : list 'erased (f#37 : 'erased -> 'erased -> 'erased) zero#38 : 'erased -> (\self#44 : @self (list 'erased -> 'erased) -> self#44 self#44) (\self#44 : @self (list 'erased -> 'erased) xs#36 : list 'erased -> let match#41 : list 'erased = xs#36 in
 case@List match#41 of
   Nil -> zero#38
   Cons field#42 field#43 -> let x#39 : 'erased = field#42 in

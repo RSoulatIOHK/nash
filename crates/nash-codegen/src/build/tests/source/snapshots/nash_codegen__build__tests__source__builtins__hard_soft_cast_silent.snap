@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 66
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Option exposing (type option(..))\ntype foo = Bar | Bax\ntoData : foo -> Data\ntoData value =\n    case value of\n        Bar -> Builtin.constrData 0 []\n        Bax -> Builtin.constrData 1 []\ndecode : Data -> option foo\ndecode value =\n    case value of\n        Constr pair(0, []) -> Some Bar\n        Constr pair(1, []) -> Some Bax\n        _ -> None\nhardCast value =\n    case decode value of\n        Some result -> result\n        None -> fail\nsame a b =\n    case (a, b) of\n        (Bar, Bar) -> True\n        (Bax, Bax) -> True\n        _ -> False\nmain : bool\nmain =\n    let\n        x = toData Bar\n    in\n    case decode x of\n        Some _ -> True\n        None ->\n            let\n                y = hardCast x\n            in\n            same y y\n"
 ---
 --- core
 let fromInt#12 : int -> int = \value#57 : int -> value#57 in
 let eq#13 : int -> int -> bool = equalsInteger in
 let decode#3 : Data -> nash/base:Option.option Main.foo = \value#11 : Data -> let match#18 : Data = value#11 in
-let leaf#30 : 'erased = delay (constr 1) in
+let leaf#30 : @delay (nash/base:Option.option Main.foo) = delay (constr 1) in
 case@Data match#18 of
   DataConstr field#31 -> case@Pair field#31 of
     Pair field#32 field#33 -> case@Bool (\literal#14 : int -> eq#13 literal#14 (fromInt#12 0)) field#32 of
@@ -24,7 +25,7 @@ case@Data match#18 of
   DataB field#41 -> force leaf#30 in
 let fromBool#4 : bool -> bool = \value#42 : bool -> value#42 in
 let same#6 : Main.foo -> Main.foo -> 'erased = \a#43 : Main.foo b#44 : Main.foo -> let match#45 : (Main.foo, Main.foo) = constr 0 a#43 b#44 in
-let leaf#48 : 'erased = delay (fromBool#4 false) in
+let leaf#48 : @delay 'erased = delay (fromBool#4 false) in
 case@Tag match#45 of
   0 field#49 field#50 -> case@Tag field#49 of
     0 -> case@Tag field#50 of

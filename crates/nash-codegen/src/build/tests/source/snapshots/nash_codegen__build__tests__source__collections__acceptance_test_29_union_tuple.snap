@@ -1,13 +1,14 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/collections.rs
+assertion_line: 325
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\n-- Native lists require Storable elements; tuples use a recursive source list.\ntype sequence 'a = Nil | Cons 'a (sequence 'a)\nseqEq same left right =\n    case (left, right) of\n        (Nil, Nil) -> True\n        (Cons x xs, Cons y ys) -> if same x y then seqEq same xs ys else False\n        _ -> False\ntupleEq (a, b) (c, d) = if eq a c then eq b d else False\ntype assocList 'key 'value = AssocList { inner : sequence ('key, 'value) }\nimpl (Eq 'key, Eq 'value) => Eq (assocList 'key 'value) where\n    eq left right = seqEq tupleEq left.inner right.inner\nemptyList = AssocList { inner = Nil }\nfromList xs = AssocList { inner = (doFromList xs) }\ndoFromList xs =\n    case xs of\n        Nil -> Nil\n        Cons (k, v) rest -> doInsert (doFromList rest) k v\ninsert : Eq 'key => assocList 'key 'value -> 'key -> 'value -> assocList 'key 'value\ninsert m k v = AssocList { inner = (doInsert m.inner k v) }\ndoInsert elems k v =\n    case elems of\n        Nil -> Cons (k, v) Nil\n        Cons (k2, v2) rest ->\n            if eq k k2 then Cons (k, v) rest\n            else Cons (k2, v2) (doInsert rest k v)\nunion : Eq 'key => assocList 'key 'value -> assocList 'key 'value -> assocList 'key 'value\nunion left right = AssocList { inner = (doUnion left.inner right.inner) }\ndoUnion left right =\n    case left of\n        Nil -> right\n        Cons (k, v) rest -> doUnion rest (doInsert right k v)\nfixture1 : assocList bytes int\nfixture1 = insert (insert emptyList \"foo\" 42) \"bar\" 14\nmain = eq (union fixture1 emptyList) fixture1\n"
 ---
 --- core
 let message#97 : string = "foo" in
 let message#98 : string = "bar" in
 let fromBool#21 : bool -> bool = \value#74 : bool -> value#74 in
-let seqEq#8 : ('erased -> 'erased -> bool) -> Main.sequence 'erased -> Main.sequence 'erased -> 'erased = \(same#18 : 'erased -> 'erased -> bool) left#19 : Main.sequence 'erased right#20 : Main.sequence 'erased -> (\self#31 : 'erased -> self#31 self#31) (\self#31 : 'erased left#19 : Main.sequence 'erased right#20 : Main.sequence 'erased -> let match#26 : (Main.sequence 'erased, Main.sequence 'erased) = constr 0 left#19 right#20 in
-let leaf#35 : 'erased = delay (fromBool#21 false) in
+let seqEq#8 : ('erased -> 'erased -> bool) -> Main.sequence 'erased -> Main.sequence 'erased -> 'erased = \(same#18 : 'erased -> 'erased -> bool) left#19 : Main.sequence 'erased right#20 : Main.sequence 'erased -> (\self#31 : @self (Main.sequence 'erased -> Main.sequence 'erased -> 'erased) -> self#31 self#31) (\self#31 : @self (Main.sequence 'erased -> Main.sequence 'erased -> 'erased) left#19 : Main.sequence 'erased right#20 : Main.sequence 'erased -> let match#26 : (Main.sequence 'erased, Main.sequence 'erased) = constr 0 left#19 right#20 in
+let leaf#35 : @delay 'erased = delay (fromBool#21 false) in
 case@Tag match#26 of
   0 field#36 field#37 -> case@Tag field#36 of
     0 -> case@Tag field#37 of
@@ -35,10 +36,10 @@ case@Tag match#55 of
     case@Bool eq#50 a#45 c#48 of
       True -> eq#51 b#46 d#49
       False -> fromBool#21 false in
-let eq#2 : Main.assocList 'erased 'erased -> Main.assocList 'erased 'erased -> bool = \left#6 : Main.assocList 'erased 'erased right#7 : Main.assocList 'erased 'erased -> let projection#92 : 'erased = field@0/1 left#6 in
-let projection#93 : 'erased = field@0/1 right#7 in
+let eq#2 : Main.assocList 'erased 'erased -> Main.assocList 'erased 'erased -> bool = \left#6 : Main.assocList 'erased 'erased right#7 : Main.assocList 'erased 'erased -> let projection#92 : Main.sequence ('erased, 'erased) = field@0/1 left#6 in
+let projection#93 : Main.sequence ('erased, 'erased) = field@0/1 right#7 in
 seqEq#8 tupleEq#9 projection#92 projection#93 in
-let doInsert#63 : Main.sequence ('erased, 'erased) -> 'erased -> 'erased -> Main.sequence ('erased, 'erased) = \elems#75 : Main.sequence ('erased, 'erased) k#76 : 'erased v#77 : 'erased -> (\self#30 : 'erased -> self#30 self#30) (\self#30 : 'erased elems#75 : Main.sequence ('erased, 'erased) -> let match#87 : Main.sequence ('erased, 'erased) = elems#75 in
+let doInsert#63 : Main.sequence ('erased, 'erased) -> 'erased -> 'erased -> Main.sequence ('erased, 'erased) = \elems#75 : Main.sequence ('erased, 'erased) k#76 : 'erased v#77 : 'erased -> (\self#30 : @self (Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased)) -> self#30 self#30) (\self#30 : @self (Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased)) elems#75 : Main.sequence ('erased, 'erased) -> let match#87 : Main.sequence ('erased, 'erased) = elems#75 in
 case@Tag match#87 of
   0 -> (\field#78 : ('erased, 'erased) field#79 : Main.sequence ('erased, 'erased) -> constr 1 field#78 field#79) (constr 0 k#76 v#77) (constr 0)
   1 field#88 field#89 -> case@Tag field#88 of
@@ -48,7 +49,7 @@ case@Tag match#87 of
     case@Bool eq#50 k#76 k2#80 of
       True -> (\field#85 : ('erased, 'erased) field#86 : Main.sequence ('erased, 'erased) -> constr 1 field#85 field#86) (constr 0 k#76 v#77) rest#82
       False -> (\field#83 : ('erased, 'erased) field#84 : Main.sequence ('erased, 'erased) -> constr 1 field#83 field#84) (constr 0 k2#80 v2#81) (self#30 self#30 rest#82)) elems#75 in
-let doUnion#13 : Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased) = (\self#27 : 'erased -> self#27 self#27) (\self#27 : 'erased left#58 : Main.sequence ('erased, 'erased) right#59 : Main.sequence ('erased, 'erased) -> let match#64 : Main.sequence ('erased, 'erased) = left#58 in
+let doUnion#13 : Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased) = (\self#27 : @self (Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased)) -> self#27 self#27) (\self#27 : @self (Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased) -> Main.sequence ('erased, 'erased)) left#58 : Main.sequence ('erased, 'erased) right#59 : Main.sequence ('erased, 'erased) -> let match#64 : Main.sequence ('erased, 'erased) = left#58 in
 case@Tag match#64 of
   0 -> right#59
   1 field#65 field#66 -> case@Tag field#65 of
@@ -56,11 +57,11 @@ case@Tag match#64 of
     let k#60 : 'erased = field#67 in
     let v#61 : 'erased = field#68 in
     self#27 self#27 rest#62 (doInsert#63 right#59 k#60 v#61)) in
-let union#3 : Main.assocList 'erased 'erased -> Main.assocList 'erased 'erased -> Main.assocList 'erased 'erased = \left#10 : Main.assocList 'erased 'erased right#11 : Main.assocList 'erased 'erased -> let projection#94 : 'erased = field@0/1 left#10 in
-let projection#95 : 'erased = field@0/1 right#11 in
+let union#3 : Main.assocList 'erased 'erased -> Main.assocList 'erased 'erased -> Main.assocList 'erased 'erased = \left#10 : Main.assocList 'erased 'erased right#11 : Main.assocList 'erased 'erased -> let projection#94 : Main.sequence ('erased, 'erased) = field@0/1 left#10 in
+let projection#95 : Main.sequence ('erased, 'erased) = field@0/1 right#11 in
 (\field#12 : Main.sequence ('erased, 'erased) -> constr 0 field#12) (doUnion#13 projection#94 projection#95) in
 let emptyList#5 : Main.assocList 'erased 'erased = (\field#17 : Main.sequence ('erased, 'erased) -> constr 0 field#17) (constr 0) in
-let insert#14 : Main.assocList 'erased 'erased -> 'erased -> 'erased -> Main.assocList 'erased 'erased = \m#69 : Main.assocList 'erased 'erased k#70 : 'erased v#71 : 'erased -> let projection#96 : 'erased = field@0/1 m#69 in
+let insert#14 : Main.assocList 'erased 'erased -> 'erased -> 'erased -> Main.assocList 'erased 'erased = \m#69 : Main.assocList 'erased 'erased k#70 : 'erased v#71 : 'erased -> let projection#96 : Main.sequence ('erased, 'erased) = field@0/1 m#69 in
 (\field#72 : Main.sequence ('erased, 'erased) -> constr 0 field#72) (doInsert#63 projection#96 k#70 v#71) in
 let fromString#15 : string -> bytes = encodeUtf8 in
 let fromInt#16 : int -> int = \value#73 : int -> value#73 in

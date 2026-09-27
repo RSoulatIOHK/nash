@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 547
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (validate)\nimport Lift exposing (lower)\nimport Functor\nmain =\n    let\n        a : Data\n        a = List [I 1, I 2, I 3]\n        checked : List Int\n        checked = validate a\n        values : list int\n        values = Functor.map Builtin.unIData (Builtin.unListData checked)\n    in\n    case values of\n        h :: j :: _ -> if equalsInteger h h then equalsInteger j j else False\n        _ -> fail\n"
 ---
 --- core
 let fromBool#7 : bool -> bool = \value#25 : bool -> value#25 in
-let mapList#26 : ('erased -> int) -> list 'erased -> list int = \(f#34 : 'erased -> int) values#35 : list 'erased -> (\self#10 : 'erased -> self#10 self#10) (\self#10 : 'erased values#35 : list 'erased -> let match#38 : list 'erased = values#35 in
+let mapList#26 : ('erased -> int) -> list 'erased -> list int = \(f#34 : 'erased -> int) values#35 : list 'erased -> (\self#10 : @self (list 'erased -> list int) -> self#10 self#10) (\self#10 : @self (list 'erased -> list int) values#35 : list 'erased -> let match#38 : list 'erased = values#35 in
 case@List match#38 of
   Nil -> (con (list integer) [])
   Cons field#39 field#40 -> let x#36 : 'erased = field#39 in
@@ -12,24 +13,24 @@ case@List match#38 of
   mkCons (f#34 x#36) (self#10 self#10 xs#37)) values#35 in
 let map#18 : ('erased -> int) -> list 'erased -> list int = mapList#26 in
 let applyForward#29 : 'erased -> ('erased -> 'erased) -> 'erased = \x#41 : 'erased (f#42 : 'erased -> 'erased) -> f#42 x#41 in
-let mapList#30 : ('erased -> Data) -> list 'erased -> list Data = \(f#43 : 'erased -> Data) values#44 : list 'erased -> (\self#9 : 'erased -> self#9 self#9) (\self#9 : 'erased values#44 : list 'erased -> let match#47 : list 'erased = values#44 in
+let mapList#30 : ('erased -> Data) -> list 'erased -> list Data = \(f#43 : 'erased -> Data) values#44 : list 'erased -> (\self#9 : @self (list 'erased -> list Data) -> self#9 self#9) (\self#9 : @self (list 'erased -> list Data) values#44 : list 'erased -> let match#47 : list 'erased = values#44 in
 case@List match#47 of
   Nil -> (con (list data) [])
   Cons field#48 field#49 -> let first#45 : 'erased = field#48 in
   let rest#46 : list 'erased = field#49 in
   mkCons (f#43 first#45) (self#9 self#9 rest#46)) values#44 in
-let validate#31 : Data -> Int = \value#50 : Data -> let candidate#51 : Int = (\coerce#53 : 'erased -> coerce#53) value#50 in
+let validate#31 : Data -> Int = \value#50 : Data -> let candidate#51 : Int = (\coerce#53 : Data -> coerce#53) value#50 in
 let destruct#52 : int = unIData candidate#51 in
 candidate#51 in
-let validate#19 : Data -> List Data = \value#27 : Data -> let candidate#28 : List Data = (\coerce#32 : 'erased -> coerce#32) value#27 in
+let validate#19 : Data -> List Data = \value#27 : Data -> let candidate#28 : List Data = (\coerce#32 : Data -> coerce#32) value#27 in
 applyForward#29 (applyForward#29 (applyForward#29 candidate#28 unListData) (mapList#30 validate#31)) listData in
 let fromInt#22 : int -> int = \value#33 : int -> value#33 in
 let a#2 : Data = (\field#20 : list Data -> listData field#20) (mkCons ((\field#21 : int -> iData field#21) (fromInt#22 1)) (mkCons ((\field#23 : int -> iData field#23) (fromInt#22 2)) (mkCons ((\field#24 : int -> iData field#24) (fromInt#22 3)) (con (list data) [])))) in
 let checked#3 : List Int = validate#19 a#2 in
-let projection#54 : list Data = unListData checked#3 in
+let projection#54 : list Int = unListData checked#3 in
 let values#4 : list int = map#18 unIData projection#54 in
 let match#8 : list int = values#4 in
-let leaf#13 : 'erased = delay error in
+let leaf#13 : @delay bool = delay error in
 let main#1 : bool = case@List match#8 of
   Nil -> force leaf#13
   Cons field#14 field#15 -> case@List field#15 of

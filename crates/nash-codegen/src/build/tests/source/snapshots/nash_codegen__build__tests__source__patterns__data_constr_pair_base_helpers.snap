@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 730
 description: "module Main exposing (..)\nimport Data\nimport Primitive exposing (..)\nimport Option exposing (type option(..))\nmain : int\nmain =\n    let index = Data.tag (Builtin.constrData 7 [I 42]) in\n    case Data.fields (Builtin.constrData 7 [I 42]) of\n        [I number] -> Builtin.addInteger index number\n        _ -> fail\n"
 ---
 --- core
@@ -18,7 +19,7 @@ case@Pair match#39 of
   index#38 in
 let index#2 : int = tag#27 (constrData (fromInt#4 7) (mkCons ((\field#28 : int -> iData field#28) (fromInt#4 42)) (con (list data) []))) in
 let match#7 : list Data = fields#3 (constrData (fromInt#4 7) (mkCons ((\field#5 : int -> iData field#5) (fromInt#4 42)) (con (list data) []))) in
-let leaf#17 : 'erased = delay error in
+let leaf#17 : @delay int = delay error in
 let main#1 : int = case@List match#7 of
   Nil -> force leaf#17
   Cons field#18 field#19 -> case@Data field#18 of

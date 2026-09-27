@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 1028
 description: "module Main exposing (..)\ntype Record = Record { a : Int, b : Int, c : Int }\nchange : Record -> Record\nchange value = { value | c = (trace \"c\" 30), a = (trace \"a\" 10) }\nmain : Record\nmain = change (trace \"base\" (Record 1 2 3))\n"
 ---
 --- core
@@ -9,7 +10,7 @@ let message#21 : string = "base" in
 let fromInt#6 : int -> Int = iData in
 let fromString#7 : string -> string = \value#16 : string -> value#16 in
 let change#2 : Main.Record -> Main.Record = \value#8 : Main.Record -> let base#9 : Main.Record = value#8 in
-let evaluated#18 : 'erased = trace (fromString#7 message#19) in fromInt#6 10 in
+let evaluated#18 : Int = trace (fromString#7 message#19) in fromInt#6 10 in
 let projection#17 : pair int (list Data) = unConstrData base#9 in
 case@Pair projection#17 of
   Pair tag#10 fields#11 -> case@List fields#11 of

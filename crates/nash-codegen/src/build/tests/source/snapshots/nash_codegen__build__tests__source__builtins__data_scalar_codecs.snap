@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 315
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData, fromData)\ndecodedInt : Int\ndecodedInt = fromData (I 42)\ndecodedBytes : Bytes\ndecodedBytes = fromData (B #\"abcd\")\nmain =\n    if equalsInteger (unIData decodedInt) 42 then\n        if equalsByteString (unBData decodedBytes) #\"abcd\" then\n            equalsData (toData decodedInt) (I 42)\n        else False\n    else False\n"
 ---
 --- core
 let fromBool#2 : bool -> bool = \value#9 : bool -> value#9 in
 let fromInt#4 : int -> int = \value#12 : int -> value#12 in
-let fromData#10 : Data -> 'erased = \coerce#16 : 'erased -> coerce#16 in
+let fromData#10 : Data -> 'erased = \coerce#16 : Data -> coerce#16 in
 let decodedInt#3 : Int = fromData#10 ((\field#11 : int -> iData field#11) (fromInt#4 42)) in
 let fromBytes#6 : bytes -> bytes = \value#14 : bytes -> value#14 in
 let decodedBytes#5 : Bytes = fromData#10 ((\field#13 : bytes -> bData field#13) (fromBytes#6 (con bytestring #abcd))) in

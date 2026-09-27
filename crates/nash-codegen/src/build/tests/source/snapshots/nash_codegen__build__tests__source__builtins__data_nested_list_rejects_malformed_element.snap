@@ -1,26 +1,27 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 366
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (validate)\ndecoded : List (List Int)\ndecoded = validate (List [List [I 1, B #\"aa\"]])\nmain = nullList (unListData decoded)\n"
 ---
 --- core
 let applyForward#12 : 'erased -> ('erased -> 'erased) -> 'erased = \x#18 : 'erased (f#19 : 'erased -> 'erased) -> f#19 x#18 in
-let mapList#13 : ('erased -> Data) -> list 'erased -> list Data = \(f#20 : 'erased -> Data) values#21 : list 'erased -> (\self#36 : 'erased -> self#36 self#36) (\self#36 : 'erased values#21 : list 'erased -> let match#24 : list 'erased = values#21 in
+let mapList#13 : ('erased -> Data) -> list 'erased -> list Data = \(f#20 : 'erased -> Data) values#21 : list 'erased -> (\self#36 : @self (list 'erased -> list Data) -> self#36 self#36) (\self#36 : @self (list 'erased -> list Data) values#21 : list 'erased -> let match#24 : list 'erased = values#21 in
 case@List match#24 of
   Nil -> (con (list data) [])
   Cons field#25 field#26 -> let first#22 : 'erased = field#25 in
   let rest#23 : list 'erased = field#26 in
   mkCons (f#20 first#22) (self#36 self#36 rest#23)) values#21 in
-let validate#29 : Data -> Int = \value#31 : Data -> let candidate#32 : Int = (\coerce#34 : 'erased -> coerce#34) value#31 in
+let validate#29 : Data -> Int = \value#31 : Data -> let candidate#32 : Int = (\coerce#34 : Data -> coerce#34) value#31 in
 let destruct#33 : int = unIData candidate#32 in
 candidate#32 in
-let validate#14 : Data -> List Data = \value#27 : Data -> let candidate#28 : List Data = (\coerce#30 : 'erased -> coerce#30) value#27 in
+let validate#14 : Data -> List Data = \value#27 : Data -> let candidate#28 : List Data = (\coerce#30 : Data -> coerce#30) value#27 in
 applyForward#12 (applyForward#12 (applyForward#12 candidate#28 unListData) (mapList#13 validate#29)) listData in
-let validate#3 : Data -> List Data = \value#10 : Data -> let candidate#11 : List Data = (\coerce#15 : 'erased -> coerce#15) value#10 in
+let validate#3 : Data -> List Data = \value#10 : Data -> let candidate#11 : List Data = (\coerce#15 : Data -> coerce#15) value#10 in
 applyForward#12 (applyForward#12 (applyForward#12 candidate#11 unListData) (mapList#13 validate#14)) listData in
 let fromInt#7 : int -> int = \value#16 : int -> value#16 in
 let fromBytes#9 : bytes -> bytes = \value#17 : bytes -> value#17 in
 let decoded#2 : List (List Int) = validate#3 ((\field#4 : list Data -> listData field#4) (mkCons ((\field#5 : list Data -> listData field#5) (mkCons ((\field#6 : int -> iData field#6) (fromInt#7 1)) (mkCons ((\field#8 : bytes -> bData field#8) (fromBytes#9 (con bytestring #aa))) (con (list data) [])))) (con (list data) []))) in
-let projection#35 : list Data = unListData decoded#2 in
+let projection#35 : list (List Int) = unListData decoded#2 in
 let main#1 : bool = nullList projection#35 in
 main#1
 --- uplc

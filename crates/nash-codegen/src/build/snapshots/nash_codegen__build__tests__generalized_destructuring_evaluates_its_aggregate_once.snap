@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : (unit, bool)\nmain =\n    let\n        (first, second) = trace \"aggregate\" (\\x -> x, \\x -> x)\n    in\n    (first (), second True)\n"
 ---
 --- core
@@ -9,7 +10,7 @@ let fromBool#14 : bool -> bool = \value#19 : bool -> value#19 in
 let fromString#17 : string -> string = \value#20 : string -> value#20 in
 let destruct#2 : ('erased -> 'erased, 'erased -> 'erased) = trace (fromString#17 message#22) in constr 0 (\x#15 : 'erased -> x#15) (\x#16 : 'erased -> x#16) in
 let match#5 : ('erased -> 'erased, 'erased -> 'erased) = destruct#2 in
-let evaluated#21 : 'erased = (case@Tag match#5 of
+let evaluated#21 : unit = (case@Tag match#5 of
   0 field#6 field#7 -> let first#3 : 'erased -> 'erased = field#6 in
   let second#4 : 'erased -> 'erased = field#7 in
   first#3) (fromUnit#8 ()) in

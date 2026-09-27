@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : (unit, bool)\nmain =\n    let\n        (identity, second) = (\\x -> x, \\x -> x)\n    in\n    (identity (), second True)\n"
 ---
 --- core
@@ -7,7 +8,7 @@ let fromUnit#8 : unit -> unit = \value#17 : unit -> value#17 in
 let fromBool#14 : bool -> bool = \value#18 : bool -> value#18 in
 let destruct#2 : ('erased -> 'erased, 'erased -> 'erased) = constr 0 (\x#15 : 'erased -> x#15) (\x#16 : 'erased -> x#16) in
 let match#5 : ('erased -> 'erased, 'erased -> 'erased) = destruct#2 in
-let evaluated#19 : 'erased = (case@Tag match#5 of
+let evaluated#19 : unit = (case@Tag match#5 of
   0 field#6 field#7 -> let identity#3 : 'erased -> 'erased = field#6 in
   let second#4 : 'erased -> 'erased = field#7 in
   identity#3) (fromUnit#8 ()) in

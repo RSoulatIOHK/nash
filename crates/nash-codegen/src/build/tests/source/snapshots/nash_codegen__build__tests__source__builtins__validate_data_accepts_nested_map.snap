@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 484
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (validate, toData)\ninput = Map [mkPairData (B #\"aa\") (List [I 42])]\ndecoded : Map Bytes (List Int)\ndecoded = validate input\nmain = equalsData (toData decoded) input\n"
 ---
 --- core
@@ -8,32 +9,32 @@ let fromBytes#9 : bytes -> bytes = \value#19 : bytes -> value#19 in
 let fromInt#12 : int -> int = \value#20 : int -> value#20 in
 let input#4 : Data = (\field#7 : list (pair Data Data) -> mapData field#7) (mkCons (mkPairData ((\field#8 : bytes -> bData field#8) (fromBytes#9 (con bytestring #aa))) ((\field#10 : list Data -> listData field#10) (mkCons ((\field#11 : int -> iData field#11) (fromInt#12 42)) (con (list data) [])))) (con (list (pair data data)) [])) in
 let applyForward#15 : 'erased -> ('erased -> 'erased) -> 'erased = \x#21 : 'erased (f#22 : 'erased -> 'erased) -> f#22 x#21 in
-let mapList#16 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#23 : 'erased -> pair Data Data) values#24 : list 'erased -> (\self#59 : 'erased -> self#59 self#59) (\self#59 : 'erased values#24 : list 'erased -> let match#27 : list 'erased = values#24 in
+let mapList#16 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#23 : 'erased -> pair Data Data) values#24 : list 'erased -> (\self#59 : @self (list 'erased -> list (pair Data Data)) -> self#59 self#59) (\self#59 : @self (list 'erased -> list (pair Data Data)) values#24 : list 'erased -> let match#27 : list 'erased = values#24 in
 case@List match#27 of
   Nil -> (con (list (pair data data)) [])
   Cons field#28 field#29 -> let first#25 : 'erased = field#28 in
   let rest#26 : list 'erased = field#29 in
   mkCons (f#23 first#25) (self#59 self#59 rest#26)) values#24 in
-let validate#33 : Data -> Bytes = \value#38 : Data -> let candidate#39 : Bytes = (\coerce#41 : 'erased -> coerce#41) value#38 in
+let validate#33 : Data -> Bytes = \value#38 : Data -> let candidate#39 : Bytes = (\coerce#41 : Data -> coerce#41) value#38 in
 let destruct#40 : bytes = unBData candidate#39 in
 candidate#39 in
-let mapList#44 : ('erased -> Data) -> list 'erased -> list Data = \(f#47 : 'erased -> Data) values#48 : list 'erased -> (\self#58 : 'erased -> self#58 self#58) (\self#58 : 'erased values#48 : list 'erased -> let match#51 : list 'erased = values#48 in
+let mapList#44 : ('erased -> Data) -> list 'erased -> list Data = \(f#47 : 'erased -> Data) values#48 : list 'erased -> (\self#58 : @self (list 'erased -> list Data) -> self#58 self#58) (\self#58 : @self (list 'erased -> list Data) values#48 : list 'erased -> let match#51 : list 'erased = values#48 in
 case@List match#51 of
   Nil -> (con (list data) [])
   Cons field#52 field#53 -> let first#49 : 'erased = field#52 in
   let rest#50 : list 'erased = field#53 in
   mkCons (f#47 first#49) (self#58 self#58 rest#50)) values#48 in
-let validate#45 : Data -> Int = \value#54 : Data -> let candidate#55 : Int = (\coerce#57 : 'erased -> coerce#57) value#54 in
+let validate#45 : Data -> Int = \value#54 : Data -> let candidate#55 : Int = (\coerce#57 : Data -> coerce#57) value#54 in
 let destruct#56 : int = unIData candidate#55 in
 candidate#55 in
-let validate#34 : Data -> List Data = \value#42 : Data -> let candidate#43 : List Data = (\coerce#46 : 'erased -> coerce#46) value#42 in
+let validate#34 : Data -> List Data = \value#42 : Data -> let candidate#43 : List Data = (\coerce#46 : Data -> coerce#46) value#42 in
 applyForward#15 (applyForward#15 (applyForward#15 candidate#43 unListData) (mapList#44 validate#45)) listData in
 let pairValidate#17 : pair Data Data -> pair Data Data = \arg#30 : pair Data Data -> let match#35 : pair Data Data = arg#30 in
 case@Pair match#35 of
   Pair field#36 field#37 -> let key#31 : Data = field#36 in
   let value#32 : Data = field#37 in
   mkPairData (validate#33 key#31) (validate#34 value#32) in
-let validate#6 : Data -> Map Data Data = \value#13 : Data -> let candidate#14 : Map Data Data = (\coerce#18 : 'erased -> coerce#18) value#13 in
+let validate#6 : Data -> Map Data Data = \value#13 : Data -> let candidate#14 : Map Data Data = (\coerce#18 : Data -> coerce#18) value#13 in
 applyForward#15 (applyForward#15 (applyForward#15 candidate#14 unMapData) (mapList#16 pairValidate#17)) mapData in
 let decoded#3 : Map Bytes (List Int) = validate#6 input#4 in
 let main#1 : bool = equalsData (toData#2 decoded#3) input#4 in

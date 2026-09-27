@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 692
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Option exposing (type option(..))\nimport Monad exposing (Monad)\nresult =\n    do\n        pair(tag, _) <- Some (Builtin.unConstrData (Builtin.constrData 42 []))\n        Some tag\nmain : int\nmain =\n    case result of\n        Some tag -> tag\n        None -> fail\n"
 ---
 --- core
@@ -9,7 +10,7 @@ case@Tag match#18 of
   f#16 item#17
   1 -> constr 1 in
 let fromInt#8 : int -> int = \value#20 : int -> value#20 in
-let evaluated#21 : 'erased = constrData (fromInt#8 42) (con (list data) []) in
+let evaluated#21 : Data = constrData (fromInt#8 42) (con (list data) []) in
 let projection#22 : pair int (list Data) = unConstrData evaluated#21 in
 let result#2 : nash/base:Option.option int = bind#6 ((\field#7 : pair int (list Data) -> constr 0 field#7) projection#22) (\arg#9 : pair int (list Data) -> let match#12 : pair int (list Data) = arg#9 in
 case@Pair match#12 of

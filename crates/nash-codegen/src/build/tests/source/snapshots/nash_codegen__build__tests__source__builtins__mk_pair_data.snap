@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 200
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData)\nmain : bool\nmain = equalsData\n    (toData (Builtin.fstPair (Builtin.mkPairData (Builtin.iData 1) (Builtin.iData 2))))\n    (toData (Builtin.iData 1))\n"
 ---
 --- core
 let toData#2 : 'erased -> Data = \coerce#4 : 'erased -> coerce#4 in
 let fromInt#3 : int -> int = \value#5 : int -> value#5 in
-let evaluated#6 : 'erased = mkPairData (iData (fromInt#3 1)) (iData (fromInt#3 2)) in
-let projection#7 : 'erased = fstPair evaluated#6 in
+let evaluated#6 : pair Int Int = mkPairData (iData (fromInt#3 1)) (iData (fromInt#3 2)) in
+let projection#7 : Int = fstPair evaluated#6 in
 let main#1 : bool = equalsData (toData#2 projection#7) (toData#2 (iData (fromInt#3 1))) in
 main#1
 --- uplc

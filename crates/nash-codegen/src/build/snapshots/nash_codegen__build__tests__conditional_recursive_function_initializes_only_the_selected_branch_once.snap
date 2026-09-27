@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nloop : bool -> unit\nloop =\n    if trace \"condition\" True then\n        trace \"selected\" (\\flag -> if flag then () else loop True)\n    else\n        trace \"unselected\" (\\flag -> loop flag)\nmain = loop False\n"
 ---
 --- core
@@ -10,12 +11,12 @@ let fromBool#3 : bool -> bool = \value#8 : bool -> value#8 in
 let fromString#5 : string -> string = \value#9 : string -> value#9 in
 let fromUnit#7 : unit -> unit = \value#10 : unit -> value#10 in
 case@Bool (trace (fromString#5 message#11) in fromBool#3 true) of
-  True -> trace (fromString#5 message#12) in let loop#2 : bool -> unit = (\self#14 : 'erased -> self#14 self#14) (\self#14 : 'erased flag#6 : bool -> case@Bool flag#6 of
+  True -> trace (fromString#5 message#12) in let loop#2 : bool -> unit = (\self#14 : @self (bool -> unit) -> self#14 self#14) (\self#14 : @self (bool -> unit) flag#6 : bool -> case@Bool flag#6 of
     True -> fromUnit#7 ()
     False -> self#14 self#14 (fromBool#3 true)) in
   let main#1 : unit = loop#2 (fromBool#3 false) in
   main#1
-  False -> trace (fromString#5 message#13) in let loop#2 : bool -> unit = \flag#4 : bool -> force ((\self#16 : 'erased -> self#16 self#16) (\self#16 : 'erased -> delay force (self#16 self#16))) in
+  False -> trace (fromString#5 message#13) in let loop#2 : bool -> unit = \flag#4 : bool -> force ((\self#16 : @self (@delay unit) -> self#16 self#16) (\self#16 : @self (@delay unit) -> delay force (self#16 self#16))) in
   let main#1 : unit = loop#2 (fromBool#3 false) in
   main#1
 --- uplc

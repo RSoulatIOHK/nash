@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 677
 description: "module Main exposing (..)\nimport Primitive exposing (..)\ninspect value =\n    case value of\n        pair(I a, B bytes) -> Builtin.addInteger a (Builtin.lengthOfByteString bytes)\n        _ -> 0\nmain : int\nmain = Builtin.addInteger (inspect (Builtin.mkPairData (I 40) (B #\"aabb\"))) (inspect (Builtin.mkPairData (B #\"\") (I 2)))\n"
 ---
 --- core
 let fromInt#4 : int -> int = \value#38 : int -> value#38 in
 let inspect#2 : pair Data Data -> int = \value#9 : pair Data Data -> let match#12 : pair Data Data = value#9 in
-let leaf#25 : 'erased = delay (fromInt#4 0) in
+let leaf#25 : @delay int = delay (fromInt#4 0) in
 case@Pair match#12 of
   Pair field#26 field#27 -> case@Data field#26 of
     DataConstr field#28 -> force leaf#25

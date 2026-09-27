@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 558
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (fromData, toData)\ntype Token = Token Int\ntype alias Wrapped = { item : Token }\nunchecked : Big 'a => Data -> 'a\nunchecked = fromData\nwrapped : Wrapped\nwrapped = unchecked (List [Builtin.constrData 0 [I 42]])\ntokens : List Token\ntokens = unchecked (List [B #\"aa\"])\nmapping : Map Token Token\nmapping = fromData (Map [mkPairData (B #\"aa\") (I 7)])\nmain =\n    if equalsData (toData wrapped) (List [Builtin.constrData 0 [I 42]]) then\n        if equalsData (toData tokens) (List [B #\"aa\"]) then\n            equalsData (toData mapping) (Map [mkPairData (B #\"aa\") (I 7)])\n        else False\n    else False\n"
 ---
 --- core
 let fromBool#2 : bool -> bool = \value#16 : bool -> value#16 in
 let toData#3 : 'erased -> Data = \coerce#17 : 'erased -> coerce#17 in
 let fromInt#6 : int -> int = \value#21 : int -> value#21 in
-let fromData#25 : Data -> 'erased = \coerce#29 : 'erased -> coerce#29 in
+let fromData#25 : Data -> 'erased = \coerce#29 : Data -> coerce#29 in
 let unchecked#18 : Data -> Data = fromData#25 in
 let wrapped#4 : { _0 : Main.Token } = unchecked#18 ((\field#19 : list Data -> listData field#19) (mkCons (constrData (fromInt#6 0) (mkCons ((\field#20 : int -> iData field#20) (fromInt#6 42)) (con (list data) []))) (con (list data) []))) in
 let fromBytes#11 : bytes -> bytes = \value#24 : bytes -> value#24 in

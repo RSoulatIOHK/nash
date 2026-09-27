@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntrait Eq 'a => Same 'a where\n    same : 'a -> 'a -> bool\n    same x y = eq x y\nimpl Same int where\nimpl Eq (list 'a) => Same (list 'a) where\nuse : Same 'a => 'a -> 'a -> bool\nuse x y = if same x y then neq x y else True\nmain = use [1, 2] [1, 3]\n"
 ---
 --- core
 let fromBool#6 : bool -> bool = \value#10 : bool -> value#10 in
 let eq#26 : int -> int -> bool = equalsInteger in
-let eq#13 : list 'erased -> list 'erased -> bool = (\self#35 : 'erased -> self#35 self#35) (\self#35 : 'erased xs#17 : list 'erased ys#18 : list 'erased -> let match#30 : list 'erased = xs#17 in
+let eq#13 : list 'erased -> list 'erased -> bool = (\self#35 : @self (list 'erased -> list 'erased -> bool) -> self#35 self#35) (\self#35 : @self (list 'erased -> list 'erased -> bool) xs#17 : list 'erased ys#18 : list 'erased -> let match#30 : list 'erased = xs#17 in
 case@List match#30 of
   Nil -> let match#19 : list 'erased = ys#18 in
   case@List match#19 of
@@ -22,7 +23,7 @@ case@List match#30 of
       True -> self#35 self#35 restX#23 restY#25
       False -> false) in
 let same#7 : 'erased -> 'erased -> bool = \x#11 : 'erased y#12 : 'erased -> eq#13 x#11 y#12 in
-let not#16 : 'erased -> bool = \value#33 : 'erased -> case@Bool (\identity#34 : 'erased -> identity#34) value#33 of
+let not#16 : 'erased -> bool = \value#33 : 'erased -> case@Bool (\identity#34 : bool -> identity#34) value#33 of
   True -> false
   False -> true in
 let neq#8 : 'erased -> 'erased -> bool = \a#14 : 'erased b#15 : 'erased -> not#16 (eq#13 a#14 b#15) in

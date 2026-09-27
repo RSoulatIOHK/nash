@@ -1,15 +1,16 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1487
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int, e : Int, f : Int }\nselect : Record -> int\nselect r = Builtin.addInteger (Builtin.unIData r.b)\n    (Builtin.addInteger (Builtin.unIData r.e) (Builtin.unIData r.f))\nmain = select { a = 1, b = 2, c = 3, d = 4, e = 5, f = 6 }\n"
 ---
 --- core
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } -> let projection#13 : list Data = unListData r#4 in
 case@List projection#13 of
   Cons head#5 tail#6 -> case@List tail#6 of
-    Cons head#7 tail#8 -> let evaluated#16 : 'erased = unIData head#7 in
+    Cons head#7 tail#8 -> let evaluated#16 : int = unIData head#7 in
     let projection#14 : list Data = dropList 2 tail#8 in
     case@List projection#14 of
-      Cons head#9 tail#10 -> let evaluated#15 : 'erased = unIData head#9 in
+      Cons head#9 tail#10 -> let evaluated#15 : int = unIData head#9 in
       case@List tail#10 of
         Cons head#11 tail#12 -> addInteger evaluated#16 (addInteger evaluated#15 (unIData head#11)) in
 let fromInt#3 : int -> Int = iData in

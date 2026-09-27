@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1502
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nselect : Record -> int\nselect r = Builtin.addInteger (Builtin.unIData r.d)\n    (Builtin.addInteger (Builtin.unIData r.b) (Builtin.unIData r.d))\nmain = select { a = 1, b = 2, c = 3, d = 4 }\n"
 ---
 --- core
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let projection#13 : list Data = unListData r#4 in
 let projection#14 : list Data = dropList 3 projection#13 in
 case@List projection#14 of
-  Cons head#5 tail#6 -> let evaluated#15 : 'erased = unIData head#5 in
+  Cons head#5 tail#6 -> let evaluated#15 : int = unIData head#5 in
   case@List projection#13 of
     Cons head#7 tail#8 -> case@List tail#8 of
       Cons head#9 tail#10 -> addInteger evaluated#15 (addInteger (unIData head#9) (unIData head#5)) in

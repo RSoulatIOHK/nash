@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 747
 description: "module Main exposing (..)\nimport Primitive exposing (..)\ntype Datum = Datum { a : Int, b : Int, c : Int, d : Int }\nmain : int\nmain = Builtin.unIData ((Datum { a = 10, b = 20, c = 30, d = 40 }).d)\n"
 ---
 --- core
 let fromInt#6 : int -> Int = iData in
-let evaluated#11 : 'erased = (\field#2 : Int field#3 : Int field#4 : Int field#5 : Int -> constrData 0 (mkCons field#2 (mkCons field#3 (mkCons field#4 (mkCons field#5 (con (list data) [])))))) (fromInt#6 10) (fromInt#6 20) (fromInt#6 30) (fromInt#6 40) in
+let evaluated#11 : Main.Datum = (\field#2 : Int field#3 : Int field#4 : Int field#5 : Int -> constrData 0 (mkCons field#2 (mkCons field#3 (mkCons field#4 (mkCons field#5 (con (list data) [])))))) (fromInt#6 10) (fromInt#6 20) (fromInt#6 30) (fromInt#6 40) in
 let projection#12 : pair int (list Data) = unConstrData evaluated#11 in
 case@Pair projection#12 of
   Pair tag#7 fields#8 -> let projection#13 : list Data = dropList 3 fields#8 in

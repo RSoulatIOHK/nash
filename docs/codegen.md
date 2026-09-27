@@ -29,6 +29,20 @@ user type to `Data`. Nash does three things differently:
 
 ## The Core IR
 
+Every expression is `Core { ty: Ty, kind: CoreKind }`. The operation shapes below
+are `CoreKind` variants; the result type is a required field on every node.
+Builders take explicit result types for applications, builtins, constructors,
+fields, cases, forces and errors. They derive the types of literals, lambdas,
+delays, lets and traces from their inputs. A zero-parameter lambda has its body's
+type because lowering emits the body directly.
+
+Codegen retains solved runtime-specialized expression types, including nominal
+constructor and field identities. Representation-independent specializations
+may still deliberately use `Erased`; it never means missing metadata. Explicit
+coercions can give a runtime shape a different source type. Tree rewrites preserve
+the established node type. ANF reads `node.ty` directly: there is no optional type
+table, presence check or `MissingType` path for Core.
+
 ```
 Core ::= Var(name)
        | Lit(constant)                          -- a nash-plutus Constant, incl. Data
@@ -56,6 +70,7 @@ pub enum Ty<'a> {
     Big(&'a BigTy<'a>),     // Int, Bytes, Data, List t, Map k v, Big ADT, Big record
     Const(&'a ConstTy<'a>), // int, bytes, string, bool, unit, list t, pair a b, array t, bls_*, value
     Term(&'a TermTy<'a>),   // little ADT, tuple, little record, function
+    Runtime(&'a RuntimeTy<'a>), // compiler-created delays, workers and dispatch packets
 }
 ```
 
@@ -65,6 +80,15 @@ structure to construct and destruct its Data layout (constructor count and
 field types); `TermTy` records constructor arities so `Case` and `Field` can
 be lowered; `ConstTy` maps one-to-one onto nash-plutus `typ::Type` so
 literals can be built (`crates/nash-plutus/src/typ.rs`).
+
+`RuntimeTy::Delay(t)` describes a delayed computation. `SelfFunction(t)` names the
+recursive worker equation `self = self -> t`, avoiding a fake ordinary function
+type for self-application. Mutual recursion retains a table of parameter/result
+types: `Dispatcher` consumes a `Request`, each constructed `Packet` records its
+tag, and `Results` describes the possible branch results. Known-tag calls retain
+the selected arm's result type, including an intermediate function returned by
+an overapplied call. `Constr` describes a raw UPLC constructor without inventing
+a nominal source type. These are internal metadata, not new Nash source types.
 
 ### Node semantics
 
@@ -375,8 +399,12 @@ multiple times are eligible for consideration; code duplication must be measured
 
 Each retained pass preserves ANF, results, trace order, failures and termination.
 Compose accepted passes to a structural fixed point; equal node counts are not
-proof of convergence. Test idempotence and preserve separate O0/ANF/optimized
-snapshots. Recursion rewriting remains required even for O0.
+proof of convergence. Test idempotence and preserve O0 baselines. Each optimization
+snapshot contains both before and after at the representation it transforms:
+Core for Core passes, UPLC for UPLC passes. Use named sections in one snapshot,
+with downstream UPLC and evaluation sections where needed. Integration fixtures
+follow the same sectioned format as unit fixtures, keeping Core, UPLC and outcomes
+together. Recursion rewriting remains required even for O0.
 
 Permanent performance regression cases and temporary per-chunk experiments use
 an isolated, explicit performance runner outside root Cargo test discovery.

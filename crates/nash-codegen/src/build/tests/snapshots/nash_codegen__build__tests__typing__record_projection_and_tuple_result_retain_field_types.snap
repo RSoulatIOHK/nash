@@ -1,0 +1,6 @@
+---
+source: crates/nash-codegen/src/build/tests/typing.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype item = Item unit\ntype alias record = { stored : item, flag : bool }\nproject : record -> item\nproject r = r.stored\nmain : (item, unit)\nmain = (project { stored = (Item ()) , flag = True }, ())\n"
+---
+root: (Main.item, unit)
+field 0: Main.item from { _0 : Main.item, _1 : bool }

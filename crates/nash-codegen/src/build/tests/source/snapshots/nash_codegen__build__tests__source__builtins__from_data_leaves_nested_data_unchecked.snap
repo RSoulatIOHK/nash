@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 442
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (fromData)\ndecoded : List (List Int)\ndecoded = fromData (List [List [B #\"aa\"]])\nmain = nullList (unListData decoded)\n"
 ---
 --- core
-let fromData#3 : Data -> 'erased = \coerce#8 : 'erased -> coerce#8 in
+let fromData#3 : Data -> 'erased = \coerce#8 : Data -> coerce#8 in
 let fromBytes#7 : bytes -> bytes = \value#9 : bytes -> value#9 in
 let decoded#2 : List (List Int) = fromData#3 ((\field#4 : list Data -> listData field#4) (mkCons ((\field#5 : list Data -> listData field#5) (mkCons ((\field#6 : bytes -> bData field#6) (fromBytes#7 (con bytestring #aa))) (con (list data) []))) (con (list data) []))) in
-let projection#10 : list Data = unListData decoded#2 in
+let projection#10 : list (List Int) = unListData decoded#2 in
 let main#1 : bool = nullList projection#10 in
 main#1
 --- uplc

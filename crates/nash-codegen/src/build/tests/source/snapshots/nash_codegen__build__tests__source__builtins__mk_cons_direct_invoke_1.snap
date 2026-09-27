@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 124
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nexpected : list int\nexpected = [1]\nmain : bool\nmain = eq (Builtin.mkCons 1 []) expected\n"
 ---
 --- core
 let fromBool#7 : bool -> bool = \value#23 : bool -> value#23 in
 let eq#15 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#24 : 'erased -> self#24 self#24) (\self#24 : 'erased xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#24 : @self (list 'erased -> list 'erased -> bool) -> self#24 self#24) (\self#24 : @self (list 'erased -> list 'erased -> bool) xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
 case@List match#19 of
   Nil -> let match#8 : list 'erased = ys#6 in
   case@List match#8 of

@@ -14,6 +14,9 @@ use crate::build::{Binding, Context, Engine, Error, Source, TraceLevel};
 mod methods;
 mod patterns;
 
+const DATA_LIST: Ty<'static> = Ty::Const(&ConstTy::List(DATA));
+const DATA_FIELDS_PAIR: Ty<'static> =
+    Ty::Const(&ConstTy::Pair(Ty::Const(&ConstTy::Int), DATA_LIST));
 const DATA: Ty<'static> = Ty::Big(&BigTy::Data);
 
 impl<'a> Engine<'a, '_, '_> {
@@ -75,7 +78,7 @@ impl<'a> Engine<'a, '_, '_> {
             lower.finish_root(function)
         })();
         std::mem::swap(&mut self.ir, &mut lower.ir);
-        Ok(self.ir.app(function?, &[value]))
+        Ok(self.ir.app(function?, &[value], Ty::Const(&ConstTy::Bool)))
     }
 
     pub(crate) fn definition(
@@ -99,7 +102,8 @@ impl<'a> Engine<'a, '_, '_> {
         if let Some(value) = self.replacements.get(&node) {
             return Ok(value);
         }
-        Ok(match &expr.value {
+        let result_ty = self.ty(node, ctx)?;
+        let value = match &expr.value {
             Expr::Unit => {
                 let value = self.ir.lit(Constant::unit(self.ir.arena));
                 self.literal("FromUnit", "fromUnit", node, value, ctx, 0)?
@@ -126,19 +130,21 @@ impl<'a> Engine<'a, '_, '_> {
                 .copied()
                 .ok_or(Error::UnknownLocal(name))?
             {
-                Binding::Value(binder) => self.ir.var(binder.name),
+                Binding::Value(binder) => self.ir.var(binder.name, binder.ty),
                 Binding::Template { id, projection } => {
                     let binder = self.use_template(id, node, ctx)?;
                     if let Some(name) = projection {
                         self.destruct_projection(id, name, binder, node, ctx)?
                     } else {
-                        self.ir.var(binder.name)
+                        self.ir.var(binder.name, binder.ty)
                     }
                 }
             },
             Expr::VarTopLevel(reference)
             | Expr::VarForeign { reference, .. }
-            | Expr::VarOperator { reference, .. } => self.reference(*reference, node, ctx)?,
+            | Expr::VarOperator { reference, .. } => {
+                self.reference(*reference, node, ctx, result_ty)?
+            }
             Expr::VarMethod {
                 trait_,
                 method,
@@ -166,10 +172,16 @@ impl<'a> Engine<'a, '_, '_> {
                         self.ir.if_(left, constant, right)
                     });
                 }
-                let func = self.reference(*reference, node, ctx)?;
+                let left_ty = self.ty(NodeId::expr(left), ctx)?;
+                let right_ty = self.ty(NodeId::expr(right), ctx)?;
+                let function_ty = Ty::Term(self.ir.arena.alloc(TermTy::Fun(
+                    self.ir.arena.alloc_slice_copy(&[left_ty, right_ty]),
+                    result_ty,
+                )));
+                let func = self.reference(*reference, node, ctx, function_ty)?;
                 let left = self.expr(left, ctx)?;
                 let right = self.expr(right, ctx)?;
-                self.ir.app(func, &[left, right])
+                self.ir.app(func, &[left, right], result_ty)
             }
             Expr::Call {
                 function,
@@ -209,7 +221,7 @@ impl<'a> Engine<'a, '_, '_> {
                     .iter()
                     .map(|e| self.expr(e, ctx))
                     .collect::<Result<Vec<_>, _>>()?;
-                self.ir.app(func, &args)
+                self.ir.app(func, &args, result_ty)
             }
             Expr::Lambda { parameters, body } => self.lambda(parameters, body, ctx)?,
             Expr::If {
@@ -245,7 +257,7 @@ impl<'a> Engine<'a, '_, '_> {
                     .chain(rest.iter().copied())
                     .map(|e| self.expr(e, ctx))
                     .collect::<Result<Vec<_>, _>>()?;
-                self.ir.constr(0, &items)
+                self.ir.constr(0, &items, result_ty)
             }
             Expr::List(items) => {
                 let ty = self.ty(node, ctx)?;
@@ -276,11 +288,11 @@ impl<'a> Engine<'a, '_, '_> {
                     .1;
                 let ty = self.ty(NodeId::expr(record), ctx)?;
                 let value = self.expr(record, ctx)?;
-                self.field(ty, value, index, fields.len())?
+                self.field(ty, value, index, fields.len(), result_ty)?
             }
             Expr::Accessor(field) => {
                 let typ = self.substitute(self.can_type(node, ctx)?, &ctx.runtime_subst)?;
-                let Type::Lambda { from, .. } = &typ.value else {
+                let Type::Lambda { from, to } = &typ.value else {
                     return Err(Error::InvalidConstructor);
                 };
                 let fields = self.types.fields(from, &BTreeMap::new())?;
@@ -294,7 +306,14 @@ impl<'a> Engine<'a, '_, '_> {
                     name: self.ir.fresh("record"),
                     ty,
                 };
-                let body = self.field(ty, self.ir.var(binder.name), index, fields.len())?;
+                let field_ty = self.types.ty(to, &BTreeMap::new())?;
+                let body = self.field(
+                    ty,
+                    self.ir.var(binder.name, binder.ty),
+                    index,
+                    fields.len(),
+                    field_ty,
+                )?;
                 self.ir.lam(&[binder], body)
             }
             Expr::Update { base, fields, .. } => {
@@ -317,29 +336,41 @@ impl<'a> Engine<'a, '_, '_> {
                     labels.len()
                 };
                 let mut values = Vec::new();
-                for (name, index, _) in &labels[..prefix_len] {
+                for (name, index, field_ty) in &labels[..prefix_len] {
                     values.push(
                         if let Some(update) = fields.iter().find(|f| f.field.value == *name) {
                             self.expr(update.value, ctx)?
                         } else {
-                            self.field(ty, self.ir.var(binder.name), *index, labels.len())?
+                            self.field(
+                                ty,
+                                self.ir.var(binder.name, binder.ty),
+                                *index,
+                                labels.len(),
+                                *field_ty,
+                            )?
                         },
                     );
                 }
                 let result = match ty {
                     Ty::Big(BigTy::Record(_)) if prefix_len < labels.len() => {
-                        let list = self.ir.builtin(F::UnListData, &[self.ir.var(binder.name)]);
+                        let list = self.ir.builtin(
+                            F::UnListData,
+                            &[self.ir.var(binder.name, binder.ty)],
+                            DATA_LIST,
+                        );
                         let tail = match prefix_len {
                             0 => list,
                             1 => self.list_part(list, true),
-                            _ => self
-                                .ir
-                                .builtin(F::DropList, &[self.ir.int(prefix_len as i128), list]),
+                            _ => self.ir.builtin(
+                                F::DropList,
+                                &[self.ir.int(prefix_len as i128), list],
+                                list.ty,
+                            ),
                         };
                         self.ir
-                            .builtin(F::ListData, &[self.list_prefix(&values, tail)])
+                            .builtin(F::ListData, &[self.list_prefix(&values, tail)], ty)
                     }
-                    Ty::Big(BigTy::Adt(_)) => self.big_constructor(0, &values)?,
+                    Ty::Big(BigTy::Adt(_)) => self.big_constructor(0, &values, ty)?,
                     _ => self.product(ty, &values)?,
                 };
                 self.ir.let_(binder, value, result)
@@ -354,7 +385,7 @@ impl<'a> Engine<'a, '_, '_> {
                     *message,
                     todo.then_some("TODO: "),
                     expr.region,
-                    self.ir.error(),
+                    self.ir.error(result_ty),
                     ctx,
                 )?
             }
@@ -367,7 +398,7 @@ impl<'a> Engine<'a, '_, '_> {
                     None,
                     Some("assertion failed"),
                     expr.region,
-                    self.ir.error(),
+                    self.ir.error(result_ty),
                     ctx,
                 )?;
                 self.ir
@@ -380,7 +411,8 @@ impl<'a> Engine<'a, '_, '_> {
                     .map_err(|error| Error::ComptimeAssembly(error.to_string()))?;
                 self.ir.lit(constant)
             }
-        })
+        };
+        Ok(self.ir.with_type(value, result_ty))
     }
 
     fn let_definitions(
@@ -440,7 +472,7 @@ impl<'a> Engine<'a, '_, '_> {
             .collect::<Vec<_>>();
         let fields = params
             .iter()
-            .map(|p| self.ir.var(p.name))
+            .map(|p| self.ir.var(p.name, p.ty))
             .collect::<Vec<_>>();
         let value = if reference.home == primitives::primitive_home() && reference.union == "bool" {
             if !params.is_empty() || tag > 1 {
@@ -471,23 +503,29 @@ impl<'a> Engine<'a, '_, '_> {
                 };
                 self.ir.case(
                     CaseKind::Pair,
-                    self.ir.var(pair.name),
+                    self.ir.var(pair.name, pair.ty),
                     &[Branch {
                         test: nash_ir::core::Test::Pair,
                         binders: self.ir.arena.alloc_slice_copy(&[tag, items]),
-                        body: self
-                            .ir
-                            .builtin(func, &[self.ir.var(tag.name), self.ir.var(items.name)]),
+                        body: self.ir.builtin(
+                            func,
+                            &[
+                                self.ir.var(tag.name, tag.ty),
+                                self.ir.var(items.name, items.ty),
+                            ],
+                            result,
+                        ),
                     }],
                     None,
+                    result,
                 )
             } else {
-                self.ir.builtin(func, &fields)
+                self.ir.builtin(func, &fields, result)
             }
         } else {
             match result {
-                Ty::Big(BigTy::Adt(_)) => self.big_constructor(tag, &fields)?,
-                Ty::Term(TermTy::Adt(_)) => self.ir.constr(tag, &fields),
+                Ty::Big(BigTy::Adt(_)) => self.big_constructor(tag, &fields, result)?,
+                Ty::Term(TermTy::Adt(_)) => self.ir.constr(tag, &fields, result),
                 Ty::Big(BigTy::Record(_)) | Ty::Term(TermTy::Record(_)) => {
                     self.product(result, &fields)?
                 }
@@ -509,12 +547,15 @@ impl<'a> Engine<'a, '_, '_> {
         let typ = element
             .plutus_type(self.ir.arena)
             .ok_or(Error::RuntimeLayout(element))?;
-        let tail = self.ir.lit(Constant::proto_list(self.ir.arena, typ, &[]));
+        let tail = self.ir.with_type(
+            self.ir.lit(Constant::proto_list(self.ir.arena, typ, &[])),
+            Ty::Const(self.ir.arena.alloc(ConstTy::List(element))),
+        );
         Ok(self.list_prefix(values, tail))
     }
     fn list_prefix(&self, values: &[&'a Core<'a>], mut tail: &'a Core<'a>) -> &'a Core<'a> {
         for &head in values.iter().rev() {
-            tail = self.ir.builtin(F::MkCons, &[head, tail]);
+            tail = self.ir.builtin(F::MkCons, &[head, tail], tail.ty);
         }
         tail
     }
@@ -522,10 +563,12 @@ impl<'a> Engine<'a, '_, '_> {
         &self,
         tag: u16,
         fields: &[&'a Core<'a>],
+        result_ty: Ty<'a>,
     ) -> Result<&'a Core<'a>, Error<'a>> {
         Ok(self.ir.builtin(
             F::ConstrData,
             &[self.ir.int(i128::from(tag)), self.list(DATA, fields)?],
+            result_ty,
         ))
     }
     pub(crate) fn product(
@@ -534,9 +577,12 @@ impl<'a> Engine<'a, '_, '_> {
         fields: &[&'a Core<'a>],
     ) -> Result<&'a Core<'a>, Error<'a>> {
         Ok(match ty {
-            Ty::Big(BigTy::Record(_)) => self.ir.builtin(F::ListData, &[self.list(DATA, fields)?]),
+            Ty::Big(BigTy::Record(_)) => {
+                self.ir
+                    .builtin(F::ListData, &[self.list(DATA, fields)?], ty)
+            }
             Ty::Term(TermTy::Record(_) | TermTy::Tuple(_) | TermTy::Adt(_)) => {
-                self.ir.constr(0, fields)
+                self.ir.constr(0, fields, ty)
             }
             _ => return Err(Error::RuntimeLayout(ty)),
         })
@@ -547,9 +593,10 @@ impl<'a> Engine<'a, '_, '_> {
         value: &'a Core<'a>,
         index: u16,
         arity: usize,
+        result_ty: Ty<'a>,
     ) -> Result<&'a Core<'a>, Error<'a>> {
         let mut list = match ty {
-            Ty::Big(BigTy::Record(_)) => self.ir.builtin(F::UnListData, &[value]),
+            Ty::Big(BigTy::Record(_)) => self.ir.builtin(F::UnListData, &[value], DATA_LIST),
             Ty::Big(BigTy::Adt(_)) => {
                 let tag = Binder {
                     name: self.ir.fresh("tag"),
@@ -561,13 +608,14 @@ impl<'a> Engine<'a, '_, '_> {
                 };
                 self.ir.case(
                     CaseKind::Pair,
-                    self.ir.builtin(F::UnConstrData, &[value]),
+                    self.ir.builtin(F::UnConstrData, &[value], DATA_FIELDS_PAIR),
                     &[Branch {
                         test: nash_ir::core::Test::Pair,
                         binders: self.ir.arena.alloc_slice_copy(&[tag, fields]),
-                        body: self.ir.var(fields.name),
+                        body: self.ir.var(fields.name, fields.ty),
                     }],
                     None,
+                    DATA_LIST,
                 )
             }
             Ty::Term(TermTy::Record(_) | TermTy::Tuple(_) | TermTy::Adt(_)) => {
@@ -575,6 +623,7 @@ impl<'a> Engine<'a, '_, '_> {
                     value,
                     index,
                     u16::try_from(arity).map_err(|_| Error::InvalidConstructor)?,
+                    result_ty,
                 ));
             }
             _ => return Err(Error::RuntimeLayout(ty)),
@@ -582,11 +631,13 @@ impl<'a> Engine<'a, '_, '_> {
         list = match index {
             0 => list,
             1 => self.list_part(list, true),
-            _ => self
-                .ir
-                .builtin(F::DropList, &[self.ir.int(i128::from(index)), list]),
+            _ => self.ir.builtin(
+                F::DropList,
+                &[self.ir.int(i128::from(index)), list],
+                list.ty,
+            ),
         };
-        Ok(self.list_part(list, false))
+        Ok(self.ir.with_type(self.list_part(list, false), result_ty))
     }
 
     fn list_part(&self, value: &'a Core<'a>, tail: bool) -> &'a Core<'a> {
@@ -604,9 +655,13 @@ impl<'a> Engine<'a, '_, '_> {
             &[Branch {
                 test: nash_ir::core::Test::Cons,
                 binders: self.ir.arena.alloc_slice_copy(&[head, rest]),
-                body: self.ir.var(if tail { rest.name } else { head.name }),
+                body: self.ir.var(
+                    if tail { rest.name } else { head.name },
+                    if tail { rest.ty } else { head.ty },
+                ),
             }],
             None,
+            if tail { rest.ty } else { head.ty },
         )
     }
 
@@ -640,6 +695,7 @@ impl<'a> Engine<'a, '_, '_> {
                         )),
                         value,
                     ],
+                    Ty::Const(&ConstTy::String),
                 )
             } else {
                 value
@@ -654,15 +710,15 @@ impl<'a> Engine<'a, '_, '_> {
         };
         Ok(self.ir.trace(message, body))
     }
-    pub(crate) fn match_failure(&self) -> &'a Core<'a> {
+    pub(crate) fn match_failure(&self, result_ty: Ty<'a>) -> &'a Core<'a> {
         if self.trace.compiler {
             self.ir.trace(
                 self.ir
                     .lit(Constant::string(self.ir.arena, "incomplete pattern match")),
-                self.ir.error(),
+                self.ir.error(result_ty),
             )
         } else {
-            self.ir.error()
+            self.ir.error(result_ty)
         }
     }
 }

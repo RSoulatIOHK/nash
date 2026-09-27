@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1691
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int }\nchoose : bool -> Record -> int\nchoose flag r =\n    if flag then Builtin.unIData { r | a = (trace \"unused\" 10) }.b\n    else 42\nmain = choose False (Primitive.coerce ())\n"
 ---
 --- core
@@ -9,10 +10,10 @@ let fromInt#10 : int -> Int = iData in
 let fromString#11 : string -> string = \value#21 : string -> value#21 in
 let choose#2 : bool -> { _0 : Int, _1 : Int } -> int = \flag#6 : bool r#7 : { _0 : Int, _1 : Int } -> case@Bool flag#6 of
   True -> let base#9 : { _0 : Int, _1 : Int } = r#7 in
-  let evaluated#23 : 'erased = trace (fromString#11 message#26) in fromInt#10 10 in
+  let evaluated#23 : Int = trace (fromString#11 message#26) in fromInt#10 10 in
   let projection#22 : list Data = unListData base#9 in
   case@List projection#22 of
-    Cons head#12 tail#13 -> let evaluated#24 : 'erased = listData (mkCons evaluated#23 tail#13) in
+    Cons head#12 tail#13 -> let evaluated#24 : { _0 : Int, _1 : Int } = listData (mkCons evaluated#23 tail#13) in
     let projection#25 : list Data = unListData evaluated#24 in
     case@List projection#25 of
       Cons head#14 tail#15 -> case@List tail#15 of
@@ -20,7 +21,7 @@ let choose#2 : bool -> { _0 : Int, _1 : Int } -> int = \flag#6 : bool r#7 : { _0
   False -> fromInt#8 42 in
 let fromBool#3 : bool -> bool = \value#18 : bool -> value#18 in
 let fromUnit#5 : unit -> unit = \value#19 : unit -> value#19 in
-let main#1 : int = choose#2 (fromBool#3 false) ((\coerce#4 : 'erased -> coerce#4) (fromUnit#5 ())) in
+let main#1 : int = choose#2 (fromBool#3 false) ((\coerce#4 : unit -> coerce#4) (fromUnit#5 ())) in
 main#1
 --- uplc
 (program 1.1.0

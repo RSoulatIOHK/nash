@@ -220,7 +220,7 @@ impl<'a, 's> Build<'a, 's> {
         let root_type = engine.types.ty(scheme.annotation.typ, &substitution)?;
         let binder = engine.request(template, substitution, evidence)?;
         engine.drain(0)?;
-        let core = engine.emit_group(0, engine.ir.var(binder.name), false)?;
+        let core = engine.emit_group(0, engine.ir.var(binder.name, binder.ty), false)?;
         let core = accessors::share(&engine.ir, core);
         let core = hoist_strings(&engine.ir, core);
         let specializations = engine
@@ -715,7 +715,7 @@ impl<'a, 'b, 's> Engine<'a, 'b, 's> {
             .get(&reference)
             .ok_or(Error::UnknownDefinition(reference))?;
         let binder = self.request(template, subst, &[])?;
-        Ok(self.ir.var(binder.name))
+        Ok(self.ir.var(binder.name, binder.ty))
     }
 
     pub fn reference(
@@ -723,16 +723,17 @@ impl<'a, 'b, 's> Engine<'a, 'b, 's> {
         reference: QualifiedName<'a>,
         node: NodeId,
         ctx: &Context<'a>,
+        reference_ty: Ty<'a>,
     ) -> Result<&'a Core<'a>, Error<'a>> {
         if reference.home == primitives::primitive_home() && reference.name == "coerce" {
-            return Ok(self.coerce());
+            return Ok(self.coerce(reference_ty));
         }
         if reference.home == primitives::builtin_home() {
-            return self.builtin(reference.name);
+            return self.builtin(reference.name, reference_ty);
         }
         if let Some(&template) = self.top.get(&reference) {
             let binder = self.use_template(template, node, ctx)?;
-            return Ok(self.ir.var(binder.name));
+            return Ok(self.ir.var(binder.name, reference_ty));
         }
         let method = self.build.tables.traits.iter().find_map(|(trait_, info)| {
             (trait_.home == reference.home)
@@ -745,7 +746,8 @@ impl<'a, 'b, 's> Engine<'a, 'b, 's> {
                 .flatten()
         });
         if let Some((trait_, annotation)) = method {
-            return self.method(trait_, reference.name, annotation, node, ctx);
+            let value = self.method(trait_, reference.name, annotation, node, ctx)?;
+            return Ok(self.ir.with_type(value, reference_ty));
         }
         Err(Error::UnknownDefinition(reference))
     }
@@ -786,6 +788,7 @@ fn native<'a>(arena: &'a Arena, ty: Ty<'a>) -> Result<Ty<'a>, Error<'a>> {
             Ty::Const(arena.alloc(ConstTy::Pair(native(arena, *a)?, native(arena, *b)?)))
         }
         Ty::Const(_) | Ty::Term(_) => ty,
+        Ty::Runtime(_) => return Err(Error::RuntimeLayout(ty)),
         _ => return Err(Error::RuntimeLayout(ty)),
     })
 }

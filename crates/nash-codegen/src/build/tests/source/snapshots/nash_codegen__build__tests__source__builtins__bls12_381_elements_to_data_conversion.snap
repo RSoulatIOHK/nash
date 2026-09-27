@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 1
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias proof = { piA : bls_g1, piB : bls_g2 }\nencode : proof -> Data\nencode p = Builtin.constrData 0 [B (bls12_381_g1_compress p.piA), B (bls12_381_g2_compress p.piB)]\npk : proof\npk =\n    { piA = (bls12_381_g1_uncompress #\"b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce\")\n    , piB = (bls12_381_g2_uncompress #\"b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423\")\n    }\nmain : bool\nmain = equalsData (encode pk) (encode pk)\n"
 ---
 --- core
 let fromInt#5 : int -> int = \value#9 : int -> value#9 in
-let encode#2 : { _0 : bls_g1, _1 : bls_g2 } -> Data = \p#4 : { _0 : bls_g1, _1 : bls_g2 } -> let evaluated#14 : 'erased = fromInt#5 0 in
+let encode#2 : { _0 : bls_g1, _1 : bls_g2 } -> Data = \p#4 : { _0 : bls_g1, _1 : bls_g2 } -> let evaluated#14 : int = fromInt#5 0 in
 let projection#11 : bls_g1 = field@0/2 p#4 in
-let evaluated#13 : 'erased = (\field#6 : bytes -> bData field#6) (bls12_381_G1_compress projection#11) in
+let evaluated#13 : Data = (\field#6 : bytes -> bData field#6) (bls12_381_G1_compress projection#11) in
 let projection#12 : bls_g2 = field@1/2 p#4 in
 constrData evaluated#14 (mkCons evaluated#13 (mkCons ((\field#7 : bytes -> bData field#7) (bls12_381_G2_compress projection#12)) (con (list data) []))) in
 let fromBytes#8 : bytes -> bytes = \value#10 : bytes -> value#10 in

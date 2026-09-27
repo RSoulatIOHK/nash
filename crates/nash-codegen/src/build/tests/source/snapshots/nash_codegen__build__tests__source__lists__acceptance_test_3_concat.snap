@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 32
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nfoldr xs f zero =\n    case xs of\n        [] -> zero\n        x :: rest -> f x (foldr rest f zero)\nconcat left right = foldr left (\\x xs -> mkCons x xs) right\nmain = eq (concat [1, 2, 3] [4, 5, 6]) [1, 2, 3, 4, 5, 6]\n"
 ---
 --- core
 let fromBool#7 : bool -> bool = \value#28 : bool -> value#28 in
 let eq#15 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#38 : 'erased -> self#38 self#38) (\self#38 : 'erased xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#38 : @self (list 'erased -> list 'erased -> bool) -> self#38 self#38) (\self#38 : @self (list 'erased -> list 'erased -> bool) xs#5 : list 'erased ys#6 : list 'erased -> let match#19 : list 'erased = xs#5 in
 case@List match#19 of
   Nil -> let match#8 : list 'erased = ys#6 in
   case@List match#8 of
@@ -21,7 +22,7 @@ case@List match#19 of
     case@Bool eq#15 x#11 y#13 of
       True -> self#38 self#38 restX#12 restY#14
       False -> false) in
-let foldr#24 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#29 : list 'erased (f#30 : 'erased -> 'erased -> 'erased) zero#31 : 'erased -> (\self#37 : 'erased -> self#37 self#37) (\self#37 : 'erased xs#29 : list 'erased -> let match#34 : list 'erased = xs#29 in
+let foldr#24 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#29 : list 'erased (f#30 : 'erased -> 'erased -> 'erased) zero#31 : 'erased -> (\self#37 : @self (list 'erased -> 'erased) -> self#37 self#37) (\self#37 : @self (list 'erased -> 'erased) xs#29 : list 'erased -> let match#34 : list 'erased = xs#29 in
 case@List match#34 of
   Nil -> zero#31
   Cons field#35 field#36 -> let x#32 : 'erased = field#35 in

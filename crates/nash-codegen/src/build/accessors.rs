@@ -8,13 +8,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use nash_ir::{
     build::Builder,
     core::*,
-    ty::{BigTy, ConstTy, TermTy, Ty},
+    ty::{BigTy, ConstTy, Ty},
 };
 use nash_plutus::{builtin::DefaultFunction as F, constant::Constant};
-
-const DATA: Ty<'static> = Ty::Big(&BigTy::Data);
-const DATA_LIST: Ty<'static> = Ty::Const(&ConstTy::List(DATA));
-const CONSTR_PAIR: Ty<'static> = Ty::Const(&ConstTy::Pair(Ty::Const(&ConstTy::Int), DATA_LIST));
 
 #[derive(Clone, Copy, PartialEq)]
 enum Projection {
@@ -46,7 +42,6 @@ impl std::hash::Hash for Projection {
 struct Scope<'a> {
     aliases: HashMap<u32, u32>,
     reused: HashMap<u32, Name<'a>>,
-    types: HashMap<u32, Ty<'a>>,
     projections: HashMap<(Projection, u32), Binder<'a>>,
     tail_positions: HashMap<u32, (u32, usize)>,
     tails: BTreeMap<(u32, usize), Binder<'a>>,
@@ -62,8 +57,11 @@ impl<'a> Scope<'a> {
         self.aliases.get(&name).copied().unwrap_or(name)
     }
     fn bind(&mut self, binder: Binder<'a>, value: Option<&Core<'a>>) {
-        self.types.insert(binder.name.unique, binder.ty);
-        if let Some(Core::Var(name)) = value {
+        if let Some(Core {
+            kind: CoreKind::Var(name),
+            ..
+        }) = value
+        {
             self.aliases
                 .insert(binder.name.unique, self.canonical(name.unique));
         }
@@ -77,40 +75,33 @@ impl<'a> Scope<'a> {
         self.tails.insert(position, binder);
     }
     fn ty(&self, core: &Core<'a>) -> Ty<'a> {
-        match core {
-            Core::Var(name) => self
-                .types
-                .get(&name.unique)
-                .copied()
-                .or_else(|| self.types.get(&self.canonical(name.unique)).copied())
-                .unwrap_or(Ty::Erased),
-            Core::Lit(Constant::Integer(_)) => Ty::Const(&ConstTy::Int),
-            Core::Lit(Constant::ByteString(_)) => Ty::Const(&ConstTy::Bytes),
-            Core::Lit(Constant::String(_)) => Ty::Const(&ConstTy::String),
-            Core::Lit(Constant::Boolean(_)) => Ty::Const(&ConstTy::Bool),
-            Core::Lit(Constant::Unit) => Ty::Const(&ConstTy::Unit),
-            Core::Lit(Constant::Data(_)) => DATA,
-            _ => Ty::Erased,
-        }
+        core.ty
     }
     fn path(&self, core: &Core<'a>) -> Option<(Vec<Projection>, u32)> {
-        match core {
-            Core::Var(name) => Some((Vec::new(), self.canonical(name.unique))),
-            Core::Builtin { func, args: [arg] } => {
+        match &core.kind {
+            CoreKind::Var(name) => Some((Vec::new(), self.canonical(name.unique))),
+            CoreKind::Builtin { func, args: [arg] } => {
                 let (mut path, name) = self.path(arg)?;
                 path.push(Projection::Builtin(*func));
                 Some((path, name))
             }
-            Core::Builtin {
+            CoreKind::Builtin {
                 func: F::DropList,
-                args: [Core::Lit(Constant::Integer(count)), list],
+                args:
+                    [
+                        Core {
+                            kind: CoreKind::Lit(Constant::Integer(count)),
+                            ..
+                        },
+                        list,
+                    ],
             } => {
                 let count = u16::try_from(*count).ok()?;
                 let (mut path, name) = self.path(list)?;
                 path.push(Projection::DropList(count));
                 Some((path, name))
             }
-            Core::Field {
+            CoreKind::Field {
                 record,
                 index,
                 arity,
@@ -126,7 +117,8 @@ impl<'a> Scope<'a> {
         let Some((base, name)) = self.path(value) else {
             return;
         };
-        if let (CaseKind::List, Test::Cons, Core::Var(value)) = (kind, branch.test, value) {
+        if let (CaseKind::List, Test::Cons, CoreKind::Var(value)) = (kind, branch.test, &value.kind)
+        {
             let (root, offset) = self.list_position(value.unique);
             self.nonempty.insert((root, offset));
             if let Some(tail) = branch.binders.get(1) {
@@ -200,6 +192,7 @@ impl<'a> Share<'a, '_> {
                         body,
                     }],
                     None,
+                    body.ty,
                 ),
             })
     }
@@ -215,7 +208,7 @@ impl<'a> Share<'a, '_> {
         };
         scope.bind(binder, Some(value));
         bindings.push(Prefix::Let(binder, value));
-        self.build.var(binder.name)
+        self.build.var(binder.name, binder.ty)
     }
     /// Before moving a later operand's prefix outside the application, evaluate
     /// each preceding operand that can have an effect at its original position.
@@ -245,11 +238,12 @@ impl<'a> Share<'a, '_> {
         projection: Projection,
         mut parts: Parts<'a>,
         scope: &mut Scope<'a>,
+        ty: Ty<'a>,
     ) -> Parts<'a> {
-        if !matches!(parts.value, Core::Var(_)) {
+        if !matches!(parts.value.kind, CoreKind::Var(_)) {
             parts.value = self.temporary(parts.value, scope, &mut parts.bindings);
         }
-        let Core::Var(name) = parts.value else {
+        let CoreKind::Var(name) = &parts.value.kind else {
             unreachable!()
         };
         let record_length = match (projection, scope.ty(parts.value)) {
@@ -270,7 +264,7 @@ impl<'a> Share<'a, '_> {
                     .record_lengths
                     .insert(scope.list_position(binder.name.unique).0, length);
             }
-            parts.value = self.build.var(binder.name);
+            parts.value = self.build.var(binder.name, binder.ty);
             return parts;
         }
         let position = scope.list_position(name.unique);
@@ -290,7 +284,7 @@ impl<'a> Share<'a, '_> {
             let mut start = position;
             if let Some((&nearest, binder)) = scope.tails.range(position..=target).next_back() {
                 start = nearest;
-                parts.value = self.build.var(binder.name);
+                parts.value = self.build.var(binder.name, binder.ty);
             }
             let remaining = target.1 - start.1;
             if remaining == 0 {
@@ -310,25 +304,6 @@ impl<'a> Share<'a, '_> {
             };
         }
         let input = scope.ty(parts.value);
-        let ty = match (projection, input) {
-            (Projection::Builtin(F::UnListData), _) => DATA_LIST,
-            (Projection::Builtin(F::UnConstrData), _) => CONSTR_PAIR,
-            (Projection::Builtin(F::FstPair), Ty::Const(ConstTy::Pair(a, _))) => *a,
-            (Projection::Builtin(F::SndPair), Ty::Const(ConstTy::Pair(_, b))) => *b,
-            (Projection::Builtin(F::HeadList), Ty::Const(ConstTy::List(element))) => *element,
-            (
-                Projection::Builtin(F::TailList) | Projection::DropList(_),
-                Ty::Const(ConstTy::List(_)),
-            ) => input,
-            (
-                Projection::Field(index, _),
-                Ty::Term(TermTy::Record(fields) | TermTy::Tuple(fields)),
-            ) => fields
-                .get(usize::from(index))
-                .copied()
-                .unwrap_or(Ty::Erased),
-            _ => Ty::Erased,
-        };
         if matches!(projection, Projection::DropList(_))
             && emitted_projection == Projection::Builtin(F::TailList)
         {
@@ -336,7 +311,7 @@ impl<'a> Share<'a, '_> {
                 name: self.build.fresh("head"),
                 ty: match input {
                     Ty::Const(ConstTy::List(element)) => *element,
-                    _ => Ty::Erased,
+                    _ => unreachable!("list projection requires a list type"),
                 },
             };
             let tail = Binder {
@@ -352,7 +327,7 @@ impl<'a> Share<'a, '_> {
                 &Branch {
                     test: Test::Cons,
                     binders,
-                    body: self.build.var(tail.name),
+                    body: self.build.var(tail.name, tail.ty),
                 },
             );
             scope.projections.insert(key, tail);
@@ -362,16 +337,17 @@ impl<'a> Share<'a, '_> {
                 Test::Cons,
                 binders,
             ));
-            parts.value = self.build.var(tail.name);
+            parts.value = self.build.var(tail.name, tail.ty);
             return parts;
         }
         let value = match emitted_projection {
-            Projection::Builtin(func) => self.build.builtin(func, &[parts.value]),
+            Projection::Builtin(func) => self.build.builtin(func, &[parts.value], ty),
             Projection::DropList(count) => self.build.builtin(
                 F::DropList,
                 &[self.build.int(i128::from(count)), parts.value],
+                ty,
             ),
-            Projection::Field(index, arity) => self.build.field(parts.value, index, arity),
+            Projection::Field(index, arity) => self.build.field(parts.value, index, arity, ty),
         };
         let binder = Binder {
             name: self.build.fresh("projection"),
@@ -386,25 +362,30 @@ impl<'a> Share<'a, '_> {
             scope.remember_tail(binder, position);
         }
         parts.bindings.push(Prefix::Let(binder, value));
-        parts.value = self.build.var(binder.name);
+        parts.value = self.build.var(binder.name, binder.ty);
         parts
     }
     fn term(&self, core: &'a Core<'a>, scope: &mut Scope<'a>) -> Parts<'a> {
+        let mut result = self.term_inner(core, scope);
+        result.value = self.build.with_type(result.value, core.ty);
+        result
+    }
+    fn term_inner(&self, core: &'a Core<'a>, scope: &mut Scope<'a>) -> Parts<'a> {
         if let Some(binder) = scope
             .path(core)
             .and_then(|path| scope.case_paths.get(&path))
         {
-            return Parts::value(self.build.var(binder.name));
+            return Parts::value(self.build.var(binder.name, binder.ty));
         }
-        match core {
-            Core::Var(name) => Parts::value(
+        match &core.kind {
+            CoreKind::Var(name) => Parts::value(
                 scope
                     .reused
                     .get(&name.unique)
-                    .map_or(core, |name| self.build.var(*name)),
+                    .map_or(core, |name| self.build.var(*name, core.ty)),
             ),
-            Core::Lit(_) | Core::Error => Parts::value(core),
-            Core::Lam { params, body } => {
+            CoreKind::Lit(_) | CoreKind::Error => Parts::value(core),
+            CoreKind::Lam { params, body } => {
                 let mut inner = scope.clone();
                 for param in *params {
                     inner.bind(*param, None);
@@ -414,7 +395,7 @@ impl<'a> Share<'a, '_> {
                         .lam(params, self.wrap(self.term(body, &mut inner))),
                 )
             }
-            Core::Let {
+            CoreKind::Let {
                 binder,
                 value,
                 body,
@@ -427,7 +408,7 @@ impl<'a> Share<'a, '_> {
                 value.value = body.value;
                 value
             }
-            Core::LetRec { binders, body } => {
+            CoreKind::LetRec { binders, body } => {
                 let mut inner = scope.clone();
                 for binder in *binders {
                     inner.bind(binder.binder, None);
@@ -450,32 +431,46 @@ impl<'a> Share<'a, '_> {
                         .let_rec(&binders, self.wrap(self.term(body, &mut inner))),
                 )
             }
-            Core::App {
-                func: Core::Builtin { func, args: [] },
+            CoreKind::App {
+                func:
+                    Core {
+                        kind: CoreKind::Builtin { func, args: [] },
+                        ..
+                    },
                 args,
-            } if args.len() <= func.arity() => self.term(self.build.builtin(*func, args), scope),
-            Core::App { func, args } => {
+            } if args.len() <= func.arity() => {
+                self.term(self.build.builtin(*func, args, core.ty), scope)
+            }
+            CoreKind::App { func, args } => {
                 let all = std::iter::once(*func)
                     .chain(args.iter().copied())
                     .collect::<Vec<_>>();
                 let (bindings, values) = self.operands(&all, scope);
                 Parts {
                     bindings,
-                    value: self.build.app(values[0], &values[1..]),
+                    value: self.build.app(values[0], &values[1..], core.ty),
                 }
             }
-            Core::Builtin {
+            CoreKind::Builtin {
                 func: F::DropList,
-                args: [Core::Lit(Constant::Integer(count)), list],
+                args:
+                    [
+                        Core {
+                            kind: CoreKind::Lit(Constant::Integer(count)),
+                            ..
+                        },
+                        list,
+                    ],
             } if u16::try_from(*count).is_ok() => {
                 let parts = self.term(list, scope);
                 self.projection(
                     Projection::DropList(u16::try_from(*count).unwrap()),
                     parts,
                     scope,
+                    core.ty,
                 )
             }
-            Core::Builtin { func, args: [arg] }
+            CoreKind::Builtin { func, args: [arg] }
                 if matches!(
                     func,
                     F::UnListData
@@ -487,31 +482,31 @@ impl<'a> Share<'a, '_> {
                 ) =>
             {
                 let parts = self.term(arg, scope);
-                self.projection(Projection::Builtin(*func), parts, scope)
+                self.projection(Projection::Builtin(*func), parts, scope, core.ty)
             }
-            Core::Builtin { func, args } => {
+            CoreKind::Builtin { func, args } => {
                 let (bindings, args) = self.operands(args, scope);
                 Parts {
                     bindings,
-                    value: self.build.builtin(*func, &args),
+                    value: self.build.builtin(*func, &args, core.ty),
                 }
             }
-            Core::Constr { tag, fields } => {
+            CoreKind::Constr { tag, fields } => {
                 let (bindings, fields) = self.operands(fields, scope);
                 Parts {
                     bindings,
-                    value: self.build.constr(*tag, &fields),
+                    value: self.build.constr(*tag, &fields, core.ty),
                 }
             }
-            Core::Field {
+            CoreKind::Field {
                 record,
                 index,
                 arity,
             } => {
                 let record = self.term(record, scope);
-                self.projection(Projection::Field(*index, *arity), record, scope)
+                self.projection(Projection::Field(*index, *arity), record, scope, core.ty)
             }
-            Core::Case {
+            CoreKind::Case {
                 kind,
                 scrutinee,
                 branches,
@@ -519,7 +514,7 @@ impl<'a> Share<'a, '_> {
             } => {
                 let mut scrutinee = self.term(scrutinee, scope);
                 if let (CaseKind::Pair, [branch], None) = (kind, *branches, default)
-                    && let Core::Var(selected) = branch.body
+                    && let CoreKind::Var(selected) = &branch.body.kind
                     && let Some(index) = branch.binders.iter().position(|b| b.name == *selected)
                     && let Some((mut path, root)) = scope.path(scrutinee.value)
                 {
@@ -529,7 +524,7 @@ impl<'a> Share<'a, '_> {
                         F::SndPair
                     }));
                     if let Some(binder) = scope.case_paths.get(&(path, root)) {
-                        scrutinee.value = self.build.var(binder.name);
+                        scrutinee.value = self.build.var(binder.name, binder.ty);
                         return scrutinee;
                     }
                 }
@@ -557,7 +552,7 @@ impl<'a> Share<'a, '_> {
                     });
                     if let Some(cached) = cached {
                         for (binder, cached) in branch.binders.iter().zip(cached) {
-                            scope.bind(*binder, Some(self.build.var(cached.name)));
+                            scope.bind(*binder, Some(self.build.var(cached.name, cached.ty)));
                             scope.reused.insert(binder.name.unique, cached.name);
                         }
                     } else {
@@ -594,10 +589,12 @@ impl<'a> Share<'a, '_> {
                 let default = default.map(|d| self.wrap(self.term(d, &mut scope.clone())));
                 Parts {
                     bindings: scrutinee.bindings,
-                    value: self.build.case(*kind, scrutinee.value, &branches, default),
+                    value: self
+                        .build
+                        .case(*kind, scrutinee.value, &branches, default, core.ty),
                 }
             }
-            Core::Trace { message, body } => {
+            CoreKind::Trace { message, body } => {
                 let message = self.term(message, scope);
                 Parts {
                     bindings: message.bindings,
@@ -607,15 +604,15 @@ impl<'a> Share<'a, '_> {
                     ),
                 }
             }
-            Core::Delay(body) => Parts::value(
+            CoreKind::Delay(body) => Parts::value(
                 self.build
                     .delay(self.wrap(self.term(body, &mut scope.clone()))),
             ),
-            Core::Force(body) => {
+            CoreKind::Force(body) => {
                 let body = self.term(body, scope);
                 Parts {
                     bindings: body.bindings,
-                    value: self.build.force(body.value),
+                    value: self.build.force(body.value, core.ty),
                 }
             }
         }
@@ -624,11 +621,11 @@ impl<'a> Share<'a, '_> {
 
 fn simple(core: &Core<'_>) -> bool {
     matches!(
-        core,
-        Core::Var(_)
-            | Core::Lit(_)
-            | Core::Lam { .. }
-            | Core::Delay(_)
-            | Core::Builtin { args: [], .. }
+        core.kind,
+        CoreKind::Var(_)
+            | CoreKind::Lit(_)
+            | CoreKind::Lam { .. }
+            | CoreKind::Delay(_)
+            | CoreKind::Builtin { args: [], .. }
     )
 }

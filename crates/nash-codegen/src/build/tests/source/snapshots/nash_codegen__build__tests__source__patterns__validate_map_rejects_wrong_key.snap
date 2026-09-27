@@ -1,19 +1,20 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 1123
 description: "module Main exposing (..)\nimport Data exposing (ToData, Validate)\nmain : Map Int Bytes\nmain = validate (toData (Builtin.mapData [Builtin.mkPairData (Builtin.bData #\"aa\") (Builtin.bData #\"bb\")]))\n"
 ---
 --- core
 let applyForward#7 : 'erased -> ('erased -> 'erased) -> 'erased = \x#13 : 'erased (f#14 : 'erased -> 'erased) -> f#14 x#13 in
-let mapList#8 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#15 : 'erased -> pair Data Data) values#16 : list 'erased -> (\self#38 : 'erased -> self#38 self#38) (\self#38 : 'erased values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
+let mapList#8 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#15 : 'erased -> pair Data Data) values#16 : list 'erased -> (\self#38 : @self (list 'erased -> list (pair Data Data)) -> self#38 self#38) (\self#38 : @self (list 'erased -> list (pair Data Data)) values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
 case@List match#19 of
   Nil -> (con (list (pair data data)) [])
   Cons field#20 field#21 -> let first#17 : 'erased = field#20 in
   let rest#18 : list 'erased = field#21 in
   mkCons (f#15 first#17) (self#38 self#38 rest#18)) values#16 in
-let validate#25 : Data -> Int = \value#30 : Data -> let candidate#31 : Int = (\coerce#33 : 'erased -> coerce#33) value#30 in
+let validate#25 : Data -> Int = \value#30 : Data -> let candidate#31 : Int = (\coerce#33 : Data -> coerce#33) value#30 in
 let destruct#32 : int = unIData candidate#31 in
 candidate#31 in
-let validate#26 : Data -> Bytes = \value#34 : Data -> let candidate#35 : Bytes = (\coerce#37 : 'erased -> coerce#37) value#34 in
+let validate#26 : Data -> Bytes = \value#34 : Data -> let candidate#35 : Bytes = (\coerce#37 : Data -> coerce#37) value#34 in
 let destruct#36 : bytes = unBData candidate#35 in
 candidate#35 in
 let pairValidate#9 : pair Data Data -> pair Data Data = \arg#22 : pair Data Data -> let match#27 : pair Data Data = arg#22 in
@@ -21,7 +22,7 @@ case@Pair match#27 of
   Pair field#28 field#29 -> let key#23 : Data = field#28 in
   let value#24 : Data = field#29 in
   mkPairData (validate#25 key#23) (validate#26 value#24) in
-let validate#2 : Data -> Map Data Data = \value#5 : Data -> let candidate#6 : Map Data Data = (\coerce#10 : 'erased -> coerce#10) value#5 in
+let validate#2 : Data -> Map Data Data = \value#5 : Data -> let candidate#6 : Map Data Data = (\coerce#10 : Data -> coerce#10) value#5 in
 applyForward#7 (applyForward#7 (applyForward#7 candidate#6 unMapData) (mapList#8 pairValidate#9)) mapData in
 let toData#3 : 'erased -> Data = \coerce#11 : 'erased -> coerce#11 in
 let fromBytes#4 : bytes -> bytes = \value#12 : bytes -> value#12 in

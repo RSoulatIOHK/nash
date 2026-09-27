@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 643
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nmain : int\nmain =\n    let\n        pair(tag, fields) = Builtin.unConstrData (Builtin.constrData 7 [I 42])\n    in\n    case fields of\n        [I number] -> Builtin.addInteger tag number\n        _ -> fail\n"
 ---
 --- core
 let fromInt#34 : int -> int = \value#36 : int -> value#36 in
-let evaluated#37 : 'erased = constrData (fromInt#34 7) (mkCons ((\field#35 : int -> iData field#35) (fromInt#34 42)) (con (list data) [])) in
+let evaluated#37 : Data = constrData (fromInt#34 7) (mkCons ((\field#35 : int -> iData field#35) (fromInt#34 42)) (con (list data) [])) in
 let projection#38 : pair int (list Data) = unConstrData evaluated#37 in
 let destruct#2 : pair int (list Data) = projection#38 in
 let match#5 : pair int (list Data) = destruct#2 in
@@ -12,7 +13,7 @@ case@Pair match#5 of
   Pair field#6 field#7 -> let tag#3 : int = field#6 in
   let fields#4 : list Data = field#7 in
   let match#14 : list Data = fields#4 in
-  let leaf#24 : 'erased = delay error in
+  let leaf#24 : @delay int = delay error in
   let main#1 : int = case@List match#14 of
     Nil -> force leaf#24
     Cons field#25 field#26 -> case@Data field#25 of

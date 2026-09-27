@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nsame : int -> int -> bool\nsame = eq\nmain = if neq (Builtin.addInteger 20 21) 42 then same 42 42 else False\n"
 ---
 --- core
 let fromBool#2 : bool -> bool = \value#6 : bool -> value#6 in
-let not#9 : 'erased -> bool = \value#12 : 'erased -> case@Bool (\identity#13 : 'erased -> identity#13) value#12 of
+let not#9 : 'erased -> bool = \value#12 : 'erased -> case@Bool (\identity#13 : bool -> identity#13) value#12 of
   True -> false
   False -> true in
 let eq#10 : int -> int -> bool = equalsInteger in

@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/collections.rs
+assertion_line: 177
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nfoldr xs f zero =\n    case xs of\n        [] -> zero\n        x :: rest -> f x (foldr rest f zero)\nconcat left right = foldr left (\\x xs -> mkCons x xs) right\nflatMap xs f =\n    case xs of\n        [] -> []\n        x :: rest -> concat (f x) (flatMap rest f)\nmain = eq (flatMap [1, 2, 3] (\\a -> [a, a])) [1, 1, 2, 2, 3, 3]\n"
 ---
 --- core
 let fromBool#8 : bool -> bool = \value#32 : bool -> value#32 in
 let eq#16 : int -> int -> bool = equalsInteger in
-let eq#2 : list 'erased -> list 'erased -> bool = (\self#48 : 'erased -> self#48 self#48) (\self#48 : 'erased xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
+let eq#2 : list 'erased -> list 'erased -> bool = (\self#48 : @self (list 'erased -> list 'erased -> bool) -> self#48 self#48) (\self#48 : @self (list 'erased -> list 'erased -> bool) xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
 case@List match#20 of
   Nil -> let match#9 : list 'erased = ys#7 in
   case@List match#9 of
@@ -21,14 +22,14 @@ case@List match#20 of
     case@Bool eq#16 x#12 y#14 of
       True -> self#48 self#48 restX#13 restY#15
       False -> false) in
-let foldr#35 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#38 : list 'erased (f#39 : 'erased -> 'erased -> 'erased) zero#40 : 'erased -> (\self#47 : 'erased -> self#47 self#47) (\self#47 : 'erased xs#38 : list 'erased -> let match#43 : list 'erased = xs#38 in
+let foldr#35 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \xs#38 : list 'erased (f#39 : 'erased -> 'erased -> 'erased) zero#40 : 'erased -> (\self#47 : @self (list 'erased -> 'erased) -> self#47 self#47) (\self#47 : @self (list 'erased -> 'erased) xs#38 : list 'erased -> let match#43 : list 'erased = xs#38 in
 case@List match#43 of
   Nil -> zero#40
   Cons field#44 field#45 -> let x#41 : 'erased = field#44 in
   let rest#42 : list 'erased = field#45 in
   f#39 x#41 (self#47 self#47 rest#42)) xs#38 in
 let concat#27 : list 'erased -> list 'erased -> list 'erased = \left#33 : list 'erased right#34 : list 'erased -> foldr#35 left#33 (\x#36 : 'erased xs#37 : list 'erased -> mkCons x#36 xs#37) right#34 in
-let flatMap#3 : list 'erased -> ('erased -> list int) -> list int = \xs#23 : list 'erased (f#24 : 'erased -> list int) -> (\self#46 : 'erased -> self#46 self#46) (\self#46 : 'erased xs#23 : list 'erased -> let match#28 : list 'erased = xs#23 in
+let flatMap#3 : list 'erased -> ('erased -> list int) -> list int = \xs#23 : list 'erased (f#24 : 'erased -> list int) -> (\self#46 : @self (list 'erased -> list int) -> self#46 self#46) (\self#46 : @self (list 'erased -> list int) xs#23 : list 'erased -> let match#28 : list 'erased = xs#23 in
 case@List match#28 of
   Nil -> (con (list integer) [])
   Cons field#29 field#30 -> let x#25 : 'erased = field#29 in

@@ -45,12 +45,12 @@ impl<'a> Engine<'a, '_, '_> {
         }
         let mut body = self.expr(body, &child)?;
         for (pattern, binder, bindings, records, literals) in matches.into_iter().rev() {
-            let fallback = self.match_failure();
+            let fallback = self.match_failure(body.ty);
             body = decision_tree::compile(
                 &self.ir,
                 &mut self.types,
                 binder.ty,
-                self.ir.var(binder.name),
+                self.ir.var(binder.name, binder.ty),
                 &[MatchBranch {
                     pattern,
                     bindings,
@@ -94,7 +94,8 @@ impl<'a> Engine<'a, '_, '_> {
                 body,
             });
         }
-        let fallback = self.match_failure();
+        let result_ty = self.ty(NodeId::expr(branches[0].body), ctx)?;
+        let fallback = self.match_failure(result_ty);
         Ok(decision_tree::compile(
             &self.ir,
             &mut self.types,
@@ -223,7 +224,11 @@ impl<'a> Engine<'a, '_, '_> {
         };
         Ok(self.ir.lam(
             &[value],
-            self.ir.app(function, &[self.ir.var(value.name), literal]),
+            self.ir.app(
+                function,
+                &[self.ir.var(value.name, value.ty), literal],
+                Ty::Const(&ConstTy::Bool),
+            ),
         ))
     }
 
@@ -272,15 +277,14 @@ impl<'a> Engine<'a, '_, '_> {
         let (records, literals) = self.pattern_inputs(pattern, &ctx)?;
         let bindings =
             decision_tree::bindings(&self.ir, &mut self.types, binder.ty, pattern, &records)?;
-        let result = self
-            .ir
-            .var(bindings.get(name).ok_or(Error::UnknownLocal(name))?.name);
-        let fallback = self.match_failure();
+        let selected = bindings.get(name).ok_or(Error::UnknownLocal(name))?;
+        let result = self.ir.var(selected.name, selected.ty);
+        let fallback = self.match_failure(result.ty);
         Ok(decision_tree::compile(
             &self.ir,
             &mut self.types,
             binder.ty,
-            self.ir.var(binder.name),
+            self.ir.var(binder.name, binder.ty),
             &[MatchBranch {
                 pattern,
                 bindings,

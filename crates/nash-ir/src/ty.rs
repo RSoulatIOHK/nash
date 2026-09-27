@@ -13,6 +13,8 @@ pub enum Ty<'a> {
     Big(&'a BigTy<'a>),
     Const(&'a ConstTy<'a>),
     Term(&'a TermTy<'a>),
+    /// Compiler-created values that have no source-language type.
+    Runtime(&'a RuntimeTy<'a>),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -50,6 +52,34 @@ pub enum TermTy<'a> {
     Fun(&'a [Ty<'a>], Ty<'a>),
 }
 
+/// Runtime descriptions are explicit, not an escape hatch for missing types.
+/// Group descriptors retain each callee's signature rather than pretending a
+/// heterogeneous dispatcher has one source-language return type.
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum RuntimeTy<'a> {
+    Delay(Ty<'a>),
+    /// The recursive equation `self = self -> result` used by a knot worker.
+    SelfFunction(Ty<'a>),
+    Dispatcher(&'a [DispatchArm<'a>]),
+    Request(&'a [DispatchArm<'a>]),
+    Packet {
+        arms: &'a [DispatchArm<'a>],
+        tag: u16,
+    },
+    Results(&'a [DispatchArm<'a>]),
+    /// A raw UPLC constructor, without inventing nominal Nash identity.
+    Constr {
+        tag: u16,
+        fields: &'a [Ty<'a>],
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DispatchArm<'a> {
+    pub params: &'a [Ty<'a>],
+    pub result: Ty<'a>,
+}
+
 /// A user ADT instantiated at ground type arguments; constructor field
 /// types are looked up through `Adts` so recursive types stay finite.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -64,6 +94,13 @@ impl<'a> Ty<'a> {
             Ty::Big(_) => Some(Repr::Big),
             Ty::Const(_) => Some(Repr::Const),
             Ty::Term(_) => Some(Repr::Term),
+            Ty::Runtime(RuntimeTy::Results(arms)) => {
+                let repr = arms.first()?.result.repr()?;
+                arms.iter()
+                    .all(|arm| arm.result.repr() == Some(repr))
+                    .then_some(repr)
+            }
+            Ty::Runtime(_) => Some(Repr::Term),
             Ty::Erased | Ty::Constructor(_) => None,
         }
     }
@@ -91,7 +128,7 @@ impl<'a> Ty<'a> {
                 ConstTy::BlsMlr => Type::ml_result(arena),
                 ConstTy::Value => Type::value(arena),
             },
-            Ty::Term(_) | Ty::Erased | Ty::Constructor(_) => return None,
+            Ty::Term(_) | Ty::Runtime(_) | Ty::Erased | Ty::Constructor(_) => return None,
         })
     }
 }
@@ -148,6 +185,36 @@ fn fmt_ty(ty: Ty<'_>, f: &mut std::fmt::Formatter<'_>, context: u8) -> std::fmt:
         f.write_str(if record { " }" } else { ")" })
     }
     match ty {
+        Ty::Runtime(runtime) => match runtime {
+            RuntimeTy::Delay(t) => application(f, "@delay", &[*t], context),
+            RuntimeTy::SelfFunction(t) => application(f, "@self", &[*t], context),
+            RuntimeTy::Constr { tag, fields: ts } => {
+                write!(f, "@constr[{tag}]")?;
+                fields(f, ts, false)
+            }
+            RuntimeTy::Dispatcher(arms)
+            | RuntimeTy::Request(arms)
+            | RuntimeTy::Results(arms)
+            | RuntimeTy::Packet { arms, .. } => {
+                match runtime {
+                    RuntimeTy::Dispatcher(_) => f.write_str("@dispatch")?,
+                    RuntimeTy::Request(_) => f.write_str("@request")?,
+                    RuntimeTy::Results(_) => f.write_str("@results")?,
+                    RuntimeTy::Packet { tag, .. } => write!(f, "@packet[{tag}]")?,
+                    _ => unreachable!(),
+                }
+                f.write_char('[')?;
+                for (index, arm) in arms.iter().enumerate() {
+                    if index > 0 {
+                        f.write_str(", ")?;
+                    }
+                    fields(f, arm.params, false)?;
+                    f.write_str(" -> ")?;
+                    fmt_ty(arm.result, f, 0)?;
+                }
+                f.write_char(']')
+            }
+        },
         Ty::Erased => f.write_str("'erased"),
         Ty::Constructor(adt) => application(f, &qualified_name(adt.name), adt.args, context),
         Ty::Big(big) => match big {

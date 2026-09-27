@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\nimpl Eq 'a => Eq (option 'a) where\n    eq a b =\n        case (a, b) of\n            (None, None) -> True\n            (Some x, Some y) -> eq x y\n            _ -> False\ninit self =\n    case self of\n        [] -> None\n        _ -> Some (doInit self)\ndoInit self =\n    case self of\n        [] -> trace \"unreachable\" fail\n        [_] -> []\n        x :: xs -> mkCons x (doInit xs)\nvalues : list int\nvalues = [1, 2, 3, 4]\nmain = eq (init values) (Some [1, 2, 3])\n"
 ---
 --- core
 let message#59 : string = "unreachable" in
 let fromBool#9 : bool -> bool = \value#32 : bool -> value#32 in
 let eq#42 : int -> int -> bool = equalsInteger in
-let eq#12 : list 'erased -> list 'erased -> bool = (\self#16 : 'erased -> self#16 self#16) (\self#16 : 'erased xs#33 : list 'erased ys#34 : list 'erased -> let match#46 : list 'erased = xs#33 in
+let eq#12 : list 'erased -> list 'erased -> bool = (\self#16 : @self (list 'erased -> list 'erased -> bool) -> self#16 self#16) (\self#16 : @self (list 'erased -> list 'erased -> bool) xs#33 : list 'erased ys#34 : list 'erased -> let match#46 : list 'erased = xs#33 in
 case@List match#46 of
   Nil -> let match#35 : list 'erased = ys#34 in
   case@List match#35 of
@@ -23,7 +24,7 @@ case@List match#46 of
       True -> self#16 self#16 restX#39 restY#41
       False -> false) in
 let eq#2 : Main.option 'erased -> Main.option 'erased -> bool = \a#7 : Main.option 'erased b#8 : Main.option 'erased -> let match#13 : (Main.option 'erased, Main.option 'erased) = constr 0 a#7 b#8 in
-let leaf#19 : 'erased = delay (fromBool#9 false) in
+let leaf#19 : @delay bool = delay (fromBool#9 false) in
 case@Tag match#13 of
   0 field#20 field#21 -> case@Tag field#20 of
     0 -> case@Tag field#21 of
@@ -35,7 +36,7 @@ case@Tag match#13 of
       let y#11 : 'erased = field#24 in
       eq#12 x#10 y#11 in
 let fromString#50 : string -> string = \value#58 : string -> value#58 in
-let doInit#27 : list int -> list int = (\self#14 : 'erased -> self#14 self#14) (\self#14 : 'erased self#49 : list int -> let match#53 : list int = self#49 in
+let doInit#27 : list int -> list int = (\self#14 : @self (list int -> list int) -> self#14 self#14) (\self#14 : @self (list int -> list int) self#49 : list int -> let match#53 : list int = self#49 in
 case@List match#53 of
   Nil -> trace (fromString#50 message#59) in error
   Cons field#54 field#55 -> case@List field#55 of

@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/collections.rs
+assertion_line: 109
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\noptionEq same a b =\n    case (a, b) of\n        (None, None) -> True\n        (Some x, Some y) -> same x y\n        _ -> False\nmap2 optA optB f =\n    case optA of\n        None -> None\n        Some a ->\n            case optB of\n                None -> None\n                Some b -> Some (f a b)\nmain = optionEq pairEq (map2 (Some 14) (Some 42) (\\a b -> mkPairData (iData a) (iData b))) (Some (mkPairData (iData 14) (iData 42)))\npairEq a b = if equalsData (toData (fstPair a)) (toData (fstPair b)) then equalsData (toData (sndPair a)) (toData (sndPair b)) else False\n"
 ---
 --- core
 let fromBool#14 : bool -> bool = \value#43 : bool -> value#43 in
 let optionEq#2 : ('erased -> 'erased -> 'erased) -> Main.option 'erased -> Main.option 'erased -> 'erased = \(same#11 : 'erased -> 'erased -> 'erased) a#12 : Main.option 'erased b#13 : Main.option 'erased -> let match#17 : (Main.option 'erased, Main.option 'erased) = constr 0 a#12 b#13 in
-let leaf#23 : 'erased = delay (fromBool#14 false) in
+let leaf#23 : @delay 'erased = delay (fromBool#14 false) in
 case@Tag match#17 of
   0 field#24 field#25 -> case@Tag field#24 of
     0 -> case@Tag field#25 of
@@ -18,11 +19,11 @@ case@Tag match#17 of
       same#11 x#15 y#16 in
 let toData#31 : 'erased -> Data = \coerce#44 : 'erased -> coerce#44 in
 let pairEq#3 : pair 'erased 'erased -> pair 'erased 'erased -> bool = \a#29 : pair 'erased 'erased b#30 : pair 'erased 'erased -> let projection#45 : 'erased = fstPair a#29 in
-let evaluated#47 : 'erased = toData#31 projection#45 in
+let evaluated#47 : Data = toData#31 projection#45 in
 let projection#46 : 'erased = fstPair b#30 in
 case@Bool equalsData evaluated#47 (toData#31 projection#46) of
   True -> let projection#48 : 'erased = sndPair a#29 in
-  let evaluated#50 : 'erased = toData#31 projection#48 in
+  let evaluated#50 : Data = toData#31 projection#48 in
   let projection#49 : 'erased = sndPair b#30 in
   equalsData evaluated#50 (toData#31 projection#49)
   False -> fromBool#14 false in

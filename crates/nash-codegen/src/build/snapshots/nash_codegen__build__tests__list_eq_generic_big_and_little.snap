@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nsame : Eq (list 'a) => list 'a -> list 'a -> bool\nsame xs ys = eq xs ys\nbig : list Int\nbig = [1, 2]\nsmall : list int\nsmall = [1, 2]\nmain = if same big big then same small small else False\n"
 ---
 --- core
@@ -9,7 +10,7 @@ let same#3 : list 'erased -> list 'erased -> bool = \xs#8 : list 'erased ys#9 : 
 let fromInt#11 : int -> Int = iData in
 let big#4 : list Int = mkCons (fromInt#11 1) (mkCons (fromInt#11 2) (con (list data) [])) in
 let eq#27 : int -> int -> bool = equalsInteger in
-let eq#14 : list 'erased -> list 'erased -> bool = (\self#35 : 'erased -> self#35 self#35) (\self#35 : 'erased xs#18 : list 'erased ys#19 : list 'erased -> let match#31 : list 'erased = xs#18 in
+let eq#14 : list 'erased -> list 'erased -> bool = (\self#35 : @self (list 'erased -> list 'erased -> bool) -> self#35 self#35) (\self#35 : @self (list 'erased -> list 'erased -> bool) xs#18 : list 'erased ys#19 : list 'erased -> let match#31 : list 'erased = xs#18 in
 case@List match#31 of
   Nil -> let match#20 : list 'erased = ys#19 in
   case@List match#20 of

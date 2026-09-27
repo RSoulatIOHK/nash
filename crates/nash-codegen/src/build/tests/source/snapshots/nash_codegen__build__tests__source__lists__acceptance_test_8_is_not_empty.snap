@@ -1,14 +1,15 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 286
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nisEmpty bytes = equalsInteger (Builtin.lengthOfByteString bytes) 0\nmain = eq (isEmpty #\"01\") False\n"
 ---
 --- core
-let not#8 : 'erased -> bool = \value#14 : 'erased -> case@Bool (\identity#15 : 'erased -> identity#15) value#14 of
+let not#8 : 'erased -> bool = \value#14 : 'erased -> case@Bool (\identity#15 : bool -> identity#15) value#14 of
   True -> false
   False -> true in
-let xor#9 : 'erased -> 'erased -> bool = \a#16 : 'erased b#17 : 'erased -> case@Bool (\identity#19 : 'erased -> identity#19) a#16 of
+let xor#9 : 'erased -> 'erased -> bool = \a#16 : 'erased b#17 : 'erased -> case@Bool (\identity#19 : bool -> identity#19) a#16 of
   True -> not#8 b#17
-  False -> (\identity#18 : 'erased -> identity#18) b#17 in
+  False -> (\identity#18 : bool -> identity#18) b#17 in
 let eq#2 : bool -> bool -> bool = \a#6 : bool b#7 : bool -> not#8 (xor#9 a#6 b#7) in
 let fromInt#11 : int -> int = \value#20 : int -> value#20 in
 let isEmpty#3 : bytes -> bool = \bytes#10 : bytes -> equalsInteger (lengthOfByteString bytes#10) (fromInt#11 0) in

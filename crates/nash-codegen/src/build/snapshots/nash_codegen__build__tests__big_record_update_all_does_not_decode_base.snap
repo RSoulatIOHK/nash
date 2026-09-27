@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1660
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int }\nreplace : Record -> Record\nreplace r = { r | a = (trace \"first\" 10), b = (trace \"second\" 20) }\nmain = Builtin.unIData (replace (Primitive.coerce ())).b\n"
 ---
 --- core
@@ -10,7 +11,7 @@ let fromString#12 : string -> string = \value#14 : string -> value#14 in
 let replace#2 : { _0 : Int, _1 : Int } -> { _0 : Int, _1 : Int } = \r#9 : { _0 : Int, _1 : Int } -> let base#10 : { _0 : Int, _1 : Int } = r#9 in
 listData (mkCons (trace (fromString#12 message#17) in fromInt#11 10) (mkCons (trace (fromString#12 message#18) in fromInt#11 20) (con (list data) []))) in
 let fromUnit#4 : unit -> unit = \value#13 : unit -> value#13 in
-let evaluated#15 : 'erased = replace#2 ((\coerce#3 : 'erased -> coerce#3) (fromUnit#4 ())) in
+let evaluated#15 : { _0 : Int, _1 : Int } = replace#2 ((\coerce#3 : unit -> coerce#3) (fromUnit#4 ())) in
 let projection#16 : list Data = unListData evaluated#15 in
 case@List projection#16 of
   Cons head#5 tail#6 -> case@List tail#6 of

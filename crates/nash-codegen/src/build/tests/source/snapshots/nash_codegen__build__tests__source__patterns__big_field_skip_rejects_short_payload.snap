@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 759
 description: "module Main exposing (..)\nimport Primitive exposing (..)\ntype alias Record = { a : Int, b : Int, c : Int }\nmalformed : Record\nmalformed = coerce (List [I 1])\nmain = malformed.c\n"
 ---
 --- core
 let fromInt#8 : int -> int = \value#9 : int -> value#9 in
-let malformed#2 : { _0 : Int, _1 : Int, _2 : Int } = (\coerce#5 : 'erased -> coerce#5) ((\field#6 : list Data -> listData field#6) (mkCons ((\field#7 : int -> iData field#7) (fromInt#8 1)) (con (list data) []))) in
+let malformed#2 : { _0 : Int, _1 : Int, _2 : Int } = (\coerce#5 : Data -> coerce#5) ((\field#6 : list Data -> listData field#6) (mkCons ((\field#7 : int -> iData field#7) (fromInt#8 1)) (con (list data) []))) in
 let projection#10 : list Data = unListData malformed#2 in
 let projection#11 : list Data = dropList 2 projection#10 in
 case@List projection#11 of

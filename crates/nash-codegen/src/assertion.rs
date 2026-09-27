@@ -3,7 +3,10 @@
 //! Solved metadata is keyed by node identity. The temporary substitutions below
 //! replace only emitted Core and leave canonical nodes and evidence intact.
 use nash_ast::{Expr, ModuleName, NodeId, Pred, QualifiedName, primitives};
-use nash_ir::{core::*, ty::Ty};
+use nash_ir::{
+    core::*,
+    ty::{ConstTy, TermTy, Ty},
+};
 use nash_plutus::constant::Constant;
 use nash_region::Located;
 use nash_test::{AssertSite, Capture};
@@ -73,7 +76,11 @@ impl<'a> Engine<'a, '_, '_> {
         })();
         std::mem::swap(&mut self.ir, &mut show.ir);
         let function = function?;
-        Ok(Some(self.ir.app(function, &[value])))
+        Ok(Some(self.ir.app(
+            function,
+            &[value],
+            Ty::Const(&ConstTy::String),
+        )))
     }
 
     pub(crate) fn power_assert(
@@ -93,7 +100,7 @@ impl<'a> Engine<'a, '_, '_> {
             let mut captures = Vec::new();
             let condition =
                 self.assert_expression(condition, ctx, false, &mut bindings, &mut captures)?;
-            let mut failed = self.ir.error();
+            let mut failed = self.ir.error(Ty::Const(&ConstTy::Unit));
             for captured in captures.iter().rev() {
                 if let Some(shown) = captured.value {
                     let prefix =
@@ -104,7 +111,9 @@ impl<'a> Engine<'a, '_, '_> {
                     };
                     let rest = self.ir.lam(&[unit], failed);
                     let trace = self.base_function("Test", "assertCapture", Substitution::new())?;
-                    failed = self.ir.app(trace, &[prefix, shown, rest]);
+                    failed = self
+                        .ir
+                        .app(trace, &[prefix, shown, rest], Ty::Const(&ConstTy::Unit));
                 }
             }
             // A site marker also identifies assertions with no printable captures.
@@ -114,9 +123,11 @@ impl<'a> Engine<'a, '_, '_> {
             };
             let rest = self.ir.lam(&[unit], failed);
             let trace = self.base_function("Test", "assertAt", Substitution::new())?;
-            failed = self
-                .ir
-                .app(trace, &[self.string(&format!("\0assert\0{id}")), rest]);
+            failed = self.ir.app(
+                trace,
+                &[self.string(&format!("\0assert\0{id}")), rest],
+                Ty::Const(&ConstTy::Unit),
+            );
             let mut body = self.ir.if_(
                 condition,
                 self.ir.lit(Constant::unit(self.ir.arena)),
@@ -232,14 +243,15 @@ impl<'a> Engine<'a, '_, '_> {
                     self.assert_expression(function, ctx, true, bindings, captures)?;
                 for (position, arg) in arguments.iter().enumerate() {
                     let arg = self.assert_expression(arg, ctx, true, bindings, captures)?;
-                    function = self.ir.app(function, &[arg]);
+                    let applied_ty = application_result(self.ir.arena, function.ty);
+                    function = self.ir.app(function, &[arg], applied_ty);
                     if position + 1 < arguments.len() {
                         let binder = Binder {
                             name: self.ir.fresh("apply"),
-                            ty: Ty::Erased,
+                            ty: function.ty,
                         };
                         bindings.push((binder, function));
-                        function = self.ir.var(binder.name);
+                        function = self.ir.var(binder.name, binder.ty);
                     }
                 }
                 function
@@ -284,20 +296,33 @@ impl<'a> Engine<'a, '_, '_> {
                         captures,
                     );
                 }
-                let function = self.reference(*reference, NodeId::expr(expression), ctx)?;
+                let left_ty = self.ty(NodeId::expr(left), ctx)?;
+                let right_ty = self.ty(NodeId::expr(right), ctx)?;
+                let result_ty = self.ty(NodeId::expr(expression), ctx)?;
+                let function_ty = Ty::Term(self.ir.arena.alloc(TermTy::Fun(
+                    self.ir.arena.alloc_slice_copy(&[left_ty, right_ty]),
+                    result_ty,
+                )));
+                let function =
+                    self.reference(*reference, NodeId::expr(expression), ctx, function_ty)?;
                 let binder = Binder {
                     name: self.ir.fresh("operator"),
-                    ty: Ty::Erased,
+                    ty: function.ty,
                 };
                 bindings.push((binder, function));
                 let left = self.assert_expression(left, ctx, true, bindings, captures)?;
                 let partial = Binder {
                     name: self.ir.fresh("apply"),
-                    ty: Ty::Erased,
+                    ty: application_result(self.ir.arena, function.ty),
                 };
-                bindings.push((partial, self.ir.app(self.ir.var(binder.name), &[left])));
+                bindings.push((
+                    partial,
+                    self.ir
+                        .app(self.ir.var(binder.name, binder.ty), &[left], partial.ty),
+                ));
                 let right = self.assert_expression(right, ctx, true, bindings, captures)?;
-                self.ir.app(self.ir.var(partial.name), &[right])
+                self.ir
+                    .app(self.ir.var(partial.name, partial.ty), &[right], result_ty)
             }
             _ => {
                 let mut children = Vec::new();
@@ -373,7 +398,7 @@ impl<'a> Engine<'a, '_, '_> {
             ty: self.ty(NodeId::expr(expression), ctx)?,
         };
         bindings.push((binder, value));
-        let value = self.ir.var(binder.name);
+        let value = self.ir.var(binder.name, binder.ty);
         self.replacements.insert(NodeId::expr(expression), value);
         if let Some(index) = capture {
             let shown = self.show_value(NodeId::expr(expression), value, ctx)?;
@@ -381,5 +406,17 @@ impl<'a> Engine<'a, '_, '_> {
             captures[index].value = shown;
         }
         Ok(value)
+    }
+}
+
+/// Consume one source-language function argument, retaining a partial call's type.
+fn application_result<'a>(arena: &'a nash_plutus::arena::Arena, ty: Ty<'a>) -> Ty<'a> {
+    let Ty::Term(TermTy::Fun(args, result)) = ty else {
+        unreachable!("checked source call has function metadata")
+    };
+    if args.len() == 1 {
+        *result
+    } else {
+        Ty::Term(arena.alloc(TermTy::Fun(&args[1..], *result)))
     }
 }

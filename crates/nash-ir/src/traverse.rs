@@ -1,7 +1,7 @@
 //! Borrowed Core traversal; shared subtrees are visited once per occurrence.
 use crate::{
     build::Builder,
-    core::{Branch, Core, RecBinder},
+    core::{Branch, Core, CoreKind, RecBinder},
 };
 use std::ptr;
 
@@ -13,51 +13,51 @@ pub fn map<'a>(
     core: &'a Core<'a>,
     f: &mut impl FnMut(&'a Core<'a>) -> Option<&'a Core<'a>>,
 ) -> &'a Core<'a> {
-    let changed = match core {
-        Core::Var(_) | Core::Lit(_) | Core::Error => None,
-        Core::Lam { params, body } => {
+    let changed = match &core.kind {
+        CoreKind::Var(_) | CoreKind::Lit(_) | CoreKind::Error => None,
+        CoreKind::Lam { params, body } => {
             let mapped = map(build, body, f);
-            (!ptr::eq(*body, mapped)).then_some(Core::Lam {
+            (!ptr::eq(*body, mapped)).then_some(CoreKind::Lam {
                 params,
                 body: mapped,
             })
         }
-        Core::App { func, args } => {
+        CoreKind::App { func, args } => {
             let mapped = map(build, func, f);
             let mapped_args = map_slice(build, args, |arg| {
                 let value = map(build, arg, f);
                 (value, !ptr::eq(arg, value))
             });
-            (!ptr::eq(*func, mapped) || !ptr::eq(*args, mapped_args)).then_some(Core::App {
+            (!ptr::eq(*func, mapped) || !ptr::eq(*args, mapped_args)).then_some(CoreKind::App {
                 func: mapped,
                 args: mapped_args,
             })
         }
-        Core::Let {
+        CoreKind::Let {
             binder,
             value,
             body,
         } => {
             let v = map(build, value, f);
             let t = map(build, body, f);
-            (!ptr::eq(*value, v) || !ptr::eq(*body, t)).then_some(Core::Let {
+            (!ptr::eq(*value, v) || !ptr::eq(*body, t)).then_some(CoreKind::Let {
                 binder: *binder,
                 value: v,
                 body: t,
             })
         }
-        Core::LetRec { binders, body } => {
+        CoreKind::LetRec { binders, body } => {
             let mapped = map_slice(build, binders, |rb| {
                 let body = map(build, rb.body, f);
                 (RecBinder { body, ..rb }, !ptr::eq(rb.body, body))
             });
             let t = map(build, body, f);
-            (!ptr::eq(*binders, mapped) || !ptr::eq(*body, t)).then_some(Core::LetRec {
+            (!ptr::eq(*binders, mapped) || !ptr::eq(*body, t)).then_some(CoreKind::LetRec {
                 binders: mapped,
                 body: t,
             })
         }
-        Core::Case {
+        CoreKind::Case {
             kind,
             scrutinee,
             branches,
@@ -75,7 +75,7 @@ pub fn map<'a>(
                 _ => false,
             };
             (!ptr::eq(*scrutinee, s) || !ptr::eq(*branches, bs) || !same_default).then_some(
-                Core::Case {
+                CoreKind::Case {
                     kind: *kind,
                     scrutinee: s,
                     branches: bs,
@@ -83,56 +83,56 @@ pub fn map<'a>(
                 },
             )
         }
-        Core::Constr { tag, fields } => {
+        CoreKind::Constr { tag, fields } => {
             let mapped = map_slice(build, fields, |arg| {
                 let value = map(build, arg, f);
                 (value, !ptr::eq(arg, value))
             });
-            (!ptr::eq(*fields, mapped)).then_some(Core::Constr {
+            (!ptr::eq(*fields, mapped)).then_some(CoreKind::Constr {
                 tag: *tag,
                 fields: mapped,
             })
         }
-        Core::Field {
+        CoreKind::Field {
             record,
             index,
             arity,
         } => {
             let mapped = map(build, record, f);
-            (!ptr::eq(*record, mapped)).then_some(Core::Field {
+            (!ptr::eq(*record, mapped)).then_some(CoreKind::Field {
                 record: mapped,
                 index: *index,
                 arity: *arity,
             })
         }
-        Core::Builtin { func, args } => {
+        CoreKind::Builtin { func, args } => {
             let mapped = map_slice(build, args, |arg| {
                 let value = map(build, arg, f);
                 (value, !ptr::eq(arg, value))
             });
-            (!ptr::eq(*args, mapped)).then_some(Core::Builtin {
+            (!ptr::eq(*args, mapped)).then_some(CoreKind::Builtin {
                 func: *func,
                 args: mapped,
             })
         }
-        Core::Trace { message, body } => {
+        CoreKind::Trace { message, body } => {
             let m = map(build, message, f);
             let t = map(build, body, f);
-            (!ptr::eq(*message, m) || !ptr::eq(*body, t)).then_some(Core::Trace {
+            (!ptr::eq(*message, m) || !ptr::eq(*body, t)).then_some(CoreKind::Trace {
                 message: m,
                 body: t,
             })
         }
-        Core::Delay(body) => {
+        CoreKind::Delay(body) => {
             let mapped = map(build, body, f);
-            (!ptr::eq(*body, mapped)).then_some(Core::Delay(mapped))
+            (!ptr::eq(*body, mapped)).then_some(CoreKind::Delay(mapped))
         }
-        Core::Force(body) => {
+        CoreKind::Force(body) => {
             let mapped = map(build, body, f);
-            (!ptr::eq(*body, mapped)).then_some(Core::Force(mapped))
+            (!ptr::eq(*body, mapped)).then_some(CoreKind::Force(mapped))
         }
     };
-    let node = changed.map_or(core, |value| &*build.arena.alloc(value));
+    let node = changed.map_or(core, |kind| build.alloc(core.ty, kind));
     f(node).unwrap_or(node)
 }
 

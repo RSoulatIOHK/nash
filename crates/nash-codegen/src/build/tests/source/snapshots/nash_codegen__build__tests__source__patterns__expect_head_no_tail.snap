@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 195
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain =\n    let\n        a : list int\n        a = [1, 2, 3]\n    in\n    case a of\n        [h] -> equalsInteger h h\n        _ -> fail\n"
 ---
 --- core
 let fromInt#14 : int -> int = \value#15 : int -> value#15 in
 let a#2 : list int = mkCons (fromInt#14 1) (mkCons (fromInt#14 2) (mkCons (fromInt#14 3) (con (list integer) []))) in
 let match#4 : list int = a#2 in
-let leaf#9 : 'erased = delay error in
+let leaf#9 : @delay bool = delay error in
 let main#1 : bool = case@List match#4 of
   Nil -> force leaf#9
   Cons field#10 field#11 -> case@List field#11 of

@@ -1,9 +1,10 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 344
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nimport Lift exposing (lower, lift)\ntype Option 'a = None | Some 'a\ntype Address = Address { paymentCredential : Bytes, stakeCredential : Option Bytes }\ntype Output = Output { address : Address, value : List Int, datum : Option Int, referenceScript : Option Int }\nfoldl self with zero =\n    case self of\n        [] -> zero\n        x :: xs -> foldl xs with (with x zero)\nmain =\n    let\n        addr1 = Address { paymentCredential = #\"61646666\", stakeCredential = None }\n        out = Output { address = addr1, value = (lift empty), datum = None, referenceScript = None }\n        empty : list Int\n        empty = []\n        outputs : list Output\n        outputs = [out, out, out]\n        cry =\n            foldl outputs\n                (\\o mbB ->\n                    case mbB of\n                        None -> if eq o.address addr1 then Some o else None\n                        otherwise -> otherwise\n                )\n                None\n    in\n    eq cry cry\n"
 ---
 --- core
-let foldl#7 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \self#28 : list 'erased (with#29 : 'erased -> 'erased -> 'erased) zero#30 : 'erased -> (\self#17 : 'erased -> self#17 self#17) (\self#17 : 'erased self#28 : list 'erased zero#30 : 'erased -> let match#33 : list 'erased = self#28 in
+let foldl#7 : list 'erased -> ('erased -> 'erased -> 'erased) -> 'erased -> 'erased = \self#28 : list 'erased (with#29 : 'erased -> 'erased -> 'erased) zero#30 : 'erased -> (\self#17 : @self (list 'erased -> 'erased -> 'erased) -> self#17 self#17) (\self#17 : @self (list 'erased -> 'erased -> 'erased) self#28 : list 'erased zero#30 : 'erased -> let match#33 : list 'erased = self#28 in
 case@List match#33 of
   Nil -> zero#30
   Cons field#34 field#35 -> let x#31 : 'erased = field#34 in

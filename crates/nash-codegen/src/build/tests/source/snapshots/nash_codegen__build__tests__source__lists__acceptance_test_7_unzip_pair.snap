@@ -1,20 +1,21 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 240
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData)\nunzip : list (pair Int Bytes) -> pair (List Int) (List Bytes)\nunzip xs =\n    case xs of\n        [] -> mkPairData (listData []) (listData [])\n        entry :: rest ->\n            let\n                tails = unzip rest\n            in\n            mkPairData\n                (listData (mkCons (fstPair entry) (unListData (fstPair tails))))\n                (listData (mkCons (sndPair entry) (unListData (sndPair tails))))\nsame : pair (List Int) (List Bytes) -> pair (List Int) (List Bytes) -> bool\nsame a b =\n    if equalsData (toData (fstPair a)) (toData (fstPair b)) then\n        equalsData (toData (sndPair a)) (toData (sndPair b))\n    else False\nmain =\n    let\n        x = [mkPairData (iData 3) (bData #\"55\"), mkPairData (iData 4) (bData #\"7799\")]\n    in\n    same (unzip x)\n        (mkPairData (listData [iData 3, iData 4]) (listData [bData #\"55\", bData #\"7799\"]))\n"
 ---
 --- core
 let fromBool#9 : bool -> bool = \value#20 : bool -> value#20 in
 let toData#10 : 'erased -> Data = \coerce#21 : 'erased -> coerce#21 in
 let same#3 : pair (List Int) (List Bytes) -> pair (List Int) (List Bytes) -> bool = \a#7 : pair (List Int) (List Bytes) b#8 : pair (List Int) (List Bytes) -> let projection#22 : List Int = fstPair a#7 in
-let evaluated#24 : 'erased = toData#10 projection#22 in
+let evaluated#24 : Data = toData#10 projection#22 in
 let projection#23 : List Int = fstPair b#8 in
 case@Bool equalsData evaluated#24 (toData#10 projection#23) of
   True -> let projection#25 : List Bytes = sndPair a#7 in
-  let evaluated#27 : 'erased = toData#10 projection#25 in
+  let evaluated#27 : Data = toData#10 projection#25 in
   let projection#26 : List Bytes = sndPair b#8 in
   equalsData evaluated#27 (toData#10 projection#26)
   False -> fromBool#9 false in
-let unzip#4 : list (pair Int Bytes) -> pair (List Int) (List Bytes) = (\self#35 : 'erased -> self#35 self#35) (\self#35 : 'erased xs#11 : list (pair Int Bytes) -> let match#15 : list (pair Int Bytes) = xs#11 in
+let unzip#4 : list (pair Int Bytes) -> pair (List Int) (List Bytes) = (\self#35 : @self (list (pair Int Bytes) -> pair (List Int) (List Bytes)) -> self#35 self#35) (\self#35 : @self (list (pair Int Bytes) -> pair (List Int) (List Bytes)) xs#11 : list (pair Int Bytes) -> let match#15 : list (pair Int Bytes) = xs#11 in
 case@List match#15 of
   Nil -> mkPairData (listData (con (list data) [])) (listData (con (list data) []))
   Cons field#16 field#17 -> let entry#12 : pair Int Bytes = field#16 in
@@ -22,11 +23,11 @@ case@List match#15 of
   let tails#14 : pair (List Int) (List Bytes) = self#35 self#35 rest#13 in
   let projection#28 : Int = fstPair entry#12 in
   let projection#29 : List Int = fstPair tails#14 in
-  let projection#30 : list Data = unListData projection#29 in
-  let evaluated#34 : 'erased = listData (mkCons projection#28 projection#30) in
+  let projection#30 : list Int = unListData projection#29 in
+  let evaluated#34 : List Int = listData (mkCons projection#28 projection#30) in
   let projection#31 : Bytes = sndPair entry#12 in
   let projection#32 : List Bytes = sndPair tails#14 in
-  let projection#33 : list Data = unListData projection#32 in
+  let projection#33 : list Bytes = unListData projection#32 in
   mkPairData evaluated#34 (listData (mkCons projection#31 projection#33))) in
 let fromInt#5 : int -> int = \value#18 : int -> value#18 in
 let fromBytes#6 : bytes -> bytes = \value#19 : bytes -> value#19 in

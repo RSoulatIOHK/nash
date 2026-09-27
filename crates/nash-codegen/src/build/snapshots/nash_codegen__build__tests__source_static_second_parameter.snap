@@ -1,10 +1,11 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1281
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ncount : int -> int -> int\ncount n step =\n    if Builtin.equalsInteger n 0 then 0\n    else Builtin.addInteger step (count (Builtin.subtractInteger n 1) step)\nmain : int\nmain = count 3 7\n"
 ---
 --- core
 let fromInt#3 : int -> int = \value#6 : int -> value#6 in
-let count#2 : int -> int -> int = \n#4 : int step#5 : int -> (\self#7 : 'erased -> self#7 self#7) (\self#7 : 'erased n#4 : int -> case@Bool equalsInteger n#4 (fromInt#3 0) of
+let count#2 : int -> int -> int = \n#4 : int step#5 : int -> (\self#7 : @self (int -> int) -> self#7 self#7) (\self#7 : @self (int -> int) n#4 : int -> case@Bool equalsInteger n#4 (fromInt#3 0) of
   True -> fromInt#3 0
   False -> addInteger step#5 (self#7 self#7 (subtractInteger n#4 (fromInt#3 1)))) n#4 in
 let main#1 : int = count#2 (fromInt#3 3) (fromInt#3 7) in

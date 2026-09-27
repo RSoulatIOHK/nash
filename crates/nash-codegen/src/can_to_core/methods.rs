@@ -2,21 +2,33 @@ use super::*;
 use crate::{evidence, ty_of::Substitution};
 
 impl<'a> Engine<'a, '_, '_> {
-    pub(crate) fn coerce(&self) -> &'a Core<'a> {
+    pub(crate) fn coerce(&self, ty: Ty<'a>) -> &'a Core<'a> {
+        let Ty::Term(TermTy::Fun(args, result)) = ty else {
+            unreachable!("coerce has a function type")
+        };
+        let result = if args.len() == 1 {
+            *result
+        } else {
+            Ty::Term(self.ir.arena.alloc(TermTy::Fun(&args[1..], *result)))
+        };
         let binder = Binder {
             name: self.ir.fresh("coerce"),
-            ty: Ty::Erased,
+            ty: args[0],
         };
-        self.ir.lam(&[binder], self.ir.var(binder.name))
+        self.ir.lam(
+            &[binder],
+            self.ir
+                .with_type(self.ir.var(binder.name, binder.ty), result),
+        )
     }
 
-    pub(crate) fn builtin(&self, name: &'a str) -> Result<&'a Core<'a>, Error<'a>> {
+    pub(crate) fn builtin(&self, name: &'a str, ty: Ty<'a>) -> Result<&'a Core<'a>, Error<'a>> {
         let func =
             crate::builtins::by_name(name).ok_or(Error::UnknownDefinition(QualifiedName {
                 home: primitives::builtin_home(),
                 name,
             }))?;
-        Ok(self.ir.builtin(func, &[]))
+        Ok(self.ir.builtin(func, &[], ty))
     }
 
     pub(crate) fn method(
@@ -95,7 +107,8 @@ impl<'a> Engine<'a, '_, '_> {
         )?;
         let values = self.ir.arena.alloc_slice_fill_iter([ev]);
         let function = self.selected_method(trait_, method, annotation, &subst, values)?;
-        Ok(self.ir.app(function, &[raw]))
+        let result_ty = self.ty(node, ctx)?;
+        Ok(self.ir.app(function, &[raw], result_ty))
     }
 
     pub(crate) fn method_annotation(
@@ -120,18 +133,25 @@ impl<'a> Engine<'a, '_, '_> {
         caller_subst: &Substitution<'a>,
         caller_evidence: &'a [Evidence<'a>],
     ) -> Result<&'a Core<'a>, Error<'a>> {
+        let method_ty = self.types.ty(annotation.typ, caller_subst)?;
         let owning = caller_evidence.first().ok_or(Error::MethodEvidence)?;
         let template = match owning {
             Evidence::ReflexiveLift { .. } if trait_ == primitives::lift_trait() => {
                 let value = Binder {
                     name: self.ir.fresh("identity"),
-                    ty: Ty::Erased,
+                    ty: match method_ty {
+                        Ty::Term(TermTy::Fun(args, _)) => args[0],
+                        _ => return Err(Error::MethodType),
+                    },
                 };
-                return Ok(self.ir.lam(&[value], self.ir.var(value.name)));
+                return Ok(self.ir.with_type(
+                    self.ir.lam(&[value], self.ir.var(value.name, value.ty)),
+                    method_ty,
+                ));
             }
             Evidence::StructuralEq { .. } if trait_ == primitives::eq_trait() => {
                 if method == "eq" {
-                    return Ok(self.ir.builtin(F::EqualsData, &[]));
+                    return Ok(self.ir.builtin(F::EqualsData, &[], method_ty));
                 }
                 // A default such as neq must still execute its source body.
                 *self
@@ -219,7 +239,7 @@ impl<'a> Engine<'a, '_, '_> {
         }
         let values = self.ir.arena.alloc_slice_fill_iter(values);
         let binder = self.request(template, body_subst, values)?;
-        Ok(self.ir.var(binder.name))
+        Ok(self.ir.var(binder.name, binder.ty))
     }
 
     /// One-way matching against the selected body's own variables avoids the

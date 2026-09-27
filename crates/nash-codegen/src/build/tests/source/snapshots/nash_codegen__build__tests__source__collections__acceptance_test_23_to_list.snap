@@ -1,17 +1,18 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/collections.rs
+assertion_line: 247
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype assocList = AssocList { inner : list (pair Bytes Int) }\nimpl Eq assocList where\n    eq left right = equalsData (toData (mapData left.inner)) (toData (mapData right.inner))\nnew = AssocList { inner = [] }\ntoList : assocList -> list (pair Bytes Int)\ntoList m = m.inner\ninsert : assocList -> bytes -> int -> assocList\ninsert m k v = AssocList { inner = (doInsert m.inner k v) }\ndoInsert elems k v =\n    case elems of\n        [] -> [mkPairData (bData k) (iData v)]\n        entry :: rest ->\n            let\n                k2 = unBData (fstPair entry)\n                v2 = unIData (sndPair entry)\n            in\n            if eq k k2 then mkCons (mkPairData (bData k) (iData v)) rest\n            else mkCons (mkPairData (bData k2) (iData v2)) (doInsert rest k v)\nfixture1 = insert (insert new \"foo\" 42) \"bar\" 14\nmain = equalsData (toData (mapData (toList fixture1))) (toData (mapData [mkPairData (bData \"foo\") (iData 42), mkPairData (bData \"bar\") (iData 14)]))\n"
 ---
 --- core
 let message#33 : string = "foo" in
 let message#34 : string = "bar" in
 let toData#2 : 'erased -> Data = \coerce#7 : 'erased -> coerce#7 in
-let toList#3 : Main.assocList -> list (pair Bytes Int) = \m#8 : Main.assocList -> let projection#29 : 'erased = field@0/1 m#8 in
+let toList#3 : Main.assocList -> list (pair Bytes Int) = \m#8 : Main.assocList -> let projection#29 : list (pair Bytes Int) = field@0/1 m#8 in
 projection#29 in
 let fromString#5 : string -> bytes = encodeUtf8 in
 let fromInt#6 : int -> int = \value#11 : int -> value#11 in
 let eq#25 : bytes -> bytes -> bool = equalsByteString in
-let doInsert#16 : list (pair Bytes Int) -> bytes -> int -> list (pair Bytes Int) = \elems#18 : list (pair Bytes Int) k#19 : bytes v#20 : int -> (\self#35 : 'erased -> self#35 self#35) (\self#35 : 'erased elems#18 : list (pair Bytes Int) -> let match#26 : list (pair Bytes Int) = elems#18 in
+let doInsert#16 : list (pair Bytes Int) -> bytes -> int -> list (pair Bytes Int) = \elems#18 : list (pair Bytes Int) k#19 : bytes v#20 : int -> (\self#35 : @self (list (pair Bytes Int) -> list (pair Bytes Int)) -> self#35 self#35) (\self#35 : @self (list (pair Bytes Int) -> list (pair Bytes Int)) elems#18 : list (pair Bytes Int) -> let match#26 : list (pair Bytes Int) = elems#18 in
 case@List match#26 of
   Nil -> mkCons (mkPairData (bData k#19) (iData v#20)) (con (list (pair data data)) [])
   Cons field#27 field#28 -> let entry#21 : pair Bytes Int = field#27 in
@@ -23,7 +24,7 @@ case@List match#26 of
   case@Bool eq#25 k#19 k2#24 of
     True -> mkCons (mkPairData (bData k#19) (iData v#20)) rest#22
     False -> mkCons (mkPairData (bData k2#24) (iData v2#23)) (self#35 self#35 rest#22)) elems#18 in
-let insert#9 : Main.assocList -> bytes -> int -> Main.assocList = \m#12 : Main.assocList k#13 : bytes v#14 : int -> let projection#32 : 'erased = field@0/1 m#12 in
+let insert#9 : Main.assocList -> bytes -> int -> Main.assocList = \m#12 : Main.assocList k#13 : bytes v#14 : int -> let projection#32 : list (pair Bytes Int) = field@0/1 m#12 in
 (\field#15 : list (pair Bytes Int) -> constr 0 field#15) (doInsert#16 projection#32 k#13 v#14) in
 let new#10 : Main.assocList = (\field#17 : list (pair Bytes Int) -> constr 0 field#17) (con (list (pair data data)) []) in
 let fixture1#4 : Main.assocList = insert#9 (insert#9 new#10 (fromString#5 message#33) (fromInt#6 42)) (fromString#5 message#34) (fromInt#6 14) in

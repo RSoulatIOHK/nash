@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 604
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nimport Lift exposing (lift, lower)\ntype Pair 'v = Pair Bytes 'v\ntype Dict 'v = Dict { inner : List (Pair 'v) }\ntype Value = Value { inner : Dict (Dict Int) }\ntype Dat = Dat { c : Int, a : Value }\ndat : Dat\ndat =\n    let\n        innerEntries : list (Pair Int)\n        innerEntries = [Pair #\"aa\" 4]\n        innerDict : Dict Int\n        innerDict = Dict { inner = (lift innerEntries) }\n        v = Value { inner = (Dict { inner = (lift [Pair #\"\" innerDict]) }) }\n    in\n    Dat { c = 0, a = v }\nmain =\n    let\n        val = dat.a\n        entries : list (Pair (Dict Int))\n        entries = lower val.inner.inner\n        finalEntries : list (Pair Int)\n        finalEntries = [Pair #\"AA\" 4]\n        finalAmount : Dict Int\n        finalAmount = Dict { inner = (lift finalEntries) }\n    in\n    case entries of\n        [Pair _ amount] -> eq finalAmount amount\n        _ -> fail\n"
 ---
 --- core
@@ -26,7 +27,7 @@ case@Pair projection#65 of
             Pair tag#36 fields#37 -> case@List fields#37 of
               Cons head#38 tail#39 -> let entries#5 : list (Main.Pair (Main.Dict Int)) = lower#31 head#38 in
               let match#7 : list (Main.Pair (Main.Dict Int)) = entries#5 in
-              let leaf#19 : 'erased = delay error in
+              let leaf#19 : @delay bool = delay error in
               let main#1 : bool = case@List match#7 of
                 Nil -> force leaf#19
                 Cons field#20 field#21 -> let projection#68 : pair int (list Data) = unConstrData field#20 in

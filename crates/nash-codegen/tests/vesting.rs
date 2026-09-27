@@ -75,7 +75,7 @@ fn fixture_modules<'a>(arena: &'a Arena, source: &str) -> Vec<SourceModule<'a>> 
     modules
 }
 
-fn baseline(source: &str, parameter: bool) -> (String, String, String) {
+fn baseline(source: &str, parameter: bool) -> String {
     let arena = Arena::new();
     let modules = fixture_modules(&arena, source);
     let validator = modules.last().unwrap();
@@ -151,7 +151,7 @@ fn baseline(source: &str, parameter: bool) -> (String, String, String) {
         use std::fmt::Write;
         writeln!(
             outcomes,
-            "{name}\nresult: {}\nlogs: {:?}\ncpu: {}\nmem: {}",
+            "--- scenario\n{name}\n--- result\n{}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
             if expected { "unit" } else { "error" },
             evaluation.info.logs,
             evaluation.info.consumed_budget.cpu,
@@ -194,27 +194,21 @@ fn baseline(source: &str, parameter: bool) -> (String, String, String) {
             );
         }
     }
-    (core, uplc, outcomes)
+    format!("--- core\n{core}\n--- uplc\n{uplc}\n{outcomes}")
 }
 
 #[test]
 fn vesting_four_ledger_outcomes() {
     let source = include_str!("fixtures/Vesting.nash");
     let _settings = snapshot_settings(source).bind_to_scope();
-    let (core, uplc, outcomes) = baseline(source, false);
-    insta::assert_snapshot!("vesting_core", core);
-    insta::assert_snapshot!("vesting_uplc", uplc);
-    insta::assert_snapshot!("vesting_outcomes", outcomes);
+    insta::assert_snapshot!("vesting", baseline(source, false));
 }
 
 #[test]
 fn vesting_const_parameter_four_ledger_outcomes() {
     let source = include_str!("fixtures/VestingParam.nash");
     let _settings = snapshot_settings(source).bind_to_scope();
-    let (core, uplc, outcomes) = baseline(source, true);
-    insta::assert_snapshot!("vesting_parameter_core", core);
-    insta::assert_snapshot!("vesting_parameter_uplc", uplc);
-    insta::assert_snapshot!("vesting_parameter_outcomes", outcomes);
+    insta::assert_snapshot!("vesting_parameter", baseline(source, true));
 }
 
 fn snapshot_settings(source: &str) -> insta::Settings {

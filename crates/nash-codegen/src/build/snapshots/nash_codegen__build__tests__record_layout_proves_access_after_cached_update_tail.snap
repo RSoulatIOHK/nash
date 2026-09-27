@@ -1,17 +1,18 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1783
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nselect : Record -> int\nselect r =\n    let\n        updated = { r | a = 10 }\n    in\n    Builtin.addInteger (Builtin.unIData r.c) (Builtin.unIData updated.a)\nmain = select { a = 1, b = 2, c = 3, d = 4 }\n"
 ---
 --- core
 let fromInt#3 : int -> Int = iData in
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let base#10 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#4 in
-let evaluated#14 : 'erased = fromInt#3 10 in
+let evaluated#14 : Int = fromInt#3 10 in
 let projection#13 : list Data = unListData base#10 in
 case@List projection#13 of
   Cons head#11 tail#12 -> let updated#5 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData (mkCons evaluated#14 tail#12) in
   case@List tail#12 of
     Cons head#15 tail#16 -> case@List tail#16 of
-      Cons head#6 tail#7 -> let evaluated#18 : 'erased = unIData head#6 in
+      Cons head#6 tail#7 -> let evaluated#18 : int = unIData head#6 in
       let projection#17 : list Data = unListData updated#5 in
       case@List projection#17 of
         Cons head#8 tail#9 -> addInteger evaluated#18 (unIData head#8) in

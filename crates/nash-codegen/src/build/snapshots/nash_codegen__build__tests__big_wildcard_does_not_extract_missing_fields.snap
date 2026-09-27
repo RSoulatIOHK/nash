@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case subject of\n        Stop -> 1\n        _ -> trace \"fallback\" 9\nmain = (choose (coerce (constrData 1 [])), choose (coerce (constrData 2 [])))\n"
 ---
 --- core
@@ -7,14 +8,14 @@ let message#23 : string = "fallback" in
 let fromInt#4 : int -> int = \value#20 : int -> value#20 in
 let fromString#7 : string -> string = \value#21 : string -> value#21 in
 let choose#2 : Main.Choice -> int = \subject#6 : Main.Choice -> let match#8 : Main.Choice = subject#6 in
-let leaf#14 : 'erased = delay (trace (fromString#7 message#23) in fromInt#4 9) in
+let leaf#14 : @delay int = delay (trace (fromString#7 message#23) in fromInt#4 9) in
 let projection#22 : pair int (list Data) = unConstrData match#8 in
 case@Pair projection#22 of
   Pair tag#18 fields#19 -> case@Tag tag#18 of
     0 -> fromInt#4 1
     1 -> force leaf#14
     2 -> force leaf#14 in
-let main#1 : (int, int) = constr 0 (choose#2 ((\coerce#3 : 'erased -> coerce#3) (constrData (fromInt#4 1) (con (list data) [])))) (choose#2 ((\coerce#5 : 'erased -> coerce#5) (constrData (fromInt#4 2) (con (list data) [])))) in
+let main#1 : (int, int) = constr 0 (choose#2 ((\coerce#3 : Data -> coerce#3) (constrData (fromInt#4 1) (con (list data) [])))) (choose#2 ((\coerce#5 : Data -> coerce#5) (constrData (fromInt#4 2) (con (list data) [])))) in
 main#1
 --- uplc
 (program 1.1.0

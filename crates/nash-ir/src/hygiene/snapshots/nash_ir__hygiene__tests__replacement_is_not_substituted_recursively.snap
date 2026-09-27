@@ -2,4 +2,4 @@
 source: crates/nash-ir/src/hygiene/tests.rs
 expression: pretty(result)
 ---
-delay x#1
+trace "replacement" in x#1

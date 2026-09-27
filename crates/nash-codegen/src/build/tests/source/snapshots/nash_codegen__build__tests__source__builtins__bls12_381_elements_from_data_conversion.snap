@@ -1,19 +1,20 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 21
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias proof = { piA : bls_g1, piB : bls_g2 }\nencode : proof -> Data\nencode p = Builtin.constrData 0 [B (bls12_381_g1_compress p.piA), B (bls12_381_g2_compress p.piB)]\npk : proof\npk =\n    { piA = (bls12_381_g1_uncompress #\"b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce\")\n    , piB = (bls12_381_g2_uncompress #\"b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423\")\n    }\nmain : bool\nmain =\n    case encode pk of\n        Constr pair(0, [B point, _]) -> bls12_381_g1_equal (bls12_381_g1_uncompress point) pk.piA\n        _ -> fail\n"
 ---
 --- core
 let fromInt#4 : int -> int = \value#50 : int -> value#50 in
-let encode#2 : { _0 : bls_g1, _1 : bls_g2 } -> Data = \p#46 : { _0 : bls_g1, _1 : bls_g2 } -> let evaluated#55 : 'erased = fromInt#4 0 in
+let encode#2 : { _0 : bls_g1, _1 : bls_g2 } -> Data = \p#46 : { _0 : bls_g1, _1 : bls_g2 } -> let evaluated#55 : int = fromInt#4 0 in
 let projection#52 : bls_g1 = field@0/2 p#46 in
-let evaluated#54 : 'erased = (\field#47 : bytes -> bData field#47) (bls12_381_G1_compress projection#52) in
+let evaluated#54 : Data = (\field#47 : bytes -> bData field#47) (bls12_381_G1_compress projection#52) in
 let projection#53 : bls_g2 = field@1/2 p#46 in
 constrData evaluated#55 (mkCons evaluated#54 (mkCons ((\field#48 : bytes -> bData field#48) (bls12_381_G2_compress projection#53)) (con (list data) []))) in
 let fromBytes#49 : bytes -> bytes = \value#51 : bytes -> value#51 in
 let pk#3 : { _0 : bls_g1, _1 : bls_g2 } = constr 0 (bls12_381_G1_uncompress (fromBytes#49 (con bytestring #b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce))) (bls12_381_G2_uncompress (fromBytes#49 (con bytestring #b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423))) in
 let eq#5 : int -> int -> bool = equalsInteger in
 let match#8 : Data = encode#2 pk#3 in
-let leaf#27 : 'erased = delay error in
+let leaf#27 : @delay bool = delay error in
 let main#1 : bool = case@Data match#8 of
   DataConstr field#28 -> case@Pair field#28 of
     Pair field#29 field#30 -> case@Bool (\literal#6 : int -> eq#5 literal#6 (fromInt#4 0)) field#29 of
@@ -28,7 +29,7 @@ let main#1 : bool = case@Data match#8 of
             Nil -> force leaf#27
             Cons field#38 field#39 -> case@List field#39 of
               Nil -> let point#7 : bytes = field#37 in
-              let evaluated#57 : 'erased = bls12_381_G1_uncompress point#7 in
+              let evaluated#57 : bls_g1 = bls12_381_G1_uncompress point#7 in
               let projection#56 : bls_g1 = field@0/2 pk#3 in
               bls12_381_G1_equal evaluated#57 projection#56
               Cons field#40 field#41 -> force leaf#27

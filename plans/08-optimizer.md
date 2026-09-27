@@ -2,7 +2,8 @@
 
 ## Status and accepted scope
 
-Chunk 1 accepted and complete; later chunks remain pending. Current assembly in
+Chunk 1 and Chunk 2's typing prerequisite are accepted and complete.
+ANF and later chunks remain pending. Current assembly in
 `nash-codegen/src/program.rs`
 rewrites recursion and lowers directly; `nash-ir` has no installed optimizer.
 Reuse its existing Core, Builder, traversal and free-variable facilities.
@@ -35,7 +36,12 @@ mean it is implemented or accepted for the final optimizer.
 For each chunk, or each independently reviewable optimization within a chunk:
 
 1. State the exact rewrite, its preconditions, and the expected benefit.
-2. Add ordinary semantic tests and before/after Core and UPLC snapshots first.
+2. Add ordinary semantic tests and paired before/after snapshots first. A Core
+   optimization shows `--- core before` and `--- core after` in the same snapshot;
+   a UPLC optimization shows `--- uplc before` and `--- uplc after`. Include
+   downstream UPLC and evaluation sections as needed to verify semantics.
+   Integration fixtures use the same sectioned format as unit fixtures; do not
+   split one fixture's Core, UPLC and outcomes into separate snapshot files.
 3. Implement the smallest candidate; use temporary internal harness wiring to
    exercise it without enabling a public optimization mode.
 4. Compare against the unchanged baseline: results, traces, errors, termination,
@@ -157,6 +163,25 @@ tracing, failing and potentially diverging computations.
 **Done when:** shared analyses are tested and reviewed; no optimization is enabled.
 
 ## Chunk 2 — ANF normalization
+
+**Typing prerequisite accepted (26 September 2026):**
+Core is now `Core { ty, kind }`, with mandatory result metadata supplied or derived
+at construction. Source translation retains solved runtime-specialized types;
+delays, knot workers and heterogeneous dispatch use explicit internal runtime
+descriptors. Existing deliberate parametric erasure remains supported. There is
+no optional metadata lookup or missing-type presence check. Tests cover source
+nominal identity, partial functions, erased generics, fields and recursion-created
+values. Core annotation snapshots change; emitted UPLC and evaluation remain the
+baseline. The user accepted this prerequisite and the paired snapshot contract;
+ANF normalization is next.
+
+Validation: 11 new tests cover builder typing, source metadata, recursion-created
+types and substitution preserving explicit coercion views. Formatting and strict
+workspace Clippy pass; the full workspace test run passes (3,577 passed, 3 ignored).
+All 154 updated existing codegen snapshots containing UPLC retain byte-identical
+UPLC, evaluation results, traces and budgets. The vesting Core annotations change
+only delayed binder types; their UPLC and ledger checks pass unchanged. Vesting
+fixtures now keep Core, UPLC and ledger outcomes together in one sectioned snapshot.
 
 Implement `anf::normalize` and an invariant checker using the contract above.
 Normalize at main-phase entry and after recursion rewriting. Add temporary harness
@@ -362,9 +387,10 @@ Detect actual structural progress or accurate rewrite reports, not equal node
 counts. Keep generated names deterministic. Test same-size rewrites, cycles,
 optimizer and cleanup idempotence, and hygiene/ANF after every pass.
 
-Retain separate snapshots for raw Core, ANF, optimized recursive Core, rewritten
-Core and cleaned/lowered output. Differentially evaluate baseline and optimized
-programs, including selected traits, Logic laziness and Big/little case fixtures.
+Retain named phase sections for raw Core, ANF, optimized recursive Core, rewritten
+Core and cleaned/lowered output. Keep each optimization's before/after pair in
+one snapshot at the representation it transforms. Differentially evaluate baseline
+and optimized programs, including selected traits, Logic laziness and Big/little case fixtures.
 Keep O0 snapshots; never mass-replace them with optimized ones. Run ordinary
 semantic checks separately from the explicit performance regression command.
 

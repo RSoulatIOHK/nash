@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nloop : bool -> unit\nloop =\n    let\n        captured = trace \"capture\" ()\n    in\n    \\flag -> if flag then captured else loop True\nmain = loop False\n"
 ---
 --- core
@@ -8,7 +9,7 @@ let fromBool#3 : bool -> bool = \value#8 : bool -> value#8 in
 let fromUnit#6 : unit -> unit = \value#9 : unit -> value#9 in
 let fromString#7 : string -> string = \value#10 : string -> value#10 in
 let captured#5 : 'erased = trace (fromString#7 message#11) in fromUnit#6 () in
-let loop#2 : bool -> unit = (\self#12 : 'erased -> self#12 self#12) (\self#12 : 'erased flag#4 : bool -> case@Bool flag#4 of
+let loop#2 : bool -> unit = (\self#12 : @self (bool -> unit) -> self#12 self#12) (\self#12 : @self (bool -> unit) flag#4 : bool -> case@Bool flag#4 of
   True -> captured#5
   False -> self#12 self#12 (fromBool#3 true)) in
 let main#1 : unit = loop#2 (fromBool#3 false) in

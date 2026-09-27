@@ -1,16 +1,17 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 185
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData)\nempty : list Data\nempty = []\nsame a b = if equalsData (toData (fstPair a)) (toData (fstPair b)) then equalsData (toData (sndPair a)) (toData (sndPair b)) else False\nmain = same (mkPairData (iData 1) (listData empty)) (mkPairData (iData 1) (listData empty))\n"
 ---
 --- core
 let fromBool#7 : bool -> bool = \value#10 : bool -> value#10 in
 let toData#8 : 'erased -> Data = \coerce#11 : 'erased -> coerce#11 in
 let same#2 : pair 'erased 'erased -> pair 'erased 'erased -> bool = \a#5 : pair 'erased 'erased b#6 : pair 'erased 'erased -> let projection#12 : 'erased = fstPair a#5 in
-let evaluated#14 : 'erased = toData#8 projection#12 in
+let evaluated#14 : Data = toData#8 projection#12 in
 let projection#13 : 'erased = fstPair b#6 in
 case@Bool equalsData evaluated#14 (toData#8 projection#13) of
   True -> let projection#15 : 'erased = sndPair a#5 in
-  let evaluated#17 : 'erased = toData#8 projection#15 in
+  let evaluated#17 : Data = toData#8 projection#15 in
   let projection#16 : 'erased = sndPair b#6 in
   equalsData evaluated#17 (toData#8 projection#16)
   False -> fromBool#7 false in

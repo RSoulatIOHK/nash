@@ -1,9 +1,10 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 499
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (FromData)\ntype Datum = Datum Int\ndecoded : Datum\ndecoded = fromData (Builtin.constrData 0 [I 42])\nmain =\n    case decoded of\n        Datum number -> unIData number\n"
 ---
 --- core
-let fromData#9 : Data -> 'erased = \coerce#12 : 'erased -> coerce#12 in
+let fromData#9 : Data -> 'erased = \coerce#12 : Data -> coerce#12 in
 let fromInt#10 : int -> int = \value#13 : int -> value#13 in
 let decoded#2 : Main.Datum = fromData#9 (constrData (fromInt#10 0) (mkCons ((\field#11 : int -> iData field#11) (fromInt#10 42)) (con (list data) []))) in
 let match#4 : Main.Datum = decoded#2 in

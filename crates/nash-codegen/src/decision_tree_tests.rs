@@ -3,6 +3,7 @@ use nash_ast::{
     ConstructorName, Ctor, CtorOpts, Kind, ModuleName, PatternCtor, PatternCtorArg, QualifiedName,
     Type as CanType, Union,
 };
+use nash_ir::core::CoreKind;
 use nash_plutus::{arena::Arena, constant::Constant};
 
 fn pat<'a>(arena: &'a Arena, p: Pattern<'a>) -> &'a Located<Pattern<'a>> {
@@ -124,7 +125,7 @@ fn tuple_list_matrix_preserves_row_correlation_and_wildcard_precedence() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[empty, b.lit(Constant::bool(&arena, true))]),
+            b.constr(0, &[empty, b.lit(Constant::bool(&arena, true))], ty),
             &rows,
             &literals
         )
@@ -136,7 +137,7 @@ fn tuple_list_matrix_preserves_row_correlation_and_wildcard_precedence() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[full, b.lit(Constant::bool(&arena, false))]),
+            b.constr(0, &[full, b.lit(Constant::bool(&arena, false))], ty),
             &rows,
             &literals
         )
@@ -148,7 +149,7 @@ fn tuple_list_matrix_preserves_row_correlation_and_wildcard_precedence() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[empty, b.lit(Constant::bool(&arena, false))]),
+            b.constr(0, &[empty, b.lit(Constant::bool(&arena, false))], ty),
             &rows,
             &literals
         )
@@ -164,7 +165,7 @@ fn tuple_list_matrix_preserves_row_correlation_and_wildcard_precedence() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[empty, b.lit(Constant::bool(&arena, true))]),
+            b.constr(0, &[empty, b.lit(Constant::bool(&arena, true))], ty),
             &rows,
             &literals
         )
@@ -202,7 +203,7 @@ fn distinct_overloaded_literals_can_overlap_and_fall_through() {
     ];
     let value = b.trace(
         b.lit(Constant::string(&arena, "scrutinee")),
-        b.constr(0, &[b.int(0), b.lit(Constant::bool(&arena, false))]),
+        b.constr(0, &[b.int(0), b.lit(Constant::bool(&arena, false))], ty),
     );
     let result = run(&b, &mut types, ty, value, &rows, &literals);
     assert_eq!(result.result, "(con integer 2)");
@@ -273,8 +274,8 @@ fn ctor<'a>(
     )
 }
 fn cases(core: &Core<'_>, kind: CaseKind) -> usize {
-    match core {
-        Core::Case {
+    match &core.kind {
+        CoreKind::Case {
             kind: k,
             scrutinee,
             branches,
@@ -285,12 +286,14 @@ fn cases(core: &Core<'_>, kind: CaseKind) -> usize {
                 + branches.iter().map(|b| cases(b.body, kind)).sum::<usize>()
                 + default.map_or(0, |d| cases(d, kind))
         }
-        Core::Let { value, body, .. } => cases(value, kind) + cases(body, kind),
-        Core::App { func, args } => {
+        CoreKind::Let { value, body, .. } => cases(value, kind) + cases(body, kind),
+        CoreKind::App { func, args } => {
             cases(func, kind) + args.iter().map(|a| cases(a, kind)).sum::<usize>()
         }
-        Core::Lam { body, .. } | Core::Delay(body) | Core::Force(body) => cases(body, kind),
-        Core::Builtin { args, .. } | Core::Constr { fields: args, .. } => {
+        CoreKind::Lam { body, .. } | CoreKind::Delay(body) | CoreKind::Force(body) => {
+            cases(body, kind)
+        }
+        CoreKind::Builtin { args, .. } | CoreKind::Constr { fields: args, .. } => {
             args.iter().map(|a| cases(a, kind)).sum()
         }
         _ => 0,
@@ -331,9 +334,9 @@ fn constructors_share_head_test_before_nested_bool() {
         })
         .collect::<Vec<_>>();
     for (value, result) in [
-        (b.constr(0, &[b.lit(Constant::bool(&arena, true))]), 1),
-        (b.constr(0, &[b.lit(Constant::bool(&arena, false))]), 2),
-        (b.constr(1, &[]), 3),
+        (b.constr(0, &[b.lit(Constant::bool(&arena, true))], ty), 1),
+        (b.constr(0, &[b.lit(Constant::bool(&arena, false))], ty), 2),
+        (b.constr(1, &[], ty), 3),
     ] {
         let core = compile(
             &b,
@@ -345,7 +348,7 @@ fn constructors_share_head_test_before_nested_bool() {
                 record_fields: &records,
                 literal_tests: &literals,
             },
-            b.error(),
+            b.error(Ty::Const(&ConstTy::Int)),
         )
         .unwrap();
         assert_eq!(cases(core, CaseKind::Tag), 1);
@@ -380,7 +383,11 @@ fn record_names_use_wire_order_and_aliases_bind_whole_subject() {
     let names = bindings(&b, &mut types, ty, pattern, &records).unwrap();
     let body = b.builtin(
         DefaultFunction::SubtractInteger,
-        &[b.var(names["a"].name), b.var(names["z"].name)],
+        &[
+            b.var(names["a"].name, names["a"].ty),
+            b.var(names["z"].name, names["z"].ty),
+        ],
+        Ty::Const(&ConstTy::Int),
     );
     let rows = [MatchBranch {
         pattern,
@@ -391,13 +398,13 @@ fn record_names_use_wire_order_and_aliases_bind_whole_subject() {
         &b,
         &mut types,
         ty,
-        b.constr(0, &[b.int(3), b.int(10)]),
+        b.constr(0, &[b.int(3), b.int(10)], ty),
         &rows,
         MatchInputs {
             record_fields: &records,
             literal_tests: &literals,
         },
-        b.error(),
+        b.error(Ty::Const(&ConstTy::Int)),
     )
     .unwrap();
     assert_eq!(
@@ -432,7 +439,11 @@ fn big_constructor_fields_and_data_builtin_shapes_decode() {
     let records = HashMap::new();
     let literals = HashMap::new();
     let names = bindings(&b, &mut types, ty, pattern, &records).unwrap();
-    let body = b.builtin(DefaultFunction::UnIData, &[b.var(names["n"].name)]);
+    let body = b.builtin(
+        DefaultFunction::UnIData,
+        &[b.var(names["n"].name, names["n"].ty)],
+        Ty::Const(&ConstTy::Int),
+    );
     let rows = [MatchBranch {
         pattern,
         bindings: names,
@@ -447,7 +458,7 @@ fn big_constructor_fields_and_data_builtin_shapes_decode() {
         &b,
         &mut types,
         ty,
-        b.lit(Constant::data(&arena, datum)),
+        b.with_type(b.lit(Constant::data(&arena, datum)), ty),
         &rows,
         MatchInputs {
             record_fields: &records,
@@ -569,7 +580,11 @@ fn constructor_argument_indices_restore_named_field_order() {
     let names = bindings(&b, &mut types, ty, pattern, &records).unwrap();
     let body = b.builtin(
         DefaultFunction::SubtractInteger,
-        &[b.var(names["a"].name), b.var(names["z"].name)],
+        &[
+            b.var(names["a"].name, names["a"].ty),
+            b.var(names["z"].name, names["z"].ty),
+        ],
+        Ty::Const(&ConstTy::Int),
     );
     let rows = [MatchBranch {
         pattern,
@@ -580,13 +595,13 @@ fn constructor_argument_indices_restore_named_field_order() {
         &b,
         &mut types,
         ty,
-        b.constr(0, &[b.int(3), b.int(10)]),
+        b.constr(0, &[b.int(3), b.int(10)], ty),
         &rows,
         MatchInputs {
             record_fields: &records,
             literal_tests: &literals,
         },
-        b.error(),
+        b.error(Ty::Const(&ConstTy::Int)),
     )
     .unwrap();
     assert_eq!(
@@ -607,9 +622,21 @@ fn big_record_projects_data_list_fields_once() {
     let literals = HashMap::new();
     let ty = Ty::Big(arena.alloc(BigTy::Record(&[Ty::Big(&BigTy::Int), Ty::Big(&BigTy::Int)])));
     let names = bindings(&b, &mut types, ty, pattern, &records).unwrap();
-    let a = b.builtin(DefaultFunction::UnIData, &[b.var(names["a"].name)]);
-    let z = b.builtin(DefaultFunction::UnIData, &[b.var(names["z"].name)]);
-    let body = b.builtin(DefaultFunction::SubtractInteger, &[a, z]);
+    let a = b.builtin(
+        DefaultFunction::UnIData,
+        &[b.var(names["a"].name, names["a"].ty)],
+        Ty::Const(&ConstTy::Int),
+    );
+    let z = b.builtin(
+        DefaultFunction::UnIData,
+        &[b.var(names["z"].name, names["z"].ty)],
+        Ty::Const(&ConstTy::Int),
+    );
+    let body = b.builtin(
+        DefaultFunction::SubtractInteger,
+        &[a, z],
+        Ty::Const(&ConstTy::Int),
+    );
     let rows = [MatchBranch {
         pattern,
         bindings: names,
@@ -624,7 +651,7 @@ fn big_record_projects_data_list_fields_once() {
     );
     let value = b.trace(
         b.lit(Constant::string(&arena, "once")),
-        b.lit(Constant::data(&arena, data)),
+        b.with_type(b.lit(Constant::data(&arena, data)), ty),
     );
     let core = compile(
         &b,
@@ -636,7 +663,7 @@ fn big_record_projects_data_list_fields_once() {
             record_fields: &records,
             literal_tests: &literals,
         },
-        b.error(),
+        b.error(Ty::Const(&ConstTy::Int)),
     )
     .unwrap();
     let result = crate::harness::eval_core(&arena, core);
@@ -670,7 +697,14 @@ fn strings_and_bytes_use_supplied_literal_matchers() {
             name: b.fresh("literal"),
             ty,
         };
-        let matcher = b.lam(&[arg], b.builtin(eq, &[b.var(arg.name), b.lit(literal)]));
+        let matcher = b.lam(
+            &[arg],
+            b.builtin(
+                eq,
+                &[b.var(arg.name, arg.ty), b.lit(literal)],
+                Ty::Const(&ConstTy::Bool),
+            ),
+        );
         let literals = HashMap::from([(NodeId::pattern(pattern), matcher)]);
         let rows = [(pattern, 1), (pat(&arena, Pattern::Anything), 2)];
         assert_eq!(
@@ -700,6 +734,7 @@ fn nested_constructors_share_tests_and_preserve_fallback() {
     let unions = HashMap::from([(q("inner"), inner), (q("outer"), outer)]);
     let mut types = TypeEnv::new(&arena, &unions);
     let ty = types.ty(outer_ty, &BTreeMap::new()).unwrap();
+    let inner_runtime_ty = types.ty(inner_ty, &BTreeMap::new()).unwrap();
     let some_true = ctor(&arena, inner, q("inner").home, 0, &[boolean(&arena, true)]);
     let none = ctor(&arena, inner, q("inner").home, 1, &[]);
     let rows = [
@@ -713,7 +748,11 @@ fn nested_constructors_share_tests_and_preserve_fallback() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[b.constr(0, &[b.lit(Constant::bool(&arena, true))])]),
+            b.constr(
+                0,
+                &[b.constr(0, &[b.lit(Constant::bool(&arena, true))], inner_runtime_ty)],
+                ty
+            ),
             &rows,
             &literals
         )
@@ -725,7 +764,7 @@ fn nested_constructors_share_tests_and_preserve_fallback() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[b.constr(1, &[])]),
+            b.constr(0, &[b.constr(1, &[], inner_runtime_ty)], ty),
             &rows,
             &literals
         )
@@ -737,7 +776,11 @@ fn nested_constructors_share_tests_and_preserve_fallback() {
             &b,
             &mut types,
             ty,
-            b.constr(0, &[b.constr(0, &[b.lit(Constant::bool(&arena, false))])]),
+            b.constr(
+                0,
+                &[b.constr(0, &[b.lit(Constant::bool(&arena, false))], inner_runtime_ty)],
+                ty
+            ),
             &rows,
             &literals
         )
@@ -745,7 +788,7 @@ fn nested_constructors_share_tests_and_preserve_fallback() {
         "(con integer 3)"
     );
     assert_eq!(
-        run(&b, &mut types, ty, b.constr(1, &[]), &rows, &literals).result,
+        run(&b, &mut types, ty, b.constr(1, &[], ty), &rows, &literals).result,
         "(con integer 3)"
     );
 }
@@ -779,7 +822,7 @@ fn big_list_tail_binding_is_only_reconstructed_when_used() {
         let rows = [MatchBranch {
             pattern,
             body: if keep_tail {
-                b.var(names["tail"].name)
+                b.var(names["tail"].name, names["tail"].ty)
             } else {
                 b.int(42)
             },
@@ -796,13 +839,13 @@ fn big_list_tail_binding_is_only_reconstructed_when_used() {
             &b,
             &mut types,
             ty,
-            b.lit(Constant::data(&arena, data)),
+            b.with_type(b.lit(Constant::data(&arena, data)), ty),
             &rows,
             MatchInputs {
                 record_fields: &records,
                 literal_tests: &literals,
             },
-            b.error(),
+            b.error(rows[0].body.ty),
         )
         .unwrap();
         let evaluated = crate::harness::eval_core(&arena, core);
@@ -846,7 +889,12 @@ fn duplicated_leaf_joins_preserve_bindings_and_lazy_effects() {
                 };
                 let names = bindings(&b, &mut types, ty, default, &records).unwrap();
                 let result = if bind_default {
-                    b.field(b.var(names["whole"].name), 0, 2)
+                    b.field(
+                        b.var(names["whole"].name, names["whole"].ty),
+                        0,
+                        2,
+                        Ty::Const(&ConstTy::Bool),
+                    )
                 } else {
                     b.lit(Constant::bool(&arena, false))
                 };
@@ -872,13 +920,14 @@ fn duplicated_leaf_joins_preserve_bindings_and_lazy_effects() {
                             b.lit(Constant::bool(&arena, first)),
                             b.lit(Constant::bool(&arena, second)),
                         ],
+                        ty,
                     ),
                     &rows,
                     MatchInputs {
                         record_fields: &records,
                         literal_tests: &literals,
                     },
-                    b.error(),
+                    b.error(Ty::Const(&ConstTy::Bool)),
                 )
                 .unwrap();
                 let pretty = nash_ir::pretty::pretty(core);

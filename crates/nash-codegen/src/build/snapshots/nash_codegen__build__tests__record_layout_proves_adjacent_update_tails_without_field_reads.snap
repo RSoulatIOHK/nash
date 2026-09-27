@@ -1,32 +1,33 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1758
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nupdate : Record -> int\nupdate r =\n    let\n        first = { r | a = 10 }\n    in\n    let\n        second = { r | a = 10, b = 20 }\n    in\n    let\n        third = { r | a = 10, b = 20, c = 30 }\n    in\n    Builtin.addInteger (Builtin.unIData first.a)\n        (Builtin.addInteger (Builtin.unIData second.b) (Builtin.unIData third.c))\nmain = update { a = 1, b = 2, c = 3, d = 4 }\n"
 ---
 --- core
 let fromInt#3 : int -> Int = iData in
 let update#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let base#18 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#4 in
-let evaluated#22 : 'erased = fromInt#3 10 in
+let evaluated#22 : Int = fromInt#3 10 in
 let projection#21 : list Data = unListData base#18 in
 case@List projection#21 of
   Cons head#19 tail#20 -> let first#5 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData (mkCons evaluated#22 tail#20) in
   let base#17 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#4 in
-  let evaluated#26 : 'erased = fromInt#3 10 in
-  let evaluated#25 : 'erased = fromInt#3 20 in
+  let evaluated#26 : Int = fromInt#3 10 in
+  let evaluated#25 : Int = fromInt#3 20 in
   case@List tail#20 of
     Cons head#23 tail#24 -> let second#6 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData (mkCons evaluated#26 (mkCons evaluated#25 tail#24)) in
     let base#16 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#4 in
-    let evaluated#31 : 'erased = fromInt#3 10 in
-    let evaluated#30 : 'erased = fromInt#3 20 in
-    let evaluated#29 : 'erased = fromInt#3 30 in
+    let evaluated#31 : Int = fromInt#3 10 in
+    let evaluated#30 : Int = fromInt#3 20 in
+    let evaluated#29 : Int = fromInt#3 30 in
     case@List tail#24 of
       Cons head#27 tail#28 -> let third#7 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData (mkCons evaluated#31 (mkCons evaluated#30 (mkCons evaluated#29 tail#28))) in
       let projection#32 : list Data = unListData first#5 in
       case@List projection#32 of
-        Cons head#8 tail#9 -> let evaluated#37 : 'erased = unIData head#8 in
+        Cons head#8 tail#9 -> let evaluated#37 : int = unIData head#8 in
         let projection#33 : list Data = unListData second#6 in
         case@List projection#33 of
           Cons head#10 tail#11 -> case@List tail#11 of
-            Cons head#12 tail#13 -> let evaluated#36 : 'erased = unIData head#12 in
+            Cons head#12 tail#13 -> let evaluated#36 : int = unIData head#12 in
             let projection#34 : list Data = unListData third#7 in
             let projection#35 : list Data = dropList 2 projection#34 in
             case@List projection#35 of

@@ -1,5 +1,6 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1624
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nreplace : Record -> Record\nreplace r = { r | c = (trace \"third\" 30), a = (trace \"first\" 10) }\ntotal : Record -> int\ntotal r = Builtin.addInteger (Builtin.unIData r.a)\n    (Builtin.addInteger (Builtin.unIData r.b)\n        (Builtin.addInteger (Builtin.unIData r.c) (Builtin.unIData r.d)))\nmain = total (replace { a = 1, b = 2, c = 3, d = 4 })\n"
 ---
 --- core
@@ -7,21 +8,21 @@ let message#33 : string = "first" in
 let message#34 : string = "third" in
 let total#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#5 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let projection#24 : list Data = unListData r#5 in
 case@List projection#24 of
-  Cons head#6 tail#7 -> let evaluated#27 : 'erased = unIData head#6 in
+  Cons head#6 tail#7 -> let evaluated#27 : int = unIData head#6 in
   case@List tail#7 of
-    Cons head#10 tail#11 -> let evaluated#26 : 'erased = unIData head#10 in
+    Cons head#10 tail#11 -> let evaluated#26 : int = unIData head#10 in
     case@List tail#11 of
-      Cons head#12 tail#13 -> let evaluated#25 : 'erased = unIData head#12 in
+      Cons head#12 tail#13 -> let evaluated#25 : int = unIData head#12 in
       case@List tail#13 of
         Cons head#14 tail#15 -> addInteger evaluated#27 (addInteger evaluated#26 (addInteger evaluated#25 (unIData head#14))) in
 let fromInt#4 : int -> Int = iData in
 let fromString#18 : string -> string = \value#23 : string -> value#23 in
 let replace#3 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = \r#16 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let base#17 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#16 in
-let evaluated#32 : 'erased = trace (fromString#18 message#33) in fromInt#4 10 in
+let evaluated#32 : Int = trace (fromString#18 message#33) in fromInt#4 10 in
 let projection#28 : list Data = unListData base#17 in
 case@List projection#28 of
   Cons head#19 tail#20 -> case@List tail#20 of
-    Cons head#21 tail#22 -> let evaluated#31 : 'erased = trace (fromString#18 message#34) in fromInt#4 30 in
+    Cons head#21 tail#22 -> let evaluated#31 : Int = trace (fromString#18 message#34) in fromInt#4 30 in
     case@List tail#22 of
       Cons head#29 tail#30 -> listData (mkCons evaluated#32 (mkCons head#21 (mkCons evaluated#31 tail#30))) in
 let main#1 : int = total#2 (replace#3 (listData (mkCons (fromInt#4 1) (mkCons (fromInt#4 2) (mkCons (fromInt#4 3) (mkCons (fromInt#4 4) (con (list data) []))))))) in

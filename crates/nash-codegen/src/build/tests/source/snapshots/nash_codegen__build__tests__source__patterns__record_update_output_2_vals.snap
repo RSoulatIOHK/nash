@@ -1,6 +1,7 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nimport Lift exposing (lift)\nimport Data exposing (toData)\ntype MyDatum = MyDatum { a : Int }\nencodeMyDatum (MyDatum n) = Builtin.constrData 0 [toData n]\ntype Address = Address { thing : Bytes }\ntype Datum = NoDatum | InlineDatum Data\ntype Option 'a = None | Some 'a\ntype alias Output =\n    { address : Address\n    , value : Map Bytes (Map Bytes Int)\n    , datum : Datum\n    , scriptRef : Option Bytes\n    }\nmain =\n    let\n        emptyPairs : list (pair Bytes (Map Bytes Int))\n        emptyPairs = []\n        prevOutput : Output\n        prevOutput =\n            { address = (Address { thing = #\"7363726970745f686173685f30\" })\n            , value = (lift emptyPairs)\n            , datum = (InlineDatum (encodeMyDatum (MyDatum 3)))\n            , scriptRef = None\n            }\n        nextOutput = { prevOutput | value = (lift emptyPairs), datum = prevOutput.datum }\n    in\n    eq prevOutput nextOutput\n"
+assertion_line: 381
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nimport Lift exposing (lift)\nimport Data exposing (toData)\ntype MyDatum = MyDatum { a : Int }\nencodeMyDatum (MyDatum n) = Builtin.constrData 0 [toData n]\ntype Address = Address { thing : Bytes }\ntype Datum = NoDatum | InlineDatum Data\ntype Option 'a = None | Some 'a\ntype alias Output =\n    { address : Address\n    , value : Map Bytes (Map Bytes Int)\n    , datum : Datum\n    , scriptRef : Option Bytes\n    }\nmain =\n    let\n        emptyPairs : map Bytes (Map Bytes Int)\n        emptyPairs = []\n        prevOutput : Output\n        prevOutput =\n            { address = (Address { thing = #\"7363726970745f686173685f30\" })\n            , value = (lift emptyPairs)\n            , datum = (InlineDatum (encodeMyDatum (MyDatum 3)))\n            , scriptRef = None\n            }\n        nextOutput = { prevOutput | value = (lift emptyPairs), datum = prevOutput.datum }\n    in\n    eq prevOutput nextOutput\n"
 ---
 --- core
 let lift#8 : list (pair 'erased 'erased) -> Map 'erased 'erased = mapData in
@@ -19,7 +20,7 @@ let prevOutput#3 : { _0 : Main.Address, _1 : Map Bytes (Map Bytes Int), _2 : Mai
 let base#5 : { _0 : Main.Address, _1 : Map Bytes (Map Bytes Int), _2 : Main.Datum, _3 : Main.Option Bytes } = prevOutput#3 in
 let projection#29 : list Data = unListData base#5 in
 case@List projection#29 of
-  Cons head#6 tail#7 -> let evaluated#32 : 'erased = lift#8 emptyPairs#2 in
+  Cons head#6 tail#7 -> let evaluated#32 : Map Bytes (Map Bytes Int) = lift#8 emptyPairs#2 in
   case@List tail#7 of
     Cons head#30 tail#31 -> case@List tail#31 of
       Cons head#9 tail#10 -> let nextOutput#4 : { _0 : Main.Address, _1 : Map Bytes (Map Bytes Int), _2 : Main.Datum, _3 : Main.Option Bytes } = listData (mkCons head#6 (mkCons evaluated#32 (mkCons head#9 tail#10))) in

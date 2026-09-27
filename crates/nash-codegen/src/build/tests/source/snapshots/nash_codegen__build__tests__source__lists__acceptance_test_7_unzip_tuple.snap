@@ -1,11 +1,12 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 214
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype sequence 'a = Nil | Cons 'a (sequence 'a)\nunzip xs =\n    case xs of\n        Nil -> ([], [])\n        Cons (a, b) rest ->\n            let\n                (aTail, bTail) = unzip rest\n            in\n            (mkCons a aTail, mkCons b bTail)\nsame (a, b) (c, d) = if eq a c then eq b d else False\nmain =\n    let\n        x = Cons (3, #\"55\") (Cons (4, #\"7799\") Nil)\n    in\n    same (unzip x) ([3, 4], [#\"55\", #\"7799\"])\n"
 ---
 --- core
 let fromBool#17 : bool -> bool = \value#48 : bool -> value#48 in
 let eq#58 : int -> int -> bool = equalsInteger in
-let eq#18 : list 'erased -> list 'erased -> bool = (\self#87 : 'erased -> self#87 self#87) (\self#87 : 'erased xs#49 : list 'erased ys#50 : list 'erased -> let match#62 : list 'erased = xs#49 in
+let eq#18 : list 'erased -> list 'erased -> bool = (\self#87 : @self (list 'erased -> list 'erased -> bool) -> self#87 self#87) (\self#87 : @self (list 'erased -> list 'erased -> bool) xs#49 : list 'erased ys#50 : list 'erased -> let match#62 : list 'erased = xs#49 in
 case@List match#62 of
   Nil -> let match#51 : list 'erased = ys#50 in
   case@List match#51 of
@@ -22,7 +23,7 @@ case@List match#62 of
       True -> self#87 self#87 restX#55 restY#57
       False -> false) in
 let eq#74 : bytes -> bytes -> bool = equalsByteString in
-let eq#19 : list 'erased -> list 'erased -> bool = (\self#84 : 'erased -> self#84 self#84) (\self#84 : 'erased xs#65 : list 'erased ys#66 : list 'erased -> let match#78 : list 'erased = xs#65 in
+let eq#19 : list 'erased -> list 'erased -> bool = (\self#84 : @self (list 'erased -> list 'erased -> bool) -> self#84 self#84) (\self#84 : @self (list 'erased -> list 'erased -> bool) xs#65 : list 'erased ys#66 : list 'erased -> let match#78 : list 'erased = xs#65 in
 case@List match#78 of
   Nil -> let match#67 : list 'erased = ys#66 in
   case@List match#67 of
@@ -49,7 +50,7 @@ case@Tag match#23 of
     case@Bool eq#18 a#12 c#15 of
       True -> eq#19 b#13 d#16
       False -> fromBool#17 false in
-let unzip#3 : Main.sequence (int, bytes) -> (list int, list bytes) = (\self#82 : 'erased -> self#82 self#82) (\self#82 : 'erased xs#26 : Main.sequence (int, bytes) -> let match#41 : Main.sequence (int, bytes) = xs#26 in
+let unzip#3 : Main.sequence (int, bytes) -> (list int, list bytes) = (\self#82 : @self (Main.sequence (int, bytes) -> (list int, list bytes)) -> self#82 self#82) (\self#82 : @self (Main.sequence (int, bytes) -> (list int, list bytes)) xs#26 : Main.sequence (int, bytes) -> let match#41 : Main.sequence (int, bytes) = xs#26 in
 case@Tag match#41 of
   0 -> constr 0 (con (list integer) []) (con (list bytestring) [])
   1 field#42 field#43 -> case@Tag field#42 of
@@ -58,7 +59,7 @@ case@Tag match#41 of
     let b#28 : bytes = field#45 in
     let destruct#30 : (list int, list bytes) = self#82 self#82 rest#29 in
     let match#33 : (list int, list bytes) = destruct#30 in
-    let evaluated#81 : 'erased = mkCons a#27 (case@Tag match#33 of
+    let evaluated#81 : list int = mkCons a#27 (case@Tag match#33 of
       0 field#34 field#35 -> let aTail#31 : list int = field#34 in
       let bTail#32 : list bytes = field#35 in
       aTail#31) in

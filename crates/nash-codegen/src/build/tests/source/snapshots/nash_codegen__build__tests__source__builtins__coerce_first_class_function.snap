@@ -1,12 +1,13 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 410
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\napply f x = f x\nidentity x = x\nhidden : Data\nhidden = apply coerce identity\nrecovered : int -> int\nrecovered = coerce hidden\nmain : int\nmain = recovered 42\n"
 ---
 --- core
 let apply#7 : ('erased -> 'erased) -> 'erased -> 'erased = \(f#10 : 'erased -> 'erased) x#11 : 'erased -> f#10 x#11 in
 let identity#9 : 'erased -> 'erased = \x#12 : 'erased -> x#12 in
-let hidden#5 : Data = apply#7 (\coerce#8 : 'erased -> coerce#8) identity#9 in
-let recovered#2 : int -> int = (\coerce#4 : 'erased -> coerce#4) hidden#5 in
+let hidden#5 : Data = apply#7 (\(coerce#8 : 'erased -> 'erased) -> coerce#8) identity#9 in
+let recovered#2 : int -> int = (\coerce#4 : Data -> coerce#4) hidden#5 in
 let fromInt#3 : int -> int = \value#6 : int -> value#6 in
 let main#1 : int = recovered#2 (fromInt#3 42) in
 main#1
