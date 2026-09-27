@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "tasks/*"]
+exclude = ["tools/optimizer-perf"]
 
 [workspace.package]
 edition = "2024"

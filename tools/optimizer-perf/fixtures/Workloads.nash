@@ -1,0 +1,61 @@
+module Workloads exposing (..)
+
+import Primitive exposing (..)
+import Builtin exposing (..)
+import Literal exposing (..)
+import Logic exposing (..)
+
+sum : list int -> int
+sum xs =
+    case xs of
+        [] -> 0
+        x :: rest -> Builtin.addInteger x (sum rest)
+
+listTraversal : int
+listTraversal = sum [1, 2, 3, 4, 5, 6, 7, 8]
+
+countdown : int -> int -> int
+countdown n result =
+    if Builtin.equalsInteger n 0 then
+        result
+    else
+        countdown (Builtin.subtractInteger n 1) result
+
+staticRecursion : int
+staticRecursion = countdown 8 42
+
+matchData : Data -> int
+matchData value =
+    case value of
+        I n -> n
+        _ -> 0
+
+dataMatch : int
+dataMatch = matchData (I 42)
+
+dataMiss : int
+dataMiss = matchData (B #"ab")
+
+decode : Data -> int
+decode value =
+    case value of
+        Constr pair(_, [I n, _]) -> n
+        _ -> 0
+
+decoding : int
+decoding = decode (Builtin.constrData 0 [I 42, I 7])
+
+validate : Data -> unit
+validate value =
+    case value of
+        I n -> assert (Builtin.lessThanInteger 0 n)
+        _ -> fail
+
+validationPass : unit
+validationPass = validate (I 42)
+
+validationFail : unit
+validationFail = validate (I 0)
+
+booleanHelpers : bool
+booleanHelpers = (True && False) || (True && True)

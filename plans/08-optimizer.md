@@ -3,7 +3,8 @@
 ## Status and accepted scope
 
 Chunks 1 and 2 are accepted and complete, including mandatory Core typing,
-pre-ANF static-parameter lifting and ANF. Chunk 3 remains pending; the user
+pre-ANF static-parameter lifting and ANF. Chunk 3 is complete with an isolated
+performance runner. The user
 accepted Chunk 4 rules 1 and 2, including repeated-constant propagation and
 their fixed-point loop. Rule 3 was accepted on 27 September 2026; rule 4 remains pending independent review.
 Current assembly in
@@ -272,6 +273,52 @@ before/after Core sections and unchanged baseline output; review binding overhea
 in UPLC.
 
 ## Chunk 3 — Explicit performance-only test path
+
+Implemented in `tools/optimizer-perf`, an unpublished package with its own
+workspace and lockfile, explicitly excluded from the root workspace. Commands:
+`measure`, `check [baseline]`, `record NEW.json`, and `experiment MODULE.nash`.
+See its README for exact invocations and fixture scope. There are no performance
+test targets or ordinary CI changes.
+
+The initial 20 rows compare O0 against accepted static lifting, ANF and rules
+1–3 around recursion rewriting. Inputs cover list traversal, static recursion,
+Data hits/misses, field decoding, validation pass/fail, real base Logic helpers,
+and six ledger scenarios for each of Vesting and VestingParam. Reports embed
+source inputs, record runtime/cost-model settings and provenance, and measure
+CPU, memory and raw Flat bytes. Validator size excludes applied ledger arguments;
+their evaluation budgets include those arguments. Known results are checked
+before recording; both pipelines must agree on results and traces.
+
+`check` requires exact metrics, inputs and outcomes, including improvements;
+`record` refuses to overwrite existing files. Initial baselines document current
+accepted-pass behavior, including ANF overhead; they are not universal performance
+targets. Temporary source experiments remain outside permanent fixtures and
+baselines. A 120-second watchdog bounds workload compilation and execution;
+each CEK run has explicit CPU/memory caps and budget exhaustion fails the command.
+
+Representative initial before → after figures (full rows in `baseline.json`):
+
+| Input | CPU | Memory | Flat bytes |
+| --- | ---: | ---: | ---: |
+| List sum of 1–8 | 5788660 → 6076660 | 27872 → 29672 | 102 → 137 |
+| Static countdown 8, returning 42 | 4736761 → 6704761 | 21725 → 34025 | 52 → 62 |
+| Data integer match | 978518 → 786518 | 5496 → 4296 | 58 → 48 |
+| Vesting claim after deadline | 2621392 → 2285392 | 14525 → 12425 | 271 → 246 |
+| VestingParam claim after deadline | 2834600 → 2546600 | 15227 → 13427 | 275 → 253 |
+
+These compare the full accepted pipeline with O0, not rule 3 in isolation.
+
+Validation (27 September 2026): all 20 explicit baselines match. Deliberately
+lowering a CPU baseline by one unit makes `check` fail; changed fixture sources
+also fail even with identical metrics. `record` rejects overwrites. A temporary
+source experiment returns 42, and a diverging experiment fails at the explicit
+budget limit. Both workspace formatting checks and strict Clippy checks pass.
+Root all-feature executable tests pass (3662); the separate doctest rerun passes
+(1 passed, 3 ignored). The first doctest run encountered a crate-ID collision
+while concurrent builds were active; the rerun completed after those builds.
+Root nextest passes all 3662 tests. Root metadata, Cargo test listing and nextest
+discovery exclude the performance package; its metadata confirms a separate
+workspace. Normal CI and ordinary semantic snapshots remain unchanged.
 
 Keep two categories:
 

@@ -1,0 +1,27 @@
+[package]
+name = "nash-optimizer-perf"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Deliberately outside root Cargo test/nextest discovery.
+[workspace]
+
+[[bin]]
+name = "nash-optimizer-perf"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+nash-ast = { path = "../../crates/nash-ast" }
+nash-can = { path = "../../crates/nash-can" }
+nash-parse = { path = "../../crates/nash-parse" }
+nash-constrain = { path = "../../crates/nash-constrain" }
+nash-solve = { path = "../../crates/nash-solve" }
+nash-nitpick = { path = "../../crates/nash-nitpick" }
+nash-codegen = { path = "../../crates/nash-codegen" }
+nash-ir = { path = "../../crates/nash-ir" }
+nash-plutus = { path = "../../crates/nash-plutus" }

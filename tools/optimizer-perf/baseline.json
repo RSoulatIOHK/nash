@@ -1,0 +1,380 @@
+{
+  "settings": "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF/rules1+2+3/recursion/ANF/rules1+2+3",
+  "sources": {
+    "Cardano.Tx": "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n",
+    "Lift": "module Lift exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\ntrait Lift 'a 'b where\n    lift : 'a -> 'b\n    lower : 'b -> 'a\n\nimpl Lift int Int where\n    lift value = Builtin.iData value\n    lower value = Builtin.unIData value\n\nimpl Lift bytes Bytes where\n    lift value = Builtin.bData value\n    lower value = Builtin.unBData value\n",
+    "Literal": "module Literal exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\ntrait FromInt 'a where\n    fromInt : int -> 'a\n\ntrait FromString 'a where\n    fromString : string -> 'a\n\ntrait FromBytes 'a where\n    fromBytes : bytes -> 'a\n\nimpl FromInt int where\n    fromInt x = x\n\nimpl FromString string where\n    fromString x = x\n\nimpl FromBytes bytes where\n    fromBytes x = x\n\ntrait FromBool 'a where\n    fromBool : bool -> 'a\n\ntrait FromUnit 'a where\n    fromUnit : unit -> 'a\n\nimpl FromBool bool where\n    fromBool value = value\n\nimpl FromUnit unit where\n    fromUnit value = value\n",
+    "Logic": "module Logic exposing ( not, and, or, xor, (&&), (||) )\n\n\nimport Primitive\nimport Lift exposing ( Lift )\n\n\ninfix right 2 (||) = or\n\n\ninfix right 3 (&&) = and\n\n\n{-| Negate a Big or little Boolean, returning bool. -}\nnot : Lift bool 'a => 'a -> bool\nnot value =\n    if lower value then\n        Primitive.False\n    else\n        Primitive.True\n\n\n{-| Boolean conjunction. Fully applied calls short-circuit; partial and indirect calls are strict. -}\nand : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool\nand a b =\n    if lower a then\n        lower b\n    else\n        Primitive.False\n\n\n{-| Boolean disjunction. Fully applied calls short-circuit; partial and indirect calls are strict. -}\nor : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool\nor a b =\n    if lower a then\n        Primitive.True\n    else\n        lower b\n\n\n{-| Return True when the Boolean operands differ. -}\nxor : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool\nxor a b =\n    if lower a then\n        not b\n    else\n        lower b\n",
+    "Vesting": "validator module Vesting exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype step 'a = Done 'a | Next int 'a\n\ntype alias acc = { total : int, seen : list Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : Datum -> Redeemer -> Data -> unit\nmain datum redeemer ctx =\n    case redeemer of\n        Claim -> assert (Builtin.lessThanInteger (lower datum.deadline) (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n",
+    "VestingParam": "validator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : int -> Datum -> Redeemer -> Data -> unit\nmain minimumLock datum redeemer ctx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n",
+    "Workloads": "module Workloads exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Logic exposing (..)\n\nsum : list int -> int\nsum xs =\n    case xs of\n        [] -> 0\n        x :: rest -> Builtin.addInteger x (sum rest)\n\nlistTraversal : int\nlistTraversal = sum [1, 2, 3, 4, 5, 6, 7, 8]\n\ncountdown : int -> int -> int\ncountdown n result =\n    if Builtin.equalsInteger n 0 then\n        result\n    else\n        countdown (Builtin.subtractInteger n 1) result\n\nstaticRecursion : int\nstaticRecursion = countdown 8 42\n\nmatchData : Data -> int\nmatchData value =\n    case value of\n        I n -> n\n        _ -> 0\n\ndataMatch : int\ndataMatch = matchData (I 42)\n\ndataMiss : int\ndataMiss = matchData (B #\"ab\")\n\ndecode : Data -> int\ndecode value =\n    case value of\n        Constr pair(_, [I n, _]) -> n\n        _ -> 0\n\ndecoding : int\ndecoding = decode (Builtin.constrData 0 [I 42, I 7])\n\nvalidate : Data -> unit\nvalidate value =\n    case value of\n        I n -> assert (Builtin.lessThanInteger 0 n)\n        _ -> fail\n\nvalidationPass : unit\nvalidationPass = validate (I 42)\n\nvalidationFail : unit\nvalidationFail = validate (I 0)\n\nbooleanHelpers : bool\nbooleanHelpers = (True && False) || (True && True)\n"
+  },
+  "revision": "1e2b5adb4ffe2dca5c791634a5a939d6e75e121b",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "rows": [
+    {
+      "input": "Workloads.listTraversal (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 5788660,
+        "memory": 27872,
+        "bytes": 102,
+        "result": "(con integer 36)",
+        "logs": []
+      },
+      "after": {
+        "cpu": 6076660,
+        "memory": 29672,
+        "bytes": 137,
+        "result": "(con integer 36)",
+        "logs": []
+      }
+    },
+    {
+      "input": "Workloads.staticRecursion (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 4736761,
+        "memory": 21725,
+        "bytes": 52,
+        "result": "(con integer 42)",
+        "logs": []
+      },
+      "after": {
+        "cpu": 6704761,
+        "memory": 34025,
+        "bytes": 62,
+        "result": "(con integer 42)",
+        "logs": []
+      }
+    },
+    {
+      "input": "Workloads.dataMatch (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 978518,
+        "memory": 5496,
+        "bytes": 58,
+        "result": "(con integer 42)",
+        "logs": []
+      },
+      "after": {
+        "cpu": 786518,
+        "memory": 4296,
+        "bytes": 48,
+        "result": "(con integer 42)",
+        "logs": []
+      }
+    },
+    {
+      "input": "Workloads.dataMiss (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 953658,
+        "memory": 5464,
+        "bytes": 64,
+        "result": "(con integer 0)",
+        "logs": []
+      },
+      "after": {
+        "cpu": 569658,
+        "memory": 3064,
+        "bytes": 41,
+        "result": "(con integer 0)",
+        "logs": []
+      }
+    },
+    {
+      "input": "Workloads.decoding (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 2271655,
+        "memory": 11888,
+        "bytes": 125,
+        "result": "(con integer 42)",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2319655,
+        "memory": 12188,
+        "bytes": 127,
+        "result": "(con integer 42)",
+        "logs": []
+      }
+    },
+    {
+      "input": "Workloads.validationPass (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 1215808,
+        "memory": 6697,
+        "bytes": 90,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 1071808,
+        "memory": 5797,
+        "bytes": 82,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "Workloads.validationFail (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 235306,
+        "memory": 229,
+        "bytes": 90,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 235306,
+        "memory": 229,
+        "bytes": 82,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    },
+    {
+      "input": "Workloads.booleanHelpers (fixtures/Workloads.nash)",
+      "before": {
+        "cpu": 400100,
+        "memory": 2600,
+        "bytes": 29,
+        "result": "(con bool True)",
+        "logs": []
+      },
+      "after": {
+        "cpu": 496100,
+        "memory": 3200,
+        "bytes": 34,
+        "result": "(con bool True)",
+        "logs": []
+      }
+    },
+    {
+      "input": "Vesting: claim after deadline; deadline=10, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2621392,
+        "memory": 14525,
+        "bytes": 271,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2285392,
+        "memory": 12425,
+        "bytes": 246,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "Vesting: claim before deadline; deadline=30, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "before": {
+        "cpu": 408890,
+        "memory": 357,
+        "bytes": 271,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 408890,
+        "memory": 357,
+        "bytes": 246,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    },
+    {
+      "input": "Vesting: cancel signed; deadline=10, action=1, signer=[170], minimum=none, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2588434,
+        "memory": 14425,
+        "bytes": 271,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2156434,
+        "memory": 11725,
+        "bytes": 246,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "Vesting: cancel unsigned; deadline=10, action=1, signer=[], minimum=none, slot=20, owner=[170]",
+      "before": {
+        "cpu": 391932,
+        "memory": 357,
+        "bytes": 271,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 391932,
+        "memory": 357,
+        "bytes": 246,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    },
+    {
+      "input": "Vesting: boundary zero minimum; deadline=18, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2621392,
+        "memory": 14525,
+        "bytes": 271,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2285392,
+        "memory": 12425,
+        "bytes": 246,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "Vesting: boundary five minimum; deadline=18, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2621392,
+        "memory": 14525,
+        "bytes": 271,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2285392,
+        "memory": 12425,
+        "bytes": 246,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: claim after deadline; deadline=10, action=0, signer=[], minimum=5, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2834600,
+        "memory": 15227,
+        "bytes": 275,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2546600,
+        "memory": 13427,
+        "bytes": 253,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: claim before deadline; deadline=30, action=0, signer=[], minimum=5, slot=20, owner=[170]",
+      "before": {
+        "cpu": 510098,
+        "memory": 359,
+        "bytes": 275,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 510098,
+        "memory": 359,
+        "bytes": 253,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    },
+    {
+      "input": "VestingParam: cancel signed; deadline=10, action=1, signer=[170], minimum=5, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2636434,
+        "memory": 14725,
+        "bytes": 275,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2204434,
+        "memory": 12025,
+        "bytes": 253,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: cancel unsigned; deadline=10, action=1, signer=[], minimum=5, slot=20, owner=[170]",
+      "before": {
+        "cpu": 391932,
+        "memory": 357,
+        "bytes": 275,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 391932,
+        "memory": 357,
+        "bytes": 253,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    },
+    {
+      "input": "VestingParam: boundary zero minimum; deadline=18, action=0, signer=[], minimum=0, slot=20, owner=[170]",
+      "before": {
+        "cpu": 2834600,
+        "memory": 15227,
+        "bytes": 275,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 2546600,
+        "memory": 13427,
+        "bytes": 253,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: boundary five minimum; deadline=18, action=0, signer=[], minimum=5, slot=20, owner=[170]",
+      "before": {
+        "cpu": 510098,
+        "memory": 359,
+        "bytes": 275,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 510098,
+        "memory": 359,
+        "bytes": 253,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    }
+  ]
+}
