@@ -1,0 +1,39 @@
+---
+source: crates/nash-codegen/src/build/tests/optimizer.rs
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Logic exposing ((&&), (||))\nmain : bool\nmain = (True && False) || (True && True)\n"
+---
+--- source Core
+let fromBool#2 : bool -> bool = \value#3 : bool -> value#3 in
+let main#1 : bool = case@Bool (case@Bool fromBool#2 true of
+  True -> fromBool#2 false
+  False -> false) of
+  True -> true
+  False -> case@Bool fromBool#2 true of
+    True -> fromBool#2 true
+    False -> false in
+main#1
+--- Core before Boolean folding
+let anf#8 : bool = case@Bool true of
+  True -> false
+  False -> false in
+case@Bool anf#8 of
+  True -> true
+  False -> case@Bool true of
+    True -> true
+    False -> false
+--- Core after Boolean folding and cleanup
+true
+--- UPLC before
+(program 1.1.0
+  [(lam anf_8
+    (case
+      anf_8
+      (case (con bool True) (con bool False) (con bool True))
+      (con bool True)))
+    (case (con bool True) (con bool False) (con bool False))])
+--- UPLC after
+(program 1.1.0 (con bool True))
+--- result
+(con bool True)
+--- logs
+[]

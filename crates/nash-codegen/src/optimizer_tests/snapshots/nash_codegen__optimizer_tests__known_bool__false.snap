@@ -1,0 +1,25 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/known_bool.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+---
+--- core before
+case@Bool false of
+  True -> trace "wrong" in error
+  False -> trace "chosen" in 42
+--- core after
+trace "chosen" in 42
+--- uplc before
+(program 1.1.0
+  (case
+    (con bool False)
+    (force
+      [[(force (builtin trace)) (con string "chosen")] (delay (con integer 42))])
+    (force [[(force (builtin trace)) (con string "wrong")] (delay (error))])))
+--- uplc after
+(program 1.1.0
+  (force
+    [[(force (builtin trace)) (con string "chosen")] (delay (con integer 42))]))
+--- result
+(con integer 42)
+--- logs
+["chosen"]

@@ -1,0 +1,26 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/known_bool.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+---
+--- core before
+let ignored#1 : int = trace "before" in 0 in
+case@Bool true of
+  True -> 42
+  False -> error
+--- core after
+let ignored#1 : int = trace "before" in 0 in
+42
+--- uplc before
+(program 1.1.0
+  [(lam ignored_1 (case (con bool True) (error) (con integer 42)))
+    (force
+      [[(force (builtin trace)) (con string "before")] (delay (con integer 0))])])
+--- uplc after
+(program 1.1.0
+  [(lam ignored_1 (con integer 42))
+    (force
+      [[(force (builtin trace)) (con string "before")] (delay (con integer 0))])])
+--- result
+(con integer 42)
+--- logs
+["before"]

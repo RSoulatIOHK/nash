@@ -1,0 +1,74 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/anf.rs
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+letrec
+  countdown#5 : int -> int [static []] = \n#6 : int -> trace "step" in case@Bool equalsInteger n#6 0 of
+    True -> 42
+    False -> countdown#5 (subtractInteger n#6 1)
+in
+countdown#5 2
+--- core after static lifting / before ANF
+letrec
+  countdown#5 : int -> int [static []] = \n#6 : int -> trace "step" in case@Bool equalsInteger n#6 0 of
+    True -> 42
+    False -> countdown#5 (subtractInteger n#6 1)
+in
+countdown#5 2
+--- core after ANF
+letrec
+  countdown#5 : int -> int [static []] = \n#6 : int -> trace "step" in let anf#7 : bool = equalsInteger n#6 0 in
+  case@Bool anf#7 of
+    True -> 42
+    False -> let anf#8 : int = subtractInteger n#6 1 in
+    countdown#5 anf#8
+in
+countdown#5 2
+--- rewritten core (no second ANF)
+let countdown#16 : int -> int = (\self#11 : @self (int -> int) -> self#11 self#11) (\self#12 : @self (int -> int) n#13 : int -> trace "step" in let anf#14 : bool = equalsInteger n#13 0 in
+case@Bool anf#14 of
+  True -> 42
+  False -> let anf#15 : int = subtractInteger n#13 1 in
+  self#12 self#12 anf#15) in
+countdown#16 2
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam countdown_1 [countdown_1 (con integer 2)])
+    [(lam self_3 [self_3 self_3])
+      (lam self_3
+        (lam n_2
+          (force
+            [[(force (builtin trace)) (con string "step")]
+              (delay
+                (case
+                  [[(builtin equalsInteger) n_2] (con integer 0)]
+                  [[self_3 self_3] [[(builtin subtractInteger) n_2] (con integer 1)]]
+                  (con integer 42)))])))]])
+--- result
+(con integer 42)
+--- logs
+["step", "step", "step"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam countdown_16 [countdown_16 (con integer 2)])
+    [(lam self_11 [self_11 self_11])
+      (lam self_12
+        (lam n_13
+          (force
+            [[(force (builtin trace)) (con string "step")]
+              (delay
+                [(lam anf_14
+                  (case
+                    anf_14
+                    [(lam anf_15 [[self_12 self_12] anf_15])
+                      [[(builtin subtractInteger) n_13] (con integer 1)]]
+                    (con integer 42)))
+                  [[(builtin equalsInteger) n_13] (con integer 0)]])])))]])
+--- result
+(con integer 42)
+--- logs
+["step", "step", "step"]

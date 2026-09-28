@@ -1,0 +1,58 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let add#3 : int -> int -> int = \x#1 : int y#2 : int -> addInteger x#1 y#2 in
+let anf#4 : int -> int = add#3 10 in
+let anf#5 : int = anf#4 1 in
+let anf#6 : int -> int = add#3 20 in
+let anf#7 : int = anf#6 1 in
+let anf#8 : int = add#3 3 4 in
+let anf#9 : int = addInteger anf#7 anf#8 in
+addInteger anf#5 anf#9
+--- core after
+let add#3 : int -> int -> int = \x#1 : int y#2 : int -> addInteger x#1 y#2 in
+let anf#4 : int -> int = add#3 10 in
+let anf#5 : int = anf#4 1 in
+let anf#6 : int -> int = add#3 20 in
+let anf#7 : int = anf#6 1 in
+let anf#8 : int = addInteger 3 4 in
+let anf#9 : int = addInteger anf#7 anf#8 in
+addInteger anf#5 anf#9
+--- baseline uplc
+(program 1.1.0
+  [(lam add_3
+    [(lam anf_4
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7
+            [(lam anf_8
+              [(lam anf_9 [[(builtin addInteger) anf_5] anf_9])
+                [[(builtin addInteger) anf_7] anf_8]])
+              [[add_3 (con integer 3)] (con integer 4)]])
+            [anf_6 (con integer 1)]])
+          [add_3 (con integer 20)]])
+        [anf_4 (con integer 1)]])
+      [add_3 (con integer 10)]])
+    (lam x_1 (lam y_2 [[(builtin addInteger) x_1] y_2]))])
+--- optimized uplc
+(program 1.1.0
+  [(lam add_3
+    [(lam anf_4
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7
+            [(lam anf_8
+              [(lam anf_9 [[(builtin addInteger) anf_5] anf_9])
+                [[(builtin addInteger) anf_7] anf_8]])
+              [[(builtin addInteger) (con integer 3)] (con integer 4)]])
+            [anf_6 (con integer 1)]])
+          [add_3 (con integer 20)]])
+        [anf_4 (con integer 1)]])
+      [add_3 (con integer 10)]])
+    (lam x_1 (lam y_2 [[(builtin addInteger) x_1] y_2]))])
+--- result
+(con integer 39)
+--- logs
+[]

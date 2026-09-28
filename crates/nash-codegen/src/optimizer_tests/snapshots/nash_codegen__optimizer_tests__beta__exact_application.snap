@@ -1,0 +1,24 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/beta.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+(\x#1 : int -> let alias#2 : int = x#1 in
+alias#2) 42
+--- core after
+42
+--- baseline
+--- uplc
+(program 1.1.0 [(lam x_1 [(lam alias_2 alias_2) x_1]) (con integer 42)])
+--- result
+(con integer 42)
+--- logs
+[]
+--- candidate
+--- uplc
+(program 1.1.0 (con integer 42))
+--- result
+(con integer 42)
+--- logs
+[]

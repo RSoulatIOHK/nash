@@ -1,0 +1,83 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/anf.rs
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+letrec
+  countdown#12 : int -> int -> int [static []] = \x#13 : int n#14 : int -> case@Bool equalsInteger n#14 0 of
+    True -> x#13
+    False -> let partial#15 : int -> int = countdown#12 x#13 in
+    partial#15 (trace "next" in subtractInteger n#14 1)
+in
+countdown#12 42 2
+--- core after static lifting / before ANF
+letrec
+  countdown#12 : int -> int -> int [static []] = \x#13 : int n#14 : int -> case@Bool equalsInteger n#14 0 of
+    True -> x#13
+    False -> let partial#15 : int -> int = countdown#12 x#13 in
+    partial#15 (trace "next" in subtractInteger n#14 1)
+in
+countdown#12 42 2
+--- core after ANF
+letrec
+  countdown#12 : int -> int -> int [static []] = \x#13 : int n#14 : int -> let anf#16 : bool = equalsInteger n#14 0 in
+  case@Bool anf#16 of
+    True -> x#13
+    False -> let partial#15 : int -> int = countdown#12 x#13 in
+    let anf#17 : int = trace "next" in subtractInteger n#14 1 in
+    partial#15 anf#17
+in
+countdown#12 42 2
+--- rewritten core (no second ANF)
+let countdown#28 : int -> int -> int = (\self#21 : @self (int -> int -> int) -> self#21 self#21) (\self#22 : @self (int -> int -> int) x#23 : int n#24 : int -> let anf#25 : bool = equalsInteger n#24 0 in
+case@Bool anf#25 of
+  True -> x#23
+  False -> let partial#26 : int -> int = self#22 self#22 x#23 in
+  let anf#27 : int = trace "next" in subtractInteger n#24 1 in
+  partial#26 anf#27) in
+countdown#28 42 2
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam countdown_1 [[countdown_1 (con integer 42)] (con integer 2)])
+    [(lam self_9 [self_9 self_9])
+      (lam self_9
+        (lam x_2
+          (lam n_3
+            (case
+              [[(builtin equalsInteger) n_3] (con integer 0)]
+              [(lam partial_4
+                [partial_4
+                  (force
+                    [[(force (builtin trace)) (con string "next")]
+                      (delay [[(builtin subtractInteger) n_3] (con integer 1)])])])
+                [[self_9 self_9] x_2]]
+              x_2))))]])
+--- result
+(con integer 42)
+--- logs
+["next", "next"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam countdown_28 [[countdown_28 (con integer 42)] (con integer 2)])
+    [(lam self_21 [self_21 self_21])
+      (lam self_22
+        (lam x_23
+          (lam n_24
+            [(lam anf_25
+              (case
+                anf_25
+                [(lam partial_26
+                  [(lam anf_27 [partial_26 anf_27])
+                    (force
+                      [[(force (builtin trace)) (con string "next")]
+                        (delay [[(builtin subtractInteger) n_24] (con integer 1)])])])
+                  [[self_22 self_22] x_23]]
+                x_23))
+              [[(builtin equalsInteger) n_24] (con integer 0)]])))]])
+--- result
+(con integer 42)
+--- logs
+["next", "next"]

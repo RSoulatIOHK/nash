@@ -1,0 +1,40 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let helper#3 : int -> int -> int = \unused#1 : int used#2 : int -> used#2 in
+let alias#7 : int -> int -> int = helper#3 in
+let anf#8 : int = helper#3 0 21 in
+let anf#9 : int = alias#7 0 21 in
+addInteger anf#8 anf#9
+--- core after
+let helper#3 : int -> int -> int = \unused#1 : int used#2 : int -> used#2 in
+let alias#7 : int -> int -> int = helper#3 in
+let anf#8 : int = helper#3 0 21 in
+let anf#9 : int = alias#7 0 21 in
+addInteger anf#8 anf#9
+--- uplc before
+(program 1.1.0
+  [(lam helper_3
+    [(lam alias_7
+      [(lam anf_8
+        [(lam anf_9 [[(builtin addInteger) anf_8] anf_9])
+          [[alias_7 (con integer 0)] (con integer 21)]])
+        [[helper_3 (con integer 0)] (con integer 21)]])
+      helper_3])
+    (lam unused_1 (lam used_2 used_2))])
+--- uplc after
+(program 1.1.0
+  [(lam helper_3
+    [(lam alias_7
+      [(lam anf_8
+        [(lam anf_9 [[(builtin addInteger) anf_8] anf_9])
+          [[alias_7 (con integer 0)] (con integer 21)]])
+        [[helper_3 (con integer 0)] (con integer 21)]])
+      helper_3])
+    (lam unused_1 (lam used_2 used_2))])
+--- result
+(con integer 42)
+--- logs
+[]

@@ -1,0 +1,117 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/anf.rs
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+letrec
+  countdown#6 : int -> int -> int -> int [static [0]] = \x#7 : int n#8 : int -> trace "step" in case@Bool equalsInteger n#8 0 of
+    True -> \y#9 : int -> trace "returned function" in addInteger x#7 y#9
+    False -> countdown#6 x#7 (subtractInteger n#8 1)
+in
+countdown#6 (trace "fixed" in 40) (trace "initial" in 2) (trace "extra" in 2)
+--- core after static lifting / before ANF
+let countdown#6 : int -> int -> int -> int = \x#7 : int n#8 : int -> letrec
+  worker#11 : int -> int -> int [static []] = \n#10 : int -> trace "step" in case@Bool equalsInteger n#10 0 of
+    True -> \y#9 : int -> trace "returned function" in addInteger x#7 y#9
+    False -> worker#11 (subtractInteger n#10 1)
+in
+worker#11 n#8 in
+countdown#6 (trace "fixed" in 40) (trace "initial" in 2) (trace "extra" in 2)
+--- core after ANF
+let countdown#6 : int -> int -> int -> int = \x#7 : int n#8 : int -> letrec
+  worker#11 : int -> int -> int [static []] = \n#10 : int -> trace "step" in let anf#12 : bool = equalsInteger n#10 0 in
+  case@Bool anf#12 of
+    True -> \y#9 : int -> trace "returned function" in addInteger x#7 y#9
+    False -> let anf#13 : int = subtractInteger n#10 1 in
+    worker#11 anf#13
+in
+worker#11 n#8 in
+let anf#14 : int = trace "fixed" in 40 in
+let anf#15 : int -> int -> int = countdown#6 anf#14 in
+let anf#16 : int = trace "initial" in 2 in
+let anf#17 : int -> int = anf#15 anf#16 in
+let anf#18 : int = trace "extra" in 2 in
+anf#17 anf#18
+--- rewritten core (no second ANF)
+let countdown#30 : int -> int -> int -> int = \x#21 : int n#22 : int -> let worker#29 : int -> int -> int = (\self#23 : @self (int -> int -> int) -> self#23 self#23) (\self#24 : @self (int -> int -> int) n#25 : int -> trace "step" in let anf#26 : bool = equalsInteger n#25 0 in
+case@Bool anf#26 of
+  True -> \y#27 : int -> trace "returned function" in addInteger x#21 y#27
+  False -> let anf#28 : int = subtractInteger n#25 1 in
+  self#24 self#24 anf#28) in
+worker#29 n#22 in
+let anf#31 : int = trace "fixed" in 40 in
+let anf#32 : int -> int -> int = countdown#30 anf#31 in
+let anf#33 : int = trace "initial" in 2 in
+let anf#34 : int -> int = anf#32 anf#33 in
+let anf#35 : int = trace "extra" in 2 in
+anf#34 anf#35
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam countdown_1
+    [[[countdown_1
+      (force
+        [[(force (builtin trace)) (con string "fixed")] (delay (con integer 40))])]
+      (force
+        [[(force (builtin trace)) (con string "initial")] (delay (con integer 2))])]
+      (force [[(force (builtin trace)) (con string "extra")] (delay (con integer 2))])])
+    (lam x_2
+      (lam n_3
+        [[(lam self_5 [self_5 self_5])
+          (lam self_5
+            (lam n_3
+              (force
+                [[(force (builtin trace)) (con string "step")]
+                  (delay
+                    (case
+                      [[(builtin equalsInteger) n_3] (con integer 0)]
+                      [[self_5 self_5] [[(builtin subtractInteger) n_3] (con integer 1)]]
+                      (lam y_4
+                        (force
+                          [[(force (builtin trace)) (con string "returned function")]
+                            (delay [[(builtin addInteger) x_2] y_4])]))))])))]
+          n_3]))])
+--- result
+(con integer 42)
+--- logs
+["fixed", "initial", "step", "step", "step", "extra", "returned function"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam countdown_30
+    [(lam anf_31
+      [(lam anf_32
+        [(lam anf_33
+          [(lam anf_34
+            [(lam anf_35 [anf_34 anf_35])
+              (force [[(force (builtin trace)) (con string "extra")] (delay (con integer 2))])])
+            [anf_32 anf_33]])
+          (force
+            [[(force (builtin trace)) (con string "initial")] (delay (con integer 2))])])
+        [countdown_30 anf_31]])
+      (force
+        [[(force (builtin trace)) (con string "fixed")] (delay (con integer 40))])])
+    (lam x_21
+      (lam n_22
+        [(lam worker_29 [worker_29 n_22])
+          [(lam self_23 [self_23 self_23])
+            (lam self_24
+              (lam n_25
+                (force
+                  [[(force (builtin trace)) (con string "step")]
+                    (delay
+                      [(lam anf_26
+                        (case
+                          anf_26
+                          [(lam anf_28 [[self_24 self_24] anf_28])
+                            [[(builtin subtractInteger) n_25] (con integer 1)]]
+                          (lam y_27
+                            (force
+                              [[(force (builtin trace)) (con string "returned function")]
+                                (delay [[(builtin addInteger) x_21] y_27])]))))
+                        [[(builtin equalsInteger) n_25] (con integer 0)]])])))]]))])
+--- result
+(con integer 42)
+--- logs
+["fixed", "initial", "step", "step", "step", "extra", "returned function"]

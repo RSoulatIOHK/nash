@@ -2,6 +2,7 @@ use super::*;
 use nash_ast::primitives;
 use std::collections::BTreeMap;
 
+mod optimizer;
 mod source;
 mod typing;
 mod wildcard_cases;

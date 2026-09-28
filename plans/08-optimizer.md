@@ -1191,6 +1191,15 @@ benefit; refresh recursion metadata before rewriting.
 
 ## Chunk 7 — Known-case and field simplification
 
+Optimization semantic tests are grouped in
+`crates/nash-codegen/src/optimizer_tests/`, with colocated snapshots.
+Source-to-optimized snapshots live in `crates/nash-codegen/src/build/tests/optimizer.rs`
+and reuse the existing Base fixture compiler. They record source Core, accepted
+Core, trial-optimized Core, paired UPLC, results and traces; budgets remain in
+the explicit-only performance workspace. The test-layout cleanup moved 13 modules
+and 176 snapshots without changing snapshot bodies, and added source snapshots
+for the Boolean helper, a cold trace and a retained strict trace.
+
 **First trial (27 September 2026), pending review: known Boolean subjects.**
 `known_bool::reduce` selects the actual True/False branch or default only for a
 literal Boolean subject. It validates the local Boolean table before folding:

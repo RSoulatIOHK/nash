@@ -1,0 +1,57 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/anf.rs
+assertion_line: 895
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- optimized\\n{}\",\npretty(core), pretty(after), semantic_output(&baseline),\nsemantic_output(&optimized),)"
+---
+--- core before
+letrec
+  countdown#1 : int -> int [static []] = \n#2 : int -> case@Bool equalsInteger n#2 0 of
+    True -> 42
+    False -> countdown#1 (trace "step" in subtractInteger n#2 1)
+in
+countdown#1 2
+--- core after
+let countdown#14 : int -> int = (\self#9 : @self (int -> int) -> self#9 self#9) (\self#10 : @self (int -> int) n#11 : int -> let anf#12 : bool = equalsInteger n#11 0 in
+case@Bool anf#12 of
+  True -> 42
+  False -> let anf#13 : int = trace "step" in subtractInteger n#11 1 in
+  self#10 self#10 anf#13) in
+countdown#14 2
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam countdown_1 [countdown_1 (con integer 2)])
+    [(lam self_3 [self_3 self_3])
+      (lam self_3
+        (lam n_2
+          (case
+            [[(builtin equalsInteger) n_2] (con integer 0)]
+            [[self_3 self_3]
+              (force
+                [[(force (builtin trace)) (con string "step")]
+                  (delay [[(builtin subtractInteger) n_2] (con integer 1)])])]
+            (con integer 42))))]])
+--- result
+(con integer 42)
+--- logs
+["step", "step"]
+--- optimized
+--- uplc
+(program 1.1.0
+  [(lam countdown_14 [countdown_14 (con integer 2)])
+    [(lam self_9 [self_9 self_9])
+      (lam self_10
+        (lam n_11
+          [(lam anf_12
+            (case
+              anf_12
+              [(lam anf_13 [[self_10 self_10] anf_13])
+                (force
+                  [[(force (builtin trace)) (con string "step")]
+                    (delay [[(builtin subtractInteger) n_11] (con integer 1)])])]
+              (con integer 42)))
+            [[(builtin equalsInteger) n_11] (con integer 0)]]))]])
+--- result
+(con integer 42)
+--- logs
+["step", "step"]

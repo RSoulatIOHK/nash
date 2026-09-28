@@ -1,0 +1,22 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let returnsFunction#11 : int -> int -> int = \unused#1 : int -> \z#10 : int -> z#10 in
+returnsFunction#11 0 42
+--- core after
+let returnsFunction#11 : int -> int -> int = \unused#1 : int -> \z#10 : int -> z#10 in
+returnsFunction#11 0 42
+--- uplc before
+(program 1.1.0
+  [(lam returnsFunction_11 [[returnsFunction_11 (con integer 0)] (con integer 42)])
+    (lam unused_1 (lam z_10 z_10))])
+--- uplc after
+(program 1.1.0
+  [(lam returnsFunction_11 [[returnsFunction_11 (con integer 0)] (con integer 42)])
+    (lam unused_1 (lam z_10 z_10))])
+--- result
+(con integer 42)
+--- logs
+[]

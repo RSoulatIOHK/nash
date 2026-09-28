@@ -1,0 +1,17 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/dead_bindings.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let unused#3 : int -> int = \unused#1 : int -> error in
+42
+--- core after
+42
+--- uplc before
+(program 1.1.0 [(lam unused_3 (con integer 42)) (lam unused_1 (error))])
+--- uplc after
+(program 1.1.0 (con integer 42))
+--- result
+(con integer 42)
+--- logs
+[]

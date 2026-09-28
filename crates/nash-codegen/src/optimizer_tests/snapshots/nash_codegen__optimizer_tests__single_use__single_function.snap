@@ -1,0 +1,35 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/single_use.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let f#2 : int -> int = \x#1 : int -> trace "body" in x#1 in
+let anf#3 : int = trace "argument" in 42 in
+f#2 anf#3
+--- core after
+let anf#3 : int = trace "argument" in 42 in
+trace "body" in anf#3
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam f_2
+    [(lam anf_3 [f_2 anf_3])
+      (force
+        [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])])
+    (lam x_1 (force [[(force (builtin trace)) (con string "body")] (delay x_1)]))])
+--- result
+(con integer 42)
+--- logs
+["argument", "body"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_3
+    (force [[(force (builtin trace)) (con string "body")] (delay anf_3)]))
+    (force
+      [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])])
+--- result
+(con integer 42)
+--- logs
+["argument", "body"]

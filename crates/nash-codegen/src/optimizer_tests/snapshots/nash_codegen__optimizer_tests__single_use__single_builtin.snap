@@ -1,0 +1,25 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/single_use.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let add#1 : int -> int -> int = addInteger in
+add#1 40 2
+--- core after
+addInteger 40 2
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam add_1 [[add_1 (con integer 40)] (con integer 2)]) (builtin addInteger)])
+--- result
+(con integer 42)
+--- logs
+[]
+--- candidate
+--- uplc
+(program 1.1.0 [[(builtin addInteger) (con integer 40)] (con integer 2)])
+--- result
+(con integer 42)
+--- logs
+[]

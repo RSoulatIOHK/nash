@@ -1,0 +1,28 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let allUnused#6 : int -> int = \unused#1 : int -> trace "unreachable" in 42 in
+let anf#7 : int = error in
+allUnused#6 anf#7
+--- core after
+let allUnused#6 : @delay int = delay (trace "unreachable" in 42) in
+let anf#7 : int = error in
+force allUnused#6
+--- uplc before
+(program 1.1.0
+  [(lam allUnused_6 [(lam anf_7 [allUnused_6 anf_7]) (error)])
+    (lam unused_1
+      (force
+        [[(force (builtin trace)) (con string "unreachable")] (delay (con integer 42))]))])
+--- uplc after
+(program 1.1.0
+  [(lam allUnused_6 [(lam anf_7 (force allUnused_6)) (error)])
+    (delay
+      (force
+        [[(force (builtin trace)) (con string "unreachable")] (delay (con integer 42))]))])
+--- result
+error: ExplicitErrorTerm
+--- logs
+[]

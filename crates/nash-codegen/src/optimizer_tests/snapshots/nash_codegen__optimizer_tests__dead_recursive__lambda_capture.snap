@@ -1,0 +1,38 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/dead_recursive.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+(letrec
+  f#1 : int -> int -> int [static []] = \x#3 : int y#4 : int -> addInteger x#3 y#4
+  dead#2 : int -> int [static []] = \z#5 : int -> error
+in
+\p#56 : int -> f#1 40 p#56) 2
+--- core after
+(letrec
+  f#1 : int -> int -> int [static []] = \x#3 : int y#4 : int -> addInteger x#3 y#4
+in
+\p#56 : int -> f#1 40 p#56) 2
+--- uplc before
+(program 1.1.0
+  [[(lam dispatch_57
+    [(lam f_1
+      [(lam dead_2 (lam p_56 [[f_1 (con integer 40)] p_56]))
+        (lam z_67 [dispatch_57 (constr 1 dispatch_57 z_67)])])
+      (lam x_68 (lam y_69 [dispatch_57 (constr 0 dispatch_57 x_68 y_69)]))])
+    (lam request_58
+      (case
+        request_58
+        (lam self_59 (lam x_3 (lam y_4 [[(builtin addInteger) x_3] y_4])))
+        (lam self_63 (lam z_5 (error)))))]
+    (con integer 2)])
+--- uplc after
+(program 1.1.0
+  [[(lam f_1 (lam p_56 [[f_1 (con integer 40)] p_56]))
+    [(lam self_70 [self_70 self_70])
+      (lam self_70 (lam x_3 (lam y_4 [[(builtin addInteger) x_3] y_4])))]]
+    (con integer 2)])
+--- result
+(con integer 42)
+--- logs
+[]

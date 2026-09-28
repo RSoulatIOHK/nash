@@ -1,0 +1,18 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/dead_recursive.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), candidate.result, candidate.logs)"
+---
+--- core before
+let capture#1 : @delay int = delay error in
+letrec
+  dead#2 : int -> int [static []] = \x#3 : int -> let anf#4 : int = force capture#1 in
+  let anf#5 : int = force capture#1 in
+  addInteger anf#4 anf#5
+in
+42
+--- core after
+42
+--- result
+(con integer 42)
+--- logs
+[]

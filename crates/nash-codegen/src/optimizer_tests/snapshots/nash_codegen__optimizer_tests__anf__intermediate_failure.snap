@@ -1,0 +1,47 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/anf.rs
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+(\x#2 : int -> trace "intermediate" in error) (trace "first" in 1) (trace "unreachable" in 2)
+--- core after static lifting / before ANF
+(\x#2 : int -> trace "intermediate" in error) (trace "first" in 1) (trace "unreachable" in 2)
+--- core after ANF
+let anf#3 : int = trace "first" in 1 in
+let anf#4 : int -> int = (\x#2 : int -> trace "intermediate" in error) anf#3 in
+let anf#5 : int = trace "unreachable" in 2 in
+anf#4 anf#5
+--- rewritten core (no second ANF)
+let anf#6 : int = trace "first" in 1 in
+let anf#8 : int -> int = (\x#7 : int -> trace "intermediate" in error) anf#6 in
+let anf#9 : int = trace "unreachable" in 2 in
+anf#8 anf#9
+--- baseline
+--- uplc
+(program 1.1.0
+  [[(lam x_1
+    (force [[(force (builtin trace)) (con string "intermediate")] (delay (error))]))
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])]
+    (force
+      [[(force (builtin trace)) (con string "unreachable")] (delay (con integer 2))])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["first", "intermediate"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_6
+    [(lam anf_8
+      [(lam anf_9 [anf_8 anf_9])
+        (force
+          [[(force (builtin trace)) (con string "unreachable")] (delay (con integer 2))])])
+      [(lam x_7
+        (force [[(force (builtin trace)) (con string "intermediate")] (delay (error))]))
+        anf_6]])
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["first", "intermediate"]

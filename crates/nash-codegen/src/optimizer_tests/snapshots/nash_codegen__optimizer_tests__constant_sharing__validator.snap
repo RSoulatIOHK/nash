@@ -1,0 +1,16 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/constant_sharing.rs
+expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+---
+--- uplc before
+(lam x_1
+  [[(builtin addInteger) [[(builtin subtractInteger) (con integer 100)] x_1]]
+    [[(builtin subtractInteger) (con integer 100)] x_1]])
+--- uplc after
+[(lam partial_2
+  (lam x_1 [[(builtin addInteger) [partial_2 x_1]] [partial_2 x_1]]))
+  [(builtin subtractInteger) (con integer 100)]]
+--- result
+(con integer 194)
+--- logs
+[]

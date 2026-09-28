@@ -1,0 +1,37 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/beta.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let anf#2 : int = trace "argument" in error in
+(\unused#1 : int -> trace "unreachable body" in 42) anf#2
+--- core after
+let anf#2 : int = trace "argument" in error in
+trace "unreachable body" in 42
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam anf_2
+    [(lam unused_1
+      (force
+        [[(force (builtin trace)) (con string "unreachable body")]
+          (delay (con integer 42))]))
+      anf_2])
+    (force [[(force (builtin trace)) (con string "argument")] (delay (error))])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["argument"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_2
+    (force
+      [[(force (builtin trace)) (con string "unreachable body")]
+        (delay (con integer 42))]))
+    (force [[(force (builtin trace)) (con string "argument")] (delay (error))])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["argument"]

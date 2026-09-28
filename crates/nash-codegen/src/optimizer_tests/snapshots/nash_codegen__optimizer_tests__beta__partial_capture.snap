@@ -1,0 +1,42 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/beta.rs
+assertion_line: 43
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+---
+--- core before
+let anf#4 : int = trace "capture" in 42 in
+let partial#3 : int -> int = (\x#1 : int y#2 : int -> trace "unreachable body" in x#1) anf#4 in
+0
+--- core after
+let anf#4 : int = trace "capture" in 42 in
+let partial#3 : int -> int = \y#2 : int -> trace "unreachable body" in anf#4 in
+0
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam anf_4
+    [(lam partial_3 (con integer 0))
+      [(lam x_1
+        (lam y_2
+          (force [[(force (builtin trace)) (con string "unreachable body")] (delay x_1)])))
+        anf_4]])
+    (force
+      [[(force (builtin trace)) (con string "capture")] (delay (con integer 42))])])
+--- result
+(con integer 0)
+--- logs
+["capture"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam anf_4
+    [(lam partial_3 (con integer 0))
+      (lam y_2
+        (force
+          [[(force (builtin trace)) (con string "unreachable body")] (delay anf_4)]))])
+    (force
+      [[(force (builtin trace)) (con string "capture")] (delay (con integer 42))])])
+--- result
+(con integer 0)
+--- logs
+["capture"]

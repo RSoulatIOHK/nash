@@ -1,0 +1,24 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let identity#2 : int -> int = \x#1 : int -> x#1 in
+let anf#3 : int = identity#2 20 in
+let anf#4 : int = identity#2 22 in
+addInteger anf#3 anf#4
+--- core after
+addInteger 20 22
+--- baseline uplc
+(program 1.1.0
+  [(lam identity_2
+    [(lam anf_3
+      [(lam anf_4 [[(builtin addInteger) anf_3] anf_4]) [identity_2 (con integer 22)]])
+      [identity_2 (con integer 20)]])
+    (lam x_1 x_1)])
+--- optimized uplc
+(program 1.1.0 [[(builtin addInteger) (con integer 20)] (con integer 22)])
+--- result
+(con integer 42)
+--- logs
+[]

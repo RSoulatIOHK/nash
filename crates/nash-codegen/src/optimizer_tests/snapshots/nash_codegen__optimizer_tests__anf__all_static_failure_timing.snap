@@ -1,0 +1,81 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/anf.rs
+assertion_line: 74
+expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+---
+--- core before static lifting
+letrec
+  same#5 : int -> int -> int [static [0]] = \x#6 : int -> let failed#7 : int = trace "failure" in error in
+  same#5 x#6
+in
+same#5 (trace "argument" in 42) (trace "unreachable extra" in 1)
+--- core after static lifting / before ANF
+let same#5 : int -> int -> int = \x#6 : int -> letrec
+  worker#8 : @delay (int -> int) [static []] = \ -> delay (let failed#7 : int = trace "failure" in error in
+  force worker#8)
+in
+force worker#8 in
+same#5 (trace "argument" in 42) (trace "unreachable extra" in 1)
+--- core after ANF
+let same#5 : int -> int -> int = \x#6 : int -> letrec
+  worker#8 : @delay (int -> int) [static []] = \ -> delay (let failed#7 : int = trace "failure" in error in
+  force worker#8)
+in
+force worker#8 in
+let anf#9 : int = trace "argument" in 42 in
+let anf#10 : int -> int = same#5 anf#9 in
+let anf#11 : int = trace "unreachable extra" in 1 in
+anf#10 anf#11
+--- rewritten core (no second ANF)
+let same#18 : int -> int -> int = \x#13 : int -> let worker#17 : @delay (int -> int) = (\self#14 : @self (@delay (int -> int)) -> self#14 self#14) (\self#15 : @self (@delay (int -> int)) -> delay (let failed#16 : int = trace "failure" in error in
+force (self#15 self#15))) in
+force worker#17 in
+let anf#19 : int = trace "argument" in 42 in
+let anf#20 : int -> int = same#18 anf#19 in
+let anf#21 : int = trace "unreachable extra" in 1 in
+anf#20 anf#21
+--- baseline
+--- uplc
+(program 1.1.0
+  [(lam same_1
+    [[same_1
+      (force
+        [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])]
+      (force
+        [[(force (builtin trace)) (con string "unreachable extra")]
+          (delay (con integer 1))])])
+    (lam x_2
+      (force
+        [(lam self_4 [self_4 self_4])
+          (lam self_4
+            (delay
+              [(lam failed_3 (force [self_4 self_4]))
+                (force [[(force (builtin trace)) (con string "failure")] (delay (error))])]))]))])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["argument", "failure"]
+--- candidate
+--- uplc
+(program 1.1.0
+  [(lam same_18
+    [(lam anf_19
+      [(lam anf_20
+        [(lam anf_21 [anf_20 anf_21])
+          (force
+            [[(force (builtin trace)) (con string "unreachable extra")]
+              (delay (con integer 1))])])
+        [same_18 anf_19]])
+      (force
+        [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])])
+    (lam x_13
+      [(lam worker_17 (force worker_17))
+        [(lam self_14 [self_14 self_14])
+          (lam self_15
+            (delay
+              [(lam failed_16 (force [self_15 self_15]))
+                (force [[(force (builtin trace)) (con string "failure")] (delay (error))])]))]])])
+--- result
+error: ExplicitErrorTerm
+--- logs
+["argument", "failure"]

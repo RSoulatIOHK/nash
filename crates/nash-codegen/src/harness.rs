@@ -89,7 +89,7 @@ pub(crate) fn assert_candidate_equivalent<'a>(
     core: &'a Core<'a>,
     baseline: &Evaluated,
 ) {
-    let candidate = crate::anf_tests::candidate(arena, core);
+    let candidate = crate::optimizer_tests::anf::candidate(arena, core);
     let named =
         crate::lower::lower_with_constant_sharing(arena, candidate).expect("shared lowering");
     let normalized = eval_named(arena, named);
