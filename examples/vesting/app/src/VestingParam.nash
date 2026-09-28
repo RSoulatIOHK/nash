@@ -1,19 +1,28 @@
 validator module VestingParam exposing (main)
 
 import Builtin exposing (..)
+import Eq exposing (Eq)
 import Lift exposing (Lift)
-import VestingTx exposing (currentSlot, signedBy)
+import VestingTx exposing (validAfter, signedBy)
 
 type Datum = Datum { owner : Bytes, deadline : Int }
 
 type Redeemer = Claim | Cancel
 
-main : int -> Datum -> Redeemer -> Data -> unit
-main minimumLock datum redeemer ctx =
+-- The ledger supplies one V3 ScriptContext; spending datum is in ScriptInfo.
+main : int -> Data -> unit
+main minimumLock ctx =
+    case ctx of
+        Constr pair(0, [ tx, action, Constr pair(1, [ _, Constr pair(0, [ datum ]) ]) ]) ->
+            check minimumLock (Primitive.coerce datum) (Primitive.coerce action) tx
+        _ -> fail
+
+check : int -> Datum -> Redeemer -> Data -> unit
+check minimumLock datum redeemer tx =
     case redeemer of
         Claim ->
             assert
                 (Builtin.lessThanInteger
                     (Builtin.addInteger (lower datum.deadline) minimumLock)
-                    (currentSlot ctx))
-        Cancel -> assert (signedBy ctx datum.owner)
+                    (validAfter tx))
+        Cancel -> assert (signedBy tx datum.owner)

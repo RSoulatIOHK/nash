@@ -750,12 +750,13 @@ outside the script can supply this", reported before codegen (see
 [validators.md](validators.md) and [plans/09-validators-build.md](../plans/09-validators-build.md)).
 No boundary conversion is inserted for either representation: a Big value *is* its
 `Data`, and a Const value is the constant itself.
-`main : Datum -> Redeemer -> Data -> unit` lowers to
-`\datum redeemer ctx -> body`. Pattern matches inside `body` are what check
-the shape; a `validate` call is the user's choice.
+A V3 entry point `main : Data -> unit` lowers to `\ctx -> body`.
+Its one context contains the redeemer and spending datum. Pattern matches inside
+`body` are what check the shape; a `validate` call is the user's choice.
 
-The result type is free. Success is "evaluation did not error", so a `bool`
-result is **not** checked; `assert` is the idiom for a condition. (Aiken
+The compiler leaves the result type free, but the Plutus V3 ledger requires
+a unit result. Nash does not convert a `bool` result into validation; `assert`
+is the idiom for a condition. (Aiken
 wraps the body in `wrap_validator_condition`, `builder.rs:1214`; Nash does
 not.)
 

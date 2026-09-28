@@ -138,7 +138,7 @@ literal branch redundant. Other unknown overlaps remain potentially useful.
 ```elm
 validator module Vesting exposing (main)
 
-import Cardano.Tx exposing (Tx, Output)
+import VestingTx exposing (validAfter, signedBy)
 
 -- Big ADT: Data Constr, fields Big
 type Datum = Datum { owner : Bytes, deadline : Int }
@@ -165,11 +165,19 @@ impl Ord int where
 @derive(Show, Validate)
 type Redeemer = Claim | Cancel
 
-main : Datum -> Redeemer -> Data -> unit
-main datum redeemer ctx =
+-- The ledger supplies one V3 ScriptContext; spending datum is in ScriptInfo.
+main : Data -> unit
+main ctx =
+    case ctx of
+        Constr pair(0, [ tx, action, Constr pair(1, [ _, Constr pair(0, [ datum ]) ]) ]) ->
+            check (Primitive.coerce datum) (Primitive.coerce action) tx
+        _ -> fail
+
+check : Datum -> Redeemer -> Data -> unit
+check datum redeemer tx =
     case redeemer of
-        Claim -> assert (lower datum.deadline < currentSlot ctx)
-        Cancel -> assert (signedBy ctx datum.owner)
+        Claim -> assert (lower datum.deadline < validAfter tx)
+        Cancel -> assert (signedBy tx datum.owner)
 
 tests
     import Prop exposing (int, listOf)

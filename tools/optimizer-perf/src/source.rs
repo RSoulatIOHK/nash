@@ -82,7 +82,7 @@ fn solve<'a>(
     Module { canonical, solved }
 }
 
-pub const SUPPORT: [(&str, &str, Option<PackageName<'static>>); 4] = [
+pub const SUPPORT: [(&str, &str, Option<PackageName<'static>>); 5] = [
     (
         "Literal",
         include_str!("../../../crates/nash-codegen/tests/fixtures/VestingLiteral.nash"),
@@ -96,6 +96,11 @@ pub const SUPPORT: [(&str, &str, Option<PackageName<'static>>); 4] = [
     (
         "Logic",
         include_str!("../../../crates/nash-driver/base/src/Logic.nash"),
+        Some(primitives::BASE),
+    ),
+    (
+        "Eq",
+        include_str!("../../../crates/nash-driver/base/src/Eq.nash"),
         Some(primitives::BASE),
     ),
     (

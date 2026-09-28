@@ -1,6 +1,9 @@
 //! Explicit-only performance checks. This binary is not a Cargo test target.
 mod source;
 
+#[path = "../../../crates/nash-codegen/tests/support/vesting.rs"]
+mod vesting_input;
+
 use nash_ir::{anf, build::Builder, core::Core, hygiene, static_lift};
 use nash_plutus::{
     arena::Arena,
@@ -102,6 +105,10 @@ fn run() -> Result<()> {
         sources.insert(
             "VestingParam".into(),
             include_str!("../../../crates/nash-codegen/tests/fixtures/VestingParam.nash").into(),
+        );
+        sources.insert(
+            "VestingContextInput".into(),
+            include_str!("../../../crates/nash-codegen/tests/support/vesting.rs").into(),
         );
         suite()?
     };
@@ -334,25 +341,14 @@ fn suite() -> Result<Vec<Row>> {
                 ]),
             );
             let action = PlutusData::constr(&arena, redeemer, &[]);
-            let context = PlutusData::constr(
-                &arena,
-                0,
-                arena.alloc_slice_copy(&[
-                    PlutusData::integer_from(&arena, 20),
-                    PlutusData::byte_string(&arena, signer),
-                ]),
-            );
+            let context = vesting_input::context(&arena, datum, action, 20, signer);
             let mut args = Vec::new();
             if parameter {
                 args.push(Term::integer_from(&arena, minimum));
             }
-            args.extend([
-                Term::data(&arena, datum),
-                Term::data(&arena, action),
-                Term::data(&arena, context),
-            ]);
+            args.push(Term::data(&arena, context));
             let input = format!(
-                "Vesting{}: {scenario}; deadline={deadline}, action={redeemer}, signer={signer:?}, minimum={}, slot=20, owner=[170]",
+                "Vesting{}: {scenario}; deadline={deadline}, action={redeemer}, signer={signer:?}, minimum={}, V3 context, lower_time=20, owner=[170]",
                 if parameter { "Param" } else { "" },
                 if parameter {
                     minimum.to_string()

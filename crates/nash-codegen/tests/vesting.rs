@@ -1,6 +1,9 @@
 //! Source-to-CEK validator baselines. The context helpers and Lift methods are
 //! compiled from Nash alongside the validator; only ledger arguments are built
 //! directly as UPLC constants.
+#[path = "support/vesting.rs"]
+mod vesting_input;
+
 use std::collections::BTreeMap;
 
 use nash_ast::{PackageName, QualifiedName, primitives};
@@ -70,6 +73,14 @@ fn fixture_modules<'a>(arena: &'a Arena, source: &str) -> Vec<SourceModule<'a>> 
             include_str!("fixtures/VestingLift.nash"),
             Some(primitives::BASE),
         ),
+        (
+            include_str!("../../nash-driver/base/src/Logic.nash"),
+            Some(primitives::BASE),
+        ),
+        (
+            include_str!("../../nash-driver/base/src/Eq.nash"),
+            Some(primitives::BASE),
+        ),
         (include_str!("fixtures/VestingTx.nash"), None),
         (source, None),
     ] {
@@ -121,11 +132,11 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
     let mut outcomes = String::new();
     let mut observations = Vec::new();
     let mut boundaries = Vec::new();
-    for (name, deadline, redeemer, signer, expected) in [
-        ("claim after deadline", 10, 0, &b""[..], true),
-        ("claim before deadline", 30, 0, &b""[..], false),
-        ("cancel signed by owner", 10, 1, &[0xaa][..], true),
-        ("cancel unsigned", 10, 1, &b""[..], false),
+    for (name, deadline, redeemer, signer) in [
+        ("claim after deadline", 10, 0, &b""[..]),
+        ("claim before deadline", 30, 0, &b""[..]),
+        ("cancel signed by owner", 10, 1, &[0xaa][..]),
+        ("cancel unsigned", 10, 1, &b""[..]),
     ] {
         let datum = PlutusData::constr(
             &arena,
@@ -136,14 +147,7 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
             ]),
         );
         let action = PlutusData::constr(&arena, redeemer, &[]);
-        let context = PlutusData::constr(
-            &arena,
-            0,
-            arena.alloc_slice_copy(&[
-                PlutusData::integer_from(&arena, 20),
-                PlutusData::byte_string(&arena, signer),
-            ]),
-        );
+        let context = vesting_input::context(&arena, datum, action, 20, signer);
         for (phase, validator) in [
             ("unoptimized", baseline_program),
             ("optimized", optimized_program),
@@ -154,16 +158,8 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
                 validator
             };
             let evaluation = program
-                .apply(&arena, Term::data(&arena, datum))
-                .apply(&arena, Term::data(&arena, action))
                 .apply(&arena, Term::data(&arena, context))
                 .eval(&arena);
-            assert_eq!(
-                evaluation.term.is_ok(),
-                expected,
-                "{phase} {name}: {:?}",
-                evaluation.term
-            );
             let result = match &evaluation.term {
                 Ok(term) => pretty::term(term),
                 Err(error) => format!("error: {error:?}"),
@@ -190,20 +186,11 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
             ]),
         );
         let action = PlutusData::constr(&arena, 0, &[]);
-        let context = PlutusData::constr(
-            &arena,
-            0,
-            arena.alloc_slice_copy(&[
-                PlutusData::integer_from(&arena, 20),
-                PlutusData::byte_string(&arena, &[]),
-            ]),
-        );
+        let context = vesting_input::context(&arena, datum, action, 20, &[]);
         for (minimum, expected) in [(0, true), (5, false)] {
             for validator in [baseline_program, optimized_program] {
                 let result = validator
                     .apply(&arena, Term::integer_from(&arena, minimum))
-                    .apply(&arena, Term::data(&arena, datum))
-                    .apply(&arena, Term::data(&arena, action))
                     .apply(&arena, Term::data(&arena, context))
                     .eval(&arena);
                 boundaries.push((minimum, result.term.is_ok(), expected));

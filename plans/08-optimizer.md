@@ -1427,3 +1427,15 @@ copy wholesale:
 - Aiken `optimize/interner.rs`: binder hygiene.
 - Elm `elm/compiler/src/Optimize/Expression.hs`: traversal organization for a
   different target.
+
+### Vesting baseline ABI correction (28 September 2026)
+
+The vesting source fixtures and runnable examples now receive one V3 ScriptContext,
+with the redeemer in the context and datum in SpendingScript. Only VestingParam's
+minimum-lock parameter precedes the context and is applied off-chain. TxInfo now
+uses V3 field order, a validity interval in POSIX milliseconds, and a signatory
+list. Previous vesting measurements used a synthetic three-argument convention;
+they are historical optimizer experiments, not measurements of this corrected
+V3 entry point. The regenerated baseline preserves all 12 vesting outcomes/logs in both pipelines
+and leaves the other 11 rows unchanged. Unoptimized and optimized execution
+equivalence checks remain required.

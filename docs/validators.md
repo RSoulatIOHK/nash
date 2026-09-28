@@ -14,16 +14,32 @@ point, and the whole dependency closure of `main` is inlined into one script.
 ```elm
 validator module Vesting exposing (main)
 
-import Cardano.Tx exposing (Tx, Output)
+import Builtin exposing (..)
+import Eq exposing (Eq)
+import Lift exposing (Lift)
+import VestingTx exposing (validAfter, signedBy)
 
 type Datum = Datum { owner : Bytes, deadline : Int }
 
-main : Datum -> Redeemer -> Data -> unit
-main datum redeemer ctx =
+type Redeemer = Claim | Cancel
+
+-- The ledger supplies one V3 ScriptContext; spending datum is in ScriptInfo.
+main : Data -> unit
+main ctx =
+    case ctx of
+        Constr pair(0, [ tx, action, Constr pair(1, [ _, Constr pair(0, [ datum ]) ]) ]) ->
+            check (Primitive.coerce datum) (Primitive.coerce action) tx
+        _ -> fail
+
+check : Datum -> Redeemer -> Data -> unit
+check datum redeemer tx =
     case redeemer of
-        Claim -> assert (lower datum.deadline < currentSlot ctx)
-        Cancel -> assert (signedBy ctx datum.owner)
+        Claim -> assert (Builtin.lessThanInteger (lower datum.deadline) (validAfter tx))
+        Cancel -> assert (signedBy tx datum.owner)
 ```
+
+The [runnable example](../examples/vesting/README.md) includes `VestingTx`,
+which reads the V3 transaction validity interval and signatories.
 
 Grammar (extends `module_header` in [syntax.md](syntax.md)):
 
@@ -80,13 +96,13 @@ becomes an outer lambda of the script, in order, and the body becomes the
 script body:
 
 ```elm
-main : Datum -> Redeemer -> Data -> unit
+main : int -> Data -> unit
 ```
 
 compiles to
 
 ```
-(program 1.1.0 (lam datum (lam redeemer (lam ctx <body>))))
+(program 1.1.0 (lam minimumLock (lam ctx <body>)))
 ```
 
 The ledger applies the script to `Data` arguments. An off-chain tool applies
@@ -225,12 +241,6 @@ parsing; this does not implement a test runner.
 
 ## Open questions
 
-- **Overview example arity.** The example in overview.md has
-  `main : Datum -> Redeemer -> Data -> unit`. Under Plutus V3 the ledger passes
-  one argument, so `datum` and `redeemer` there are off-chain parameters, not
-  ledger arguments. The docs above keep the compiler indifferent; the stdlib
-  `Cardano` module should ship a V3 convention with a single `ScriptContext`
-  argument and helpers that pull the datum and redeemer out of it.
 - **`--apply`.** A `nash build --apply Module.Name arg.json ...` command that
   applies `Data` parameters and writes a new `.cbor` is cheap to add once the
   `PlutusData` JSON codec exists. Deferred until the TypeScript codegen

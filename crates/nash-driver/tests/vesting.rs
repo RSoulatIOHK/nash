@@ -1,4 +1,7 @@
 //! Execute serialized validator artifacts built from the bundled Base.
+#[path = "../../nash-codegen/tests/support/vesting.rs"]
+mod vesting_input;
+
 use std::{path::Path, sync::Arc};
 
 use nash_driver::{
@@ -88,22 +91,13 @@ async fn bundled_base_vesting_artifacts_execute_all_ledger_cases() {
                 ]),
             );
             let action = PlutusData::constr(&arena, redeemer, &[]);
-            let context = PlutusData::constr(
-                &arena,
-                0,
-                arena.alloc_slice_copy(&[
-                    PlutusData::integer_from(&arena, 20),
-                    PlutusData::byte_string(&arena, signer),
-                ]),
-            );
+            let context = vesting_input::context(&arena, datum, action, 20, signer);
             let applied = if parameterized {
                 program.apply(&arena, Term::integer_from(&arena, 5))
             } else {
                 program
             };
             let evaluation = applied
-                .apply(&arena, Term::data(&arena, datum))
-                .apply(&arena, Term::data(&arena, action))
                 .apply(&arena, Term::data(&arena, context))
                 .eval(&arena);
             assert_eq!(

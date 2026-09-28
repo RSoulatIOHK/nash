@@ -1,15 +1,17 @@
 {
   "settings": "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/unused-parameters/ANF once/rules1+2+3+4+dead-bindings+recursive-reachability+force-delay+known-bool/recursion/hygiene/lower+forced-builtin-sharing+constant-prefix-sharing",
   "sources": {
-    "Cardano.Tx": "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n",
+    "Cardano.Tx": "module Cardano.Tx exposing (validAfter, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (Eq)\nimport Lift exposing (lower)\n\n-- V3 TxInfo field 7 is the validity interval. Require a finite lower bound.\n-- Times are POSIX milliseconds, not slots or the current wall-clock time.\nvalidAfter : Data -> int\nvalidAfter tx =\n    case tx of\n        Constr pair(0, [ _, _, _, _, _, _, _, Constr pair(0, [ Constr pair(0, [ Constr pair(1, [ I time ]), _ ]), _ ]), _, _, _, _, _, _, _, _ ]) -> time\n        _ -> fail\n\n-- V3 TxInfo field 8 contains every extra signatory.\nsignedBy : Data -> Bytes -> bool\nsignedBy tx owner =\n    case tx of\n        Constr pair(0, [ _, _, _, _, _, _, _, _, List signers, _, _, _, _, _, _, _ ]) -> hasSigner signers (lower owner)\n        _ -> fail\n\nhasSigner : list Data -> bytes -> bool\nhasSigner signers owner =\n    case signers of\n        [] -> False\n        B signer :: rest ->\n            if Builtin.equalsByteString signer owner then True\n            else hasSigner rest owner\n        _ -> fail\n",
+    "Eq": "module Eq exposing ( Eq )\n\n\nimport Literal\nimport Logic exposing ( not, xor, (&&) )\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\n\n{-| Compare values for equality and inequality. -}\ntrait Eq 'a where\n    eq : 'a -> 'a -> bool\n\n    neq : 'a -> 'a -> bool\n    neq a b = not (eq a b)\n\n\nimpl Eq int where\n    eq = Builtin.equalsInteger\n\n\nimpl Eq bytes where\n    eq = Builtin.equalsByteString\n\n\nimpl Eq string where\n    eq = Builtin.equalsString\n\n\nimpl Eq bool where\n    eq a b = not (xor a b)\n\n\nimpl Eq unit where\n    eq _ _ = True\n\n\nimpl Eq (list ('a : Big)) where\n    eq xs ys =\n        eq (Builtin.listData xs) (Builtin.listData ys)\n\n\nimpl Eq 'a => Eq (list ('a : Little)) where\n    eq xs ys =\n        case xs of\n            [] ->\n                case ys of\n                    [] ->\n                        True\n\n                    _ :: _ ->\n                        False\n\n            x :: restX ->\n                case ys of\n                    [] ->\n                        False\n\n                    y :: restY ->\n                        eq x y && eq restX restY\n\n\nimpl ( Eq 'a, Eq 'b ) => Eq (pair 'a 'b) where\n    eq a b =\n        let\n            pair(firstA, secondA) = a\n\n            pair(firstB, secondB) = b\n        in\n            eq firstA firstB && eq secondA secondB\n\n\nimpl Eq (map ('k : Big) ('v : Big)) where\n    eq xs ys = eq (Builtin.mapData xs) (Builtin.mapData ys)\n\n\nimpl ( Eq 'k, Eq 'v ) => Eq (map ('k : Little) 'v) where\n    eq = eqMapEntries\n\n\nimpl Eq 'v => Eq (map ('k : Big) ('v : Little)) where\n    eq = eqMapEntries\n\n\neqMapEntries : ( Eq 'k, Eq 'v ) => list (pair 'k 'v) -> list (pair 'k 'v) -> bool\neqMapEntries = eq\n\n\nimpl Eq value where\n    eq a b = Builtin.equalsData (Builtin.valueData a) (Builtin.valueData b)\n",
     "Lift": "module Lift exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\ntrait Lift 'a 'b where\n    lift : 'a -> 'b\n    lower : 'b -> 'a\n\nimpl Lift int Int where\n    lift value = Builtin.iData value\n    lower value = Builtin.unIData value\n\nimpl Lift bytes Bytes where\n    lift value = Builtin.bData value\n    lower value = Builtin.unBData value\n",
     "Literal": "module Literal exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\n\ntrait FromInt 'a where\n    fromInt : int -> 'a\n\ntrait FromString 'a where\n    fromString : string -> 'a\n\ntrait FromBytes 'a where\n    fromBytes : bytes -> 'a\n\nimpl FromInt int where\n    fromInt x = x\n\nimpl FromString string where\n    fromString x = x\n\nimpl FromBytes bytes where\n    fromBytes x = x\n\ntrait FromBool 'a where\n    fromBool : bool -> 'a\n\ntrait FromUnit 'a where\n    fromUnit : unit -> 'a\n\nimpl FromBool bool where\n    fromBool value = value\n\nimpl FromUnit unit where\n    fromUnit value = value\n",
     "Logic": "module Logic exposing ( not, and, or, xor, (&&), (||) )\n\n\nimport Primitive\nimport Lift exposing ( Lift )\n\n\ninfix right 2 (||) = or\n\n\ninfix right 3 (&&) = and\n\n\n{-| Negate a Big or little Boolean, returning bool. -}\nnot : Lift bool 'a => 'a -> bool\nnot value =\n    if lower value then\n        Primitive.False\n    else\n        Primitive.True\n\n\n{-| Boolean conjunction. Fully applied calls short-circuit; partial and indirect calls are strict. -}\nand : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool\nand a b =\n    if lower a then\n        lower b\n    else\n        Primitive.False\n\n\n{-| Boolean disjunction. Fully applied calls short-circuit; partial and indirect calls are strict. -}\nor : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool\nor a b =\n    if lower a then\n        Primitive.True\n    else\n        lower b\n\n\n{-| Return True when the Boolean operands differ. -}\nxor : ( Lift bool 'a, Lift bool 'b ) => 'a -> 'b -> bool\nxor a b =\n    if lower a then\n        not b\n    else\n        lower b\n",
-    "Vesting": "validator module Vesting exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype step 'a = Done 'a | Next int 'a\n\ntype alias acc = { total : int, seen : list Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : Datum -> Redeemer -> Data -> unit\nmain datum redeemer ctx =\n    case redeemer of\n        Claim -> assert (Builtin.lessThanInteger (lower datum.deadline) (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n",
-    "VestingParam": "validator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : int -> Datum -> Redeemer -> Data -> unit\nmain minimumLock datum redeemer ctx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n",
+    "Vesting": "validator module Vesting exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (Eq)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (validAfter, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype step 'a = Done 'a | Next int 'a\n\ntype alias acc = { total : int, seen : list Int }\n\ntype Redeemer = Claim | Cancel\n\n-- The ledger supplies one V3 ScriptContext; spending datum is in ScriptInfo.\nmain : Data -> unit\nmain ctx =\n    case ctx of\n        Constr pair(0, [ tx, action, Constr pair(1, [ _, Constr pair(0, [ datum ]) ]) ]) ->\n            check (Primitive.coerce datum) (Primitive.coerce action) tx\n        _ -> fail\n\ncheck : Datum -> Redeemer -> Data -> unit\ncheck datum redeemer tx =\n    case redeemer of\n        Claim -> assert (Builtin.lessThanInteger (lower datum.deadline) (validAfter tx))\n        Cancel -> assert (signedBy tx datum.owner)\n",
+    "VestingContextInput": "//! Shared ledger input for the vesting snapshots, artifact tests and explicit perf runner.\nuse nash_plutus::{arena::Arena, data::PlutusData};\n\npub fn context<'a>(\n    arena: &'a Arena,\n    datum: &'a PlutusData<'a>,\n    redeemer: &'a PlutusData<'a>,\n    lower_time: i128,\n    signer: &'a [u8],\n) -> &'a PlutusData<'a> {\n    let constr = |tag, fields: &[&'a PlutusData<'a>]| {\n        PlutusData::constr(arena, tag, arena.alloc_slice_copy(fields))\n    };\n    let empty_list = PlutusData::list(arena, &[]);\n    let empty_map = PlutusData::map(arena, &[]);\n    let zero = PlutusData::integer_from(arena, 0);\n    let tx_id = PlutusData::byte_string(arena, &[0; 32]);\n    let closed = constr(1, &[]);\n    let lower = constr(\n        0,\n        &[\n            constr(1, &[PlutusData::integer_from(arena, lower_time)]),\n            closed,\n        ],\n    );\n    let upper = constr(0, &[constr(2, &[]), closed]);\n    let signers = if signer.is_empty() {\n        empty_list\n    } else {\n        // The owner is deliberately second: signedBy must search the whole list.\n        PlutusData::list(\n            arena,\n            arena.alloc_slice_copy(&[\n                PlutusData::byte_string(arena, &[0xbb]),\n                PlutusData::byte_string(arena, signer),\n            ]),\n        )\n    };\n    let tx = constr(\n        0,\n        &[\n            empty_list,                 // inputs\n            empty_list,                 // reference inputs\n            empty_list,                 // outputs\n            zero,                       // fee\n            empty_map,                  // mint\n            empty_list,                 // certificates\n            empty_map,                  // withdrawals\n            constr(0, &[lower, upper]), // validity range\n            signers,\n            empty_map, // redeemers\n            empty_map, // datums\n            tx_id,\n            empty_map,      // votes\n            empty_list,     // proposals\n            constr(1, &[]), // current treasury\n            constr(1, &[]), // treasury donation\n        ],\n    );\n    let reference = constr(0, &[tx_id, zero]);\n    let spending = constr(1, &[reference, constr(0, &[datum])]);\n    constr(0, &[tx, redeemer, spending])\n}\n",
+    "VestingParam": "validator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (Eq)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (validAfter, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\n-- The ledger supplies one V3 ScriptContext; spending datum is in ScriptInfo.\nmain : int -> Data -> unit\nmain minimumLock ctx =\n    case ctx of\n        Constr pair(0, [ tx, action, Constr pair(1, [ _, Constr pair(0, [ datum ]) ]) ]) ->\n            check minimumLock (Primitive.coerce datum) (Primitive.coerce action) tx\n        _ -> fail\n\ncheck : int -> Datum -> Redeemer -> Data -> unit\ncheck minimumLock datum redeemer tx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (validAfter tx))\n        Cancel -> assert (signedBy tx datum.owner)\n",
     "Workloads": "module Workloads exposing (..)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Logic exposing (..)\n\nsum : list int -> int\nsum xs =\n    case xs of\n        [] -> 0\n        x :: rest -> Builtin.addInteger x (sum rest)\n\nlistTraversal : int\nlistTraversal = sum [1, 2, 3, 4, 5, 6, 7, 8]\n\ncountdown : int -> int -> int\ncountdown n result =\n    if Builtin.equalsInteger n 0 then\n        result\n    else\n        countdown (Builtin.subtractInteger n 1) result\n\nstaticRecursion : int\nstaticRecursion = countdown 8 42\n\nmatchData : Data -> int\nmatchData value =\n    case value of\n        I n -> n\n        _ -> 0\n\ndataMatch : int\ndataMatch = matchData (I 42)\n\ndataMiss : int\ndataMiss = matchData (B #\"ab\")\n\ndecode : Data -> int\ndecode value =\n    case value of\n        Constr pair(_, [I n, _]) -> n\n        _ -> 0\n\ndecoding : int\ndecoding = decode (Builtin.constrData 0 [I 42, I 7])\n\nvalidate : Data -> unit\nvalidate value =\n    case value of\n        I n -> assert (Builtin.lessThanInteger 0 n)\n        _ -> fail\n\nvalidationPass : unit\nvalidationPass = validate (I 42)\n\nvalidationFail : unit\nvalidationFail = validate (I 0)\n\nbooleanHelpers : bool\nbooleanHelpers = (True && False) || (True && True)\n\nconstantPrefixTwice : int\nconstantPrefixTwice =\n    Builtin.addInteger (Builtin.subtractInteger 100 1) (Builtin.subtractInteger 100 2)\n\nconstantPrefixCold : int\nconstantPrefixCold =\n    if True then\n        42\n    else\n        Builtin.addInteger (Builtin.subtractInteger 100 1) (Builtin.subtractInteger 100 2)\n\nprefixLoop : int -> int\nprefixLoop n =\n    if Builtin.equalsInteger n 0 then\n        0\n    else\n        Builtin.addInteger\n            (Builtin.addInteger (Builtin.subtractInteger 100 n) (Builtin.subtractInteger 100 n))\n            (prefixLoop (Builtin.subtractInteger n 1))\n\nconstantPrefixLoop : int\nconstantPrefixLoop = prefixLoop 8\n"
   },
-  "revision": "5a796ecc30dff39cc1689475330b1b991ce08e15",
+  "revision": "81a4dfbc01cca1fcef9f4986361814d63ad476e9",
   "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
   "rows": [
     {
@@ -204,75 +206,37 @@
       }
     },
     {
-      "input": "Vesting: claim after deadline; deadline=10, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "input": "Vesting: claim after deadline; deadline=10, action=0, signer=[], minimum=none, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 2621392,
-        "memory": 14525,
-        "bytes": 271,
+        "cpu": 10053501,
+        "memory": 54616,
+        "bytes": 886,
         "result": "(con unit ())",
         "logs": []
       },
       "after": {
-        "cpu": 2381392,
-        "memory": 13025,
-        "bytes": 249,
+        "cpu": 9093501,
+        "memory": 48616,
+        "bytes": 821,
         "result": "(con unit ())",
         "logs": []
       }
     },
     {
-      "input": "Vesting: claim before deadline; deadline=30, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "input": "Vesting: claim before deadline; deadline=30, action=0, signer=[], minimum=none, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 408890,
-        "memory": 357,
-        "bytes": 271,
+        "cpu": 7888999,
+        "memory": 40748,
+        "bytes": 886,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
         ]
       },
       "after": {
-        "cpu": 408890,
-        "memory": 357,
-        "bytes": 249,
-        "result": "error: ExplicitErrorTerm",
-        "logs": [
-          "assertion failed"
-        ]
-      }
-    },
-    {
-      "input": "Vesting: cancel signed; deadline=10, action=1, signer=[170], minimum=none, slot=20, owner=[170]",
-      "before": {
-        "cpu": 2588434,
-        "memory": 14425,
-        "bytes": 271,
-        "result": "(con unit ())",
-        "logs": []
-      },
-      "after": {
-        "cpu": 2252434,
-        "memory": 12325,
-        "bytes": 249,
-        "result": "(con unit ())",
-        "logs": []
-      }
-    },
-    {
-      "input": "Vesting: cancel unsigned; deadline=10, action=1, signer=[], minimum=none, slot=20, owner=[170]",
-      "before": {
-        "cpu": 391932,
-        "memory": 357,
-        "bytes": 271,
-        "result": "error: ExplicitErrorTerm",
-        "logs": [
-          "assertion failed"
-        ]
-      },
-      "after": {
-        "cpu": 391932,
-        "memory": 357,
-        "bytes": 249,
+        "cpu": 7888999,
+        "memory": 40748,
+        "bytes": 821,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -280,71 +244,37 @@
       }
     },
     {
-      "input": "Vesting: boundary zero minimum; deadline=18, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "input": "Vesting: cancel signed; deadline=10, action=1, signer=[170], minimum=none, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 2621392,
-        "memory": 14525,
-        "bytes": 271,
+        "cpu": 9243016,
+        "memory": 51150,
+        "bytes": 886,
         "result": "(con unit ())",
         "logs": []
       },
       "after": {
-        "cpu": 2381392,
-        "memory": 13025,
-        "bytes": 249,
+        "cpu": 7915016,
+        "memory": 42850,
+        "bytes": 821,
         "result": "(con unit ())",
         "logs": []
       }
     },
     {
-      "input": "Vesting: boundary five minimum; deadline=18, action=0, signer=[], minimum=none, slot=20, owner=[170]",
+      "input": "Vesting: cancel unsigned; deadline=10, action=1, signer=[], minimum=none, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 2621392,
-        "memory": 14525,
-        "bytes": 271,
-        "result": "(con unit ())",
-        "logs": []
-      },
-      "after": {
-        "cpu": 2381392,
-        "memory": 13025,
-        "bytes": 249,
-        "result": "(con unit ())",
-        "logs": []
-      }
-    },
-    {
-      "input": "VestingParam: claim after deadline; deadline=10, action=0, signer=[], minimum=5, slot=20, owner=[170]",
-      "before": {
-        "cpu": 2834600,
-        "memory": 15227,
-        "bytes": 275,
-        "result": "(con unit ())",
-        "logs": []
-      },
-      "after": {
-        "cpu": 2642600,
-        "memory": 14027,
-        "bytes": 256,
-        "result": "(con unit ())",
-        "logs": []
-      }
-    },
-    {
-      "input": "VestingParam: claim before deadline; deadline=30, action=0, signer=[], minimum=5, slot=20, owner=[170]",
-      "before": {
-        "cpu": 510098,
-        "memory": 359,
-        "bytes": 275,
+        "cpu": 7334408,
+        "memory": 40552,
+        "bytes": 886,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
         ]
       },
       "after": {
-        "cpu": 510098,
-        "memory": 359,
-        "bytes": 256,
+        "cpu": 4134408,
+        "memory": 20552,
+        "bytes": 821,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -352,37 +282,71 @@
       }
     },
     {
-      "input": "VestingParam: cancel signed; deadline=10, action=1, signer=[170], minimum=5, slot=20, owner=[170]",
+      "input": "Vesting: boundary zero minimum; deadline=18, action=0, signer=[], minimum=none, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 2636434,
-        "memory": 14725,
-        "bytes": 275,
+        "cpu": 10053501,
+        "memory": 54616,
+        "bytes": 886,
         "result": "(con unit ())",
         "logs": []
       },
       "after": {
-        "cpu": 2300434,
-        "memory": 12625,
-        "bytes": 256,
+        "cpu": 9093501,
+        "memory": 48616,
+        "bytes": 821,
         "result": "(con unit ())",
         "logs": []
       }
     },
     {
-      "input": "VestingParam: cancel unsigned; deadline=10, action=1, signer=[], minimum=5, slot=20, owner=[170]",
+      "input": "Vesting: boundary five minimum; deadline=18, action=0, signer=[], minimum=none, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 391932,
-        "memory": 357,
-        "bytes": 275,
+        "cpu": 10053501,
+        "memory": 54616,
+        "bytes": 886,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 9093501,
+        "memory": 48616,
+        "bytes": 821,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: claim after deadline; deadline=10, action=0, signer=[], minimum=5, V3 context, lower_time=20, owner=[170]",
+      "before": {
+        "cpu": 10314709,
+        "memory": 55618,
+        "bytes": 893,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 9354709,
+        "memory": 49618,
+        "bytes": 827,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: claim before deadline; deadline=30, action=0, signer=[], minimum=5, V3 context, lower_time=20, owner=[170]",
+      "before": {
+        "cpu": 7990207,
+        "memory": 40750,
+        "bytes": 893,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
         ]
       },
       "after": {
-        "cpu": 391932,
-        "memory": 357,
-        "bytes": 256,
+        "cpu": 7990207,
+        "memory": 40750,
+        "bytes": 827,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
@@ -390,37 +354,75 @@
       }
     },
     {
-      "input": "VestingParam: boundary zero minimum; deadline=18, action=0, signer=[], minimum=0, slot=20, owner=[170]",
+      "input": "VestingParam: cancel signed; deadline=10, action=1, signer=[170], minimum=5, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 2834600,
-        "memory": 15227,
-        "bytes": 275,
+        "cpu": 9339016,
+        "memory": 51750,
+        "bytes": 893,
         "result": "(con unit ())",
         "logs": []
       },
       "after": {
-        "cpu": 2642600,
-        "memory": 14027,
-        "bytes": 256,
+        "cpu": 7963016,
+        "memory": 43150,
+        "bytes": 827,
         "result": "(con unit ())",
         "logs": []
       }
     },
     {
-      "input": "VestingParam: boundary five minimum; deadline=18, action=0, signer=[], minimum=5, slot=20, owner=[170]",
+      "input": "VestingParam: cancel unsigned; deadline=10, action=1, signer=[], minimum=5, V3 context, lower_time=20, owner=[170]",
       "before": {
-        "cpu": 510098,
-        "memory": 359,
-        "bytes": 275,
+        "cpu": 7334408,
+        "memory": 40552,
+        "bytes": 893,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"
         ]
       },
       "after": {
-        "cpu": 510098,
-        "memory": 359,
-        "bytes": 256,
+        "cpu": 4134408,
+        "memory": 20552,
+        "bytes": 827,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      }
+    },
+    {
+      "input": "VestingParam: boundary zero minimum; deadline=18, action=0, signer=[], minimum=0, V3 context, lower_time=20, owner=[170]",
+      "before": {
+        "cpu": 10314709,
+        "memory": 55618,
+        "bytes": 893,
+        "result": "(con unit ())",
+        "logs": []
+      },
+      "after": {
+        "cpu": 9354709,
+        "memory": 49618,
+        "bytes": 827,
+        "result": "(con unit ())",
+        "logs": []
+      }
+    },
+    {
+      "input": "VestingParam: boundary five minimum; deadline=18, action=0, signer=[], minimum=5, V3 context, lower_time=20, owner=[170]",
+      "before": {
+        "cpu": 7990207,
+        "memory": 40750,
+        "bytes": 893,
+        "result": "error: ExplicitErrorTerm",
+        "logs": [
+          "assertion failed"
+        ]
+      },
+      "after": {
+        "cpu": 7990207,
+        "memory": 40750,
+        "bytes": 827,
         "result": "error: ExplicitErrorTerm",
         "logs": [
           "assertion failed"

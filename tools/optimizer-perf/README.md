@@ -22,7 +22,10 @@ budgets: these are CEK costs, not Rust wall-clock benchmarks.
 The 23 rows include the original 20 covering list traversal, static recursion, Data matching and
 misses, field decoding, validation success/failure, the real base Logic helpers,
 and six ledger scenarios each for the existing Vesting and VestingParam source
-fixtures, plus constant-prefix two-use, cold and loop regressions. Validator CPU/memory include applying the documented ledger arguments;
+fixtures, plus constant-prefix two-use, cold and loop regressions. Validators receive one V3 ScriptContext containing TxInfo, redeemer and spending
+datum; the optional minimum-lock parameter is applied off-chain first. Times are
+POSIX milliseconds from the validity-range lower bound. Validator CPU/memory
+include parameter and context application;
 validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
@@ -60,7 +63,7 @@ cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml -- experiment
 
 Supply a standalone Nash module with a monomorphic, ground-valued `main` (or one
 that fails). It can import Primitive, Builtin, the integration fixture Literal and
-Lift modules, base Logic, and the integration fixture Cardano.Tx. It is not a full
+Lift modules, base Logic and Eq, and the integration fixture Cardano.Tx. It is not a full
 project loader. Apply any returned functions inside `main`; the runner rejects
 opaque function/delay results instead of pretending to compare them semantically.
 The JSON embeds the experiment source. Nothing adds it to permanent baselines.
