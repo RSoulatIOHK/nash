@@ -1,5 +1,6 @@
 //! Trial: shorten nonrecursive helper signatures with exact, direct calls only.
 use crate::{
+    analysis, anf,
     build::Builder,
     core::{Binder, Core, CoreKind},
     ty::{RuntimeTy, TermTy, Ty},
@@ -28,13 +29,23 @@ fn signature<'a>(b: &Builder<'a>, ty: Ty<'a>, keep: &[bool]) -> Option<Ty<'a>> {
     })
 }
 
-/// Requires typed ANF and globally unique, well-scoped binders. Every use must
+/// Requires typed Core and globally unique, well-scoped binders. Every use must
 /// be a direct application with exactly the original arity. Partial, escaping,
 /// oversaturated or unsupported signature views leave the helper unchanged.
-/// ANF arguments are safe-to-discard atoms; their preceding strict computations
-/// remain in place. This pass neither removes those lets nor changes LetRec
+/// Every non-atomic argument gets a strict binding in source order before the
+/// shortened call, including discarded arguments. Exact calls to a known lambda
+/// cannot run its body during partial application. Atoms are safe to discard.
+/// Bindings stay call-local; this pass does not remove them or change LetRec
 /// parameters. All-unused helpers become delays, forced separately at each call.
+/// Use the enclosing program Builder when optimizing a subtree for reinsertion.
 pub fn reduce<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
+    let report = analysis::occurrences(core);
+    let mut occupied: HashSet<_> = report
+        .bindings
+        .iter()
+        .map(|x| x.name.unique)
+        .chain(report.uses.iter().map(|x| x.name.unique))
+        .collect();
     core.map(b, &mut |node| {
         let CoreKind::Let {
             binder,
@@ -108,16 +119,31 @@ pub fn reduce<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
                 name,
                 signature(b, func.ty, &keep).expect("prechecked signature"),
             );
-            let args: Vec<_> = args
-                .iter()
-                .zip(&keep)
-                .filter_map(|(arg, keep)| keep.then_some(*arg))
-                .collect();
-            Some(if args.is_empty() {
+            let mut prefix = Vec::new();
+            let mut retained = Vec::new();
+            for (arg, keep) in args.iter().zip(&keep) {
+                let argument = if anf::is_atom(arg) {
+                    *arg
+                } else {
+                    let name = loop {
+                        let name = b.fresh("arg");
+                        if occupied.insert(name.unique) { break name; }
+                    };
+                    let binder = Binder { name, ty: arg.ty };
+                    prefix.push((binder, *arg));
+                    b.var(name, arg.ty)
+                };
+                if *keep { retained.push(argument); }
+            }
+            let mut result = if retained.is_empty() {
                 b.force(func, call.ty)
             } else {
-                b.app(func, &args, call.ty)
-            })
+                b.app(func, &retained, call.ty)
+            };
+            for (binder, value) in prefix.into_iter().rev() {
+                result = b.let_(binder, value, result);
+            }
+            Some(result)
         });
         Some(b.with_type(
             b.let_(

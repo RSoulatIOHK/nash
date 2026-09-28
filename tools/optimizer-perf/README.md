@@ -162,3 +162,17 @@ cleanup first. The pass leaves partial, escaping, staged and oversaturated uses
 unchanged. All-unused helpers become delays forced at each call. The explicit
 runner verifies results/logs and prints CPU, memory and Flat sizes; it changes
 neither the accepted pipeline nor the baseline and stays outside root tests.
+
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example unused_params_pre_anf
+```
+
+Compares three full pipelines: accepted cleanup, removal after cleanup, and
+removal after static lifting but before ANF and cleanup. Each normalizes once.
+Runs 24 synthetic cases, nine existing source workloads and six targeted source
+fixtures, including ordinary literals and effectful retained/discarded arguments.
+Results/logs must match; CPU, memory and Flat size are reported for all three.
+This 39-case trial is explicit-only and does not change the accepted baseline.
+The single-call all-unused case exposes missing force/delay cancellation; keep
+that regression visible while evaluating placement.

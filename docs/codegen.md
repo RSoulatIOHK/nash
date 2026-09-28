@@ -898,6 +898,9 @@ retains source order and existing metadata. Repeating cleanup releases newly
 unused safe captures while preserving effectful initializers. A standalone
 `unused_params::reduce` trial removes unused parameters from nonrecursive
 let-bound lambdas only when all uses are exact direct calls. It preserves strict
-ANF argument bindings and uses Delay/Force when every parameter is unused.
+argument evaluation before or after ANF: each non-atomic argument gets a
+call-local strict binding in source order, including discarded arguments. It
+uses Delay/Force when every parameter is unused. The early trial runs after static
+lifting and before the single ANF normalization, followed by accepted cleanup.
 Partial/staged/escaping/oversaturated uses and recursive signatures are unchanged;
 this trial is not part of the accepted pipeline.

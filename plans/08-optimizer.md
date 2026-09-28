@@ -1058,8 +1058,10 @@ in the lambda body, including nested lambdas, delays and recursive bodies.
 Partial, staged, escaping and oversaturated uses leave the whole helper unchanged.
 Recursive binder parameters are outside this first trial.
 
-Input is typed, hygienic ANF. Call arguments are discardable atoms; any preceding
-strict argument computations remain bound at their original stage. Each function
+Input is typed, hygienic Core, before or after ANF. Every non-atomic argument
+gets a strict call-local binding in source order, including retained arguments,
+before the shortened call. Discarded atoms need no binding; preceding strict
+argument computations remain at their original stage. Each function
 type view is shortened independently while retaining its own result type; views
 without the matching function shape are left untouched. If all parameters go,
 the definition becomes a delay and each original full call becomes a force.
@@ -1075,8 +1077,8 @@ skips those staged uses; review placement before adding any call-chain recovery.
 
 The captured source Core confirms `let stage = helper 100 in stage 1` remains
 after accepted cleanup. Naming source arguments first leaves full direct calls
-and enables the rewrite. Placement before ANF is the next design candidate;
-that variant would need to retain strict argument evaluation explicitly.
+and enables the rewrite. The pre-ANF trial below handles these original full
+calls without reconstructing staged call chains.
 
 Measured 37 cases, with no CPU, memory or Flat-size regressions. Representative
 savings (post-ANF trial only):
@@ -1098,6 +1100,43 @@ Validation: 507 IR/codegen nextest tests passed, including eight new test
 functions and 16 reviewed snapshots. Root and isolated strict Clippy and
 formatting passed. Read-only review found no correctness defects under the
 typed ANF preconditions. The trial remains outside the accepted pipeline.
+
+**Third rule, pre-ANF trial (27 September 2026), pending review.**
+The same pass now supports raw typed Core. Trial order is freshening, static
+lifting, unused-parameter removal, one ANF normalization, then accepted cleanup.
+Bindings for argument work remain inside their original branch, delay or lambda.
+Fresh names avoid both existing binders and free variable IDs; generated bindings
+retain each argument's type view. Empty-parameter lambdas are computations and
+must still execute when passed as discarded arguments. The pass makes one traversal;
+it is not a general fixed-point removal of newly exposed signatures.
+
+The explicit `unused_params_pre_anf` example compares accepted cleanup, late
+removal, and early removal across 39 cases, checking results and trace logs.
+Unlike the earlier direct-Core experiment, every comparison includes accepted
+cleanup. Savings against accepted cleanup for newly handled source calls:
+
+| Fixture | CPU saved | Memory saved | Flat bytes saved |
+| --- | ---: | ---: | ---: |
+| Two ordinary literal calls | 192,000 | 1,200 | 13 |
+| Same calls with a traced discarded argument | 192,000 | 1,200 | 12 |
+| Traces in retained and discarded arguments | 192,000 | 1,200 | 11 |
+| Two all-unused two-parameter calls | 224,000 | 1,400 | 16 |
+
+Named-argument and unary all-unused source calls retain the late trial's savings.
+Nine existing source workloads remain unchanged. One hot synthetic case regresses:
+all parameters unused with a single call costs an extra 32,000 CPU, 200 memory,
+and one byte. Accepted beta cleanup previously eliminated that lambda call;
+early removal instead leaves `force (delay body)` after single-use substitution,
+which the current cleanup does not cancel. Its cold counterpart costs one extra
+byte with unchanged CPU/memory. No other measured regressions. Delay/force
+cancellation is a separate follow-up, not silently included in this trial.
+
+Validation: 513 IR/codegen nextest tests passed. Eleven new reviewed snapshots
+cover strict argument order, failure at every position, repeated all-unused calls,
+cold branches, empty lambdas, fresh IDs/type views and structural retention of a
+diverging argument. Prior snapshots are unchanged. Root and isolated strict Clippy
+and formatting passed; all 23 accepted baseline cases still match. Read-only
+review found no correctness defects. The trial remains outside the accepted pipeline.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused
