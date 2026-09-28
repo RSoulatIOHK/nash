@@ -195,3 +195,14 @@ the accepted baseline.
 
 Direct force/delay cancellation is accepted in the cleanup loop. Its standalone
 experiment keeps a frozen pre-cancellation control for comparison.
+
+## Chunk 7 known Boolean case trial
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example known_bool
+```
+
+Compares accepted cleanup, direct Boolean folding, and repeated folding with
+accepted cleanup across 40 cases, including the base-library Boolean helper
+fixture. Each pipeline normalizes once. Results/logs must agree; CPU, memory
+and Flat size are reported separately. Root tests do not discover this runner.

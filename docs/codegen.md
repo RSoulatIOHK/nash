@@ -918,3 +918,9 @@ Plan 08 Chunk 6 also requires recursive unused-parameter removal. This is pendin
 design and implementation, including self/mutual forwarding dependencies, strict
 argument evaluation and consistent worker/static-parameter metadata. The current
 accepted nonrecursive pass does not implement that scope.
+
+
+Chunk 7 has a standalone `known_bool::reduce` trial. A literal Boolean subject
+selects its matching branch or default while retaining the case result type.
+Malformed Boolean tables, unmatched cases without defaults and nonliteral
+subjects stay unchanged. This pass is not yet in the accepted pipeline.

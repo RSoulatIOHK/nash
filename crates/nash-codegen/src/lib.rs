@@ -55,3 +55,6 @@ mod unused_params_pre_anf_tests;
 
 #[cfg(test)]
 mod force_delay_tests;
+
+#[cfg(test)]
+mod known_bool_tests;

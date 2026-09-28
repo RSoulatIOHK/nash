@@ -8,6 +8,7 @@ pub mod dead_bindings;
 pub mod dead_recursive;
 pub mod force_delay;
 pub mod hygiene;
+pub mod known_bool;
 pub mod pretty;
 pub mod propagate;
 pub mod single_use;

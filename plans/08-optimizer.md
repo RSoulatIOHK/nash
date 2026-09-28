@@ -16,9 +16,10 @@ sharing during optimized lowering. Step 2 is accepted with a two-occurrence mini
 for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
 unused-binding removal, recursive-member reachability and pre-ANF nonrecursive
 unused-parameter removal are accepted. Direct force/delay cancellation in Chunk 8
-is also accepted. Chunk 6 remains incomplete: recursive unused-parameter removal
-is required and is the next rule to design and trial. Finish Chunk 6 before
-Chunk 7, then the remaining Chunk 8 rules, and proceed to
+is also accepted. Recursive unused-parameter removal is approved Chunk 6 scope
+but remains unimplemented. The user explicitly directed proceeding with the
+Chunk 7 Boolean-case trial now; retain that outstanding work visibly. Continue
+with the remaining Chunk 8 rules after Chunk 7, then proceed to
 Chunks 9, 10 and 11. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
@@ -1152,8 +1153,9 @@ isolated strict Clippy, and formatting. All 23 performance rows remain identical
 only baseline pipeline settings and revision metadata were refreshed.
 
 **Fourth rule, required scope (27 September 2026): recursive unused parameters.**
-This belongs in Chunk 6 and must be reviewed before moving to Chunk 7. It is not
-implemented or accepted yet. Cover self-recursive and mutually recursive helpers,
+This belongs in Chunk 6. Its scope is approved, but it is not implemented or
+validated yet. The user subsequently directed starting the Chunk 7 Boolean-case
+trial; this authorization does not mark recursive parameter removal implemented. Cover self-recursive and mutually recursive helpers,
 including parameters only forwarded through recursive calls rather than consumed.
 Specify how parameter-use dependencies reach a fixed point across the group;
 a recursive forwarding occurrence alone is not proof that a value is needed.
@@ -1188,6 +1190,32 @@ future candidate; early lifting must not depend on recovering ANF call chains.
 benefit; refresh recursion metadata before rewriting.
 
 ## Chunk 7 — Known-case and field simplification
+
+**First trial (27 September 2026), pending review: known Boolean subjects.**
+`known_bool::reduce` selects the actual True/False branch or default only for a
+literal Boolean subject. It validates the local Boolean table before folding:
+no field binders, no non-Boolean tests and no duplicate alternatives. Missing
+matches without a default remain untouched so runtime failure is preserved.
+It retains the case result type view and neither evaluates nor moves the subject.
+Earlier strict lets remain in place. Bottom-up traversal can expose another
+literal Boolean case; accepted cleanup can expose further matches, so the
+experiment also compares a cleanup/folding fixed point without another ANF pass.
+The trial remains outside the accepted pipeline.
+
+The explicit `known_bool` experiment compares accepted cleanup, one folding pass,
+and repeated folding with cleanup across 40 cases. Fourteen improve and 26 stay
+unchanged, with no measured CPU, memory or Flat-size regressions. The actual base
+`booleanHelpers` fixture changes from 160,100 CPU / 1,100 memory / 18 bytes to
+16,100 / 200 / 5 with repeated cleanup (one folding pass alone: 96,100 / 700 / 11).
+Cold helper fixtures shrink to six bytes; cleanup removes newly unreachable
+helper bindings as well as the case. `constantPrefixCold` changes from
+128,100 / 900 / 30 to 16,100 / 200 / 6. Other existing source workloads are unchanged.
+These are fixture results, not claims about a real-validator distribution.
+
+Validation: 524 IR/codegen nextest tests passed, including 15 reviewed new
+Core/UPLC and malformed-table snapshots. Root and isolated strict Clippy and
+formatting passed; all 23 accepted baseline cases still match. No production
+pipeline or permanent baseline changes are included in this trial.
 
 Fold cases on known native constructors, booleans, integers, bytes, lists and Data
 shapes using their actual branch tests, binders and defaults. Keep strict subject
