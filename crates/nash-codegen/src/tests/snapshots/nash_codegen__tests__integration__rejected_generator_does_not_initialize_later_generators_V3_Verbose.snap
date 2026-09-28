@@ -1,8 +1,815 @@
 ---
 source: crates/nash-codegen/src/tests/integration.rs
+assertion_line: 196
 description: "module Main exposing (..)\nimport Builtin\nimport Prop exposing (reject)\ntests\n    prop \"reject before later generator\" =\n        let\n            x via trace \"first\" reject\n            y via fail\n        in\n        do\n            assert (Builtin.equalsInteger x y)\n"
 ---
 --- reject before later generator
+--- unoptimized Core
+let message#134 : string = "first" in
+let message#135 : string = "\0assert\00" in
+let message#136 : string = "-" in
+let message#137 : string = "\0assert\00\01\0" in
+let message#138 : string = "\0assert\00\02\0" in
+let reject#1 : nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng) = \arg#85 : nash/base:Prop.prng -> let match#86 : nash/base:Prop.prng = arg#85 in
+constr 1 in
+let fromString#2 : string -> string = \x#87 : string -> x#87 in
+let group#91 : ('erased -> 'erased) -> 'erased -> 'erased = \(generator#126 : 'erased -> 'erased) state#127 : 'erased -> generator#126 state#127 in
+let fromUnit#94 : unit -> unit = \value#128 : unit -> value#128 in
+let both#4 : (nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng)) -> (unit -> nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng)) -> nash/base:Prop.prng -> nash/base:Option.option (('erased, 'erased), nash/base:Prop.prng) = \(first#88 : nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng)) (rest#89 : unit -> nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng)) state#90 : nash/base:Prop.prng -> let match#102 : nash/base:Option.option ('erased, nash/base:Prop.prng) = group#91 first#88 state#90 in
+case@Tag match#102 of
+  0 field#103 -> case@Tag field#103 of
+    0 field#104 field#105 -> let a#92 : 'erased = field#104 in
+    let next#93 : nash/base:Prop.prng = field#105 in
+    let match#98 : nash/base:Option.option ('erased, nash/base:Prop.prng) = rest#89 (fromUnit#94 ()) next#93 in
+    case@Tag match#98 of
+      0 field#99 -> case@Tag field#99 of
+        0 field#100 field#101 -> let b#95 : 'erased = field#100 in
+        let final#96 : nash/base:Prop.prng = field#101 in
+        (\field#97 : (('erased, 'erased), nash/base:Prop.prng) -> constr 0 field#97) (constr 0 (constr 0 a#92 b#95) final#96)
+      1 -> constr 1
+  1 -> constr 1 in
+let assertAt#46 : string -> (unit -> unit) -> unit = \marker#109 : string (rest#110 : unit -> unit) -> trace marker#109 rest#110 (fromUnit#94 ()) in
+let assertCapture#43 : string -> string -> (unit -> unit) -> unit = \prefix#106 : string value#107 : string (rest#108 : unit -> unit) -> assertAt#46 (appendString prefix#106 value#107) rest#108 in
+let prepare#84 : (nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng)) -> ('erased -> unit) -> ('erased -> list string) -> nash/base:Prop.prng -> nash/base:Option.option (nash/base:Prop.prng, unit -> unit, unit -> list string) = \(generator#111 : nash/base:Prop.prng -> nash/base:Option.option ('erased, nash/base:Prop.prng)) (property#112 : 'erased -> unit) (display#113 : 'erased -> list string) state#114 : nash/base:Prop.prng -> let match#122 : nash/base:Option.option ('erased, nash/base:Prop.prng) = generator#111 state#114 in
+case@Tag match#122 of
+  0 field#123 -> case@Tag field#123 of
+    0 field#124 field#125 -> let value#115 : 'erased = field#124 in
+    let next#116 : nash/base:Prop.prng = field#125 in
+    (\field#117 : (nash/base:Prop.prng, unit -> unit, unit -> list string) -> constr 0 field#117) (constr 0 next#116 (\arg#118 : unit -> let match#119 : unit = arg#118 in
+    property#112 value#115) (\arg#120 : unit -> let match#121 : unit = arg#120 in
+    display#113 value#115))
+  1 -> constr 1 in
+prepare#84 (both#4 (trace (fromString#2 message#134) in reject#1) (\unit#3 : unit -> error)) (\values#5 : (int, int) -> let projection#129 : int = field@0/2 values#5 in
+let generated#6 : int = projection#129 in
+let match#48 : int = generated#6 in
+let x#7 : int = match#48 in
+let projection#130 : int = field@1/2 values#5 in
+let generated#8 : int = projection#130 in
+let match#47 : int = generated#8 in
+let y#9 : int = match#47 in
+let assert_value#10 : int -> int -> bool = equalsInteger in
+let assert_value#11 : int = x#7 in
+let apply#26 : int -> bool = assert_value#10 assert_value#11 in
+let assert_value#27 : int = y#9 in
+case@Bool apply#26 assert_value#27 of
+  True -> ()
+  False -> assertAt#46 message#135 (\unit#45 : unit -> let message#25 : string = message#136 in
+  let applyForward#14 : 'erased -> ('erased -> 'erased) -> 'erased = \x#18 : 'erased (f#19 : 'erased -> 'erased) -> f#19 x#18 in
+  let fromInt#16 : int -> int = \x#22 : int -> x#22 in
+  let fromBytes#21 : bytes -> bytes = \x#24 : bytes -> x#24 in
+  assertCapture#43 message#137 ((letrec
+    decimal#15 : int -> bytes [static []] = \n#20 : int -> case@Bool lessThanInteger n#20 (fromInt#16 10) of
+      True -> consByteString (addInteger (fromInt#16 48) n#20) (fromBytes#21 (con bytestring #))
+      False -> appendByteString (decimal#15 (quotientInteger n#20 (fromInt#16 10))) (consByteString (addInteger (fromInt#16 48) (remainderInteger n#20 (fromInt#16 10))) (fromBytes#21 (con bytestring #)))
+  in
+  let fromString#17 : string -> string = \x#23 : string -> x#23 in
+  let show#12 : int -> string = \n#13 : int -> case@Bool lessThanInteger n#13 (fromInt#16 0) of
+    True -> applyForward#14 (applyForward#14 (applyForward#14 (applyForward#14 n#13 (subtractInteger (fromInt#16 0))) decimal#15) decodeUtf8) (appendString (fromString#17 message#25))
+    False -> applyForward#14 (applyForward#14 n#13 decimal#15) decodeUtf8 in
+  show#12) assert_value#11) (\unit#44 : unit -> let message#41 : string = message#136 in
+  let applyForward#30 : 'erased -> ('erased -> 'erased) -> 'erased = \x#34 : 'erased (f#35 : 'erased -> 'erased) -> f#35 x#34 in
+  let fromInt#32 : int -> int = \x#38 : int -> x#38 in
+  let fromBytes#37 : bytes -> bytes = \x#40 : bytes -> x#40 in
+  assertCapture#43 message#138 ((letrec
+    decimal#31 : int -> bytes [static []] = \n#36 : int -> case@Bool lessThanInteger n#36 (fromInt#32 10) of
+      True -> consByteString (addInteger (fromInt#32 48) n#36) (fromBytes#37 (con bytestring #))
+      False -> appendByteString (decimal#31 (quotientInteger n#36 (fromInt#32 10))) (consByteString (addInteger (fromInt#32 48) (remainderInteger n#36 (fromInt#32 10))) (fromBytes#37 (con bytestring #)))
+  in
+  let fromString#33 : string -> string = \x#39 : string -> x#39 in
+  let show#28 : int -> string = \n#29 : int -> case@Bool lessThanInteger n#29 (fromInt#32 0) of
+    True -> applyForward#30 (applyForward#30 (applyForward#30 (applyForward#30 n#29 (subtractInteger (fromInt#32 0))) decimal#31) decodeUtf8) (appendString (fromString#33 message#41))
+    False -> applyForward#30 (applyForward#30 n#29 decimal#31) decodeUtf8 in
+  show#28) assert_value#27) (\unit#42 : unit -> error)))) (\values#49 : (int, int) -> let projection#131 : int = field@0/2 values#49 in
+let generated#50 : int = projection#131 in
+let match#83 : int = generated#50 in
+let x#51 : int = match#83 in
+let projection#132 : int = field@1/2 values#49 in
+let generated#66 : int = projection#132 in
+let match#82 : int = generated#66 in
+let y#67 : int = match#82 in
+let message#65 : string = message#136 in
+let applyForward#54 : 'erased -> ('erased -> 'erased) -> 'erased = \x#58 : 'erased (f#59 : 'erased -> 'erased) -> f#59 x#58 in
+let fromInt#56 : int -> int = \x#62 : int -> x#62 in
+let fromBytes#61 : bytes -> bytes = \x#64 : bytes -> x#64 in
+let evaluated#133 : string = (letrec
+  decimal#55 : int -> bytes [static []] = \n#60 : int -> case@Bool lessThanInteger n#60 (fromInt#56 10) of
+    True -> consByteString (addInteger (fromInt#56 48) n#60) (fromBytes#61 (con bytestring #))
+    False -> appendByteString (decimal#55 (quotientInteger n#60 (fromInt#56 10))) (consByteString (addInteger (fromInt#56 48) (remainderInteger n#60 (fromInt#56 10))) (fromBytes#61 (con bytestring #)))
+in
+let fromString#57 : string -> string = \x#63 : string -> x#63 in
+let show#52 : int -> string = \n#53 : int -> case@Bool lessThanInteger n#53 (fromInt#56 0) of
+  True -> applyForward#54 (applyForward#54 (applyForward#54 (applyForward#54 n#53 (subtractInteger (fromInt#56 0))) decimal#55) decodeUtf8) (appendString (fromString#57 message#65))
+  False -> applyForward#54 (applyForward#54 n#53 decimal#55) decodeUtf8 in
+show#52) generated#50 in
+let message#81 : string = message#136 in
+let applyForward#70 : 'erased -> ('erased -> 'erased) -> 'erased = \x#74 : 'erased (f#75 : 'erased -> 'erased) -> f#75 x#74 in
+let fromInt#72 : int -> int = \x#78 : int -> x#78 in
+let fromBytes#77 : bytes -> bytes = \x#80 : bytes -> x#80 in
+mkCons evaluated#133 (mkCons ((letrec
+  decimal#71 : int -> bytes [static []] = \n#76 : int -> case@Bool lessThanInteger n#76 (fromInt#72 10) of
+    True -> consByteString (addInteger (fromInt#72 48) n#76) (fromBytes#77 (con bytestring #))
+    False -> appendByteString (decimal#71 (quotientInteger n#76 (fromInt#72 10))) (consByteString (addInteger (fromInt#72 48) (remainderInteger n#76 (fromInt#72 10))) (fromBytes#77 (con bytestring #)))
+in
+let fromString#73 : string -> string = \x#79 : string -> x#79 in
+let show#68 : int -> string = \n#69 : int -> case@Bool lessThanInteger n#69 (fromInt#72 0) of
+  True -> applyForward#70 (applyForward#70 (applyForward#70 (applyForward#70 n#69 (subtractInteger (fromInt#72 0))) decimal#71) decodeUtf8) (appendString (fromString#73 message#81))
+  False -> applyForward#70 (applyForward#70 n#69 decimal#71) decodeUtf8 in
+show#68) generated#66) (con (list string) [])))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam message_134
+    [(lam message_135
+      [(lam message_136
+        [(lam message_137
+          [(lam message_138
+            [(lam reject_1
+              [(lam fromString_2
+                [(lam group_91
+                  [(lam fromUnit_94
+                    [(lam both_4
+                      [(lam assertAt_46
+                        [(lam assertCapture_43
+                          [(lam prepare_84
+                            [[[prepare_84
+                              [[both_4
+                                (force [[(force (builtin trace)) [fromString_2 message_134]] (delay reject_1)])]
+                                (lam unit_3 (error))]]
+                              (lam values_5
+                                [(lam projection_129
+                                  [(lam generated_6
+                                    [(lam match_48
+                                      [(lam x_7
+                                        [(lam projection_130
+                                          [(lam generated_8
+                                            [(lam match_47
+                                              [(lam y_9
+                                                [(lam assert_value_10
+                                                  [(lam assert_value_11
+                                                    [(lam apply_26
+                                                      [(lam assert_value_27
+                                                        (case
+                                                          [apply_26 assert_value_27]
+                                                          [[assertAt_46 message_135]
+                                                            (lam unit_45
+                                                              [(lam message_25
+                                                                [(lam applyForward_14
+                                                                  [(lam fromInt_16
+                                                                    [(lam fromBytes_21
+                                                                      [[[assertCapture_43 message_137]
+                                                                        [[(lam decimal_15
+                                                                          [(lam fromString_17
+                                                                            [(lam show_12 show_12)
+                                                                              (lam n_13
+                                                                                (case
+                                                                                  [[(builtin lessThanInteger) n_13] [fromInt_16 (con integer 0)]]
+                                                                                  [[applyForward_14 [[applyForward_14 n_13] decimal_15]] (builtin decodeUtf8)]
+                                                                                  [[applyForward_14
+                                                                                    [[applyForward_14
+                                                                                      [[applyForward_14
+                                                                                        [[applyForward_14 n_13]
+                                                                                          [(builtin subtractInteger) [fromInt_16 (con integer 0)]]]]
+                                                                                        decimal_15]]
+                                                                                      (builtin decodeUtf8)]]
+                                                                                    [(builtin appendString) [fromString_17 message_25]]]))])
+                                                                            (lam x_23 x_23)])
+                                                                          [(lam self_139 [self_139 self_139])
+                                                                            (lam self_139
+                                                                              (lam n_20
+                                                                                (case
+                                                                                  [[(builtin lessThanInteger) n_20] [fromInt_16 (con integer 10)]]
+                                                                                  [[(builtin appendByteString)
+                                                                                    [[self_139 self_139]
+                                                                                      [[(builtin quotientInteger) n_20] [fromInt_16 (con integer 10)]]]]
+                                                                                    [[(builtin consByteString)
+                                                                                      [[(builtin addInteger) [fromInt_16 (con integer 48)]]
+                                                                                        [[(builtin remainderInteger) n_20] [fromInt_16 (con integer 10)]]]]
+                                                                                      [fromBytes_21 (con bytestring #)]]]
+                                                                                  [[(builtin consByteString)
+                                                                                    [[(builtin addInteger) [fromInt_16 (con integer 48)]] n_20]]
+                                                                                    [fromBytes_21 (con bytestring #)]])))]]
+                                                                          assert_value_11]]
+                                                                        (lam unit_44
+                                                                          [(lam message_41
+                                                                            [(lam applyForward_30
+                                                                              [(lam fromInt_32
+                                                                                [(lam fromBytes_37
+                                                                                  [[[assertCapture_43 message_138]
+                                                                                    [[(lam decimal_31
+                                                                                      [(lam fromString_33
+                                                                                        [(lam show_28 show_28)
+                                                                                          (lam n_29
+                                                                                            (case
+                                                                                              [[(builtin lessThanInteger) n_29] [fromInt_32 (con integer 0)]]
+                                                                                              [[applyForward_30 [[applyForward_30 n_29] decimal_31]] (builtin decodeUtf8)]
+                                                                                              [[applyForward_30
+                                                                                                [[applyForward_30
+                                                                                                  [[applyForward_30
+                                                                                                    [[applyForward_30 n_29]
+                                                                                                      [(builtin subtractInteger) [fromInt_32 (con integer 0)]]]]
+                                                                                                    decimal_31]]
+                                                                                                  (builtin decodeUtf8)]]
+                                                                                                [(builtin appendString) [fromString_33 message_41]]]))])
+                                                                                        (lam x_39 x_39)])
+                                                                                      [(lam self_141 [self_141 self_141])
+                                                                                        (lam self_141
+                                                                                          (lam n_36
+                                                                                            (case
+                                                                                              [[(builtin lessThanInteger) n_36] [fromInt_32 (con integer 10)]]
+                                                                                              [[(builtin appendByteString)
+                                                                                                [[self_141 self_141]
+                                                                                                  [[(builtin quotientInteger) n_36] [fromInt_32 (con integer 10)]]]]
+                                                                                                [[(builtin consByteString)
+                                                                                                  [[(builtin addInteger) [fromInt_32 (con integer 48)]]
+                                                                                                    [[(builtin remainderInteger) n_36] [fromInt_32 (con integer 10)]]]]
+                                                                                                  [fromBytes_37 (con bytestring #)]]]
+                                                                                              [[(builtin consByteString)
+                                                                                                [[(builtin addInteger) [fromInt_32 (con integer 48)]] n_36]]
+                                                                                                [fromBytes_37 (con bytestring #)]])))]]
+                                                                                      assert_value_27]]
+                                                                                    (lam unit_42 (error))])
+                                                                                  (lam x_40 x_40)])
+                                                                                (lam x_38 x_38)])
+                                                                              (lam x_34 (lam f_35 [f_35 x_34]))])
+                                                                            message_136])])
+                                                                      (lam x_24 x_24)])
+                                                                    (lam x_22 x_22)])
+                                                                  (lam x_18 (lam f_19 [f_19 x_18]))])
+                                                                message_136])]
+                                                          (con unit ())))
+                                                        y_9])
+                                                      [assert_value_10 assert_value_11]])
+                                                    x_7])
+                                                  (builtin equalsInteger)])
+                                                match_47])
+                                              generated_8])
+                                            projection_130])
+                                          (case values_5 (lam generated_146 (lam generated_147 generated_147)))])
+                                        match_48])
+                                      generated_6])
+                                    projection_129])
+                                  (case values_5 (lam generated_148 (lam generated_149 generated_148)))])]
+                              (lam values_49
+                                [(lam projection_131
+                                  [(lam generated_50
+                                    [(lam match_83
+                                      [(lam x_51
+                                        [(lam projection_132
+                                          [(lam generated_66
+                                            [(lam match_82
+                                              [(lam y_67
+                                                [(lam message_65
+                                                  [(lam applyForward_54
+                                                    [(lam fromInt_56
+                                                      [(lam fromBytes_61
+                                                        [(lam evaluated_133
+                                                          [(lam message_81
+                                                            [(lam applyForward_70
+                                                              [(lam fromInt_72
+                                                                [(lam fromBytes_77
+                                                                  [[(force (builtin mkCons)) evaluated_133]
+                                                                    [[(force (builtin mkCons))
+                                                                      [[(lam decimal_71
+                                                                        [(lam fromString_73
+                                                                          [(lam show_68 show_68)
+                                                                            (lam n_69
+                                                                              (case
+                                                                                [[(builtin lessThanInteger) n_69] [fromInt_72 (con integer 0)]]
+                                                                                [[applyForward_70 [[applyForward_70 n_69] decimal_71]] (builtin decodeUtf8)]
+                                                                                [[applyForward_70
+                                                                                  [[applyForward_70
+                                                                                    [[applyForward_70
+                                                                                      [[applyForward_70 n_69]
+                                                                                        [(builtin subtractInteger) [fromInt_72 (con integer 0)]]]]
+                                                                                      decimal_71]]
+                                                                                    (builtin decodeUtf8)]]
+                                                                                  [(builtin appendString) [fromString_73 message_81]]]))])
+                                                                          (lam x_79 x_79)])
+                                                                        [(lam self_145 [self_145 self_145])
+                                                                          (lam self_145
+                                                                            (lam n_76
+                                                                              (case
+                                                                                [[(builtin lessThanInteger) n_76] [fromInt_72 (con integer 10)]]
+                                                                                [[(builtin appendByteString)
+                                                                                  [[self_145 self_145]
+                                                                                    [[(builtin quotientInteger) n_76] [fromInt_72 (con integer 10)]]]]
+                                                                                  [[(builtin consByteString)
+                                                                                    [[(builtin addInteger) [fromInt_72 (con integer 48)]]
+                                                                                      [[(builtin remainderInteger) n_76] [fromInt_72 (con integer 10)]]]]
+                                                                                    [fromBytes_77 (con bytestring #)]]]
+                                                                                [[(builtin consByteString)
+                                                                                  [[(builtin addInteger) [fromInt_72 (con integer 48)]] n_76]]
+                                                                                  [fromBytes_77 (con bytestring #)]])))]]
+                                                                        generated_66]]
+                                                                      (con (list string) [])]])
+                                                                  (lam x_80 x_80)])
+                                                                (lam x_78 x_78)])
+                                                              (lam x_74 (lam f_75 [f_75 x_74]))])
+                                                            message_136])
+                                                          [[(lam decimal_55
+                                                            [(lam fromString_57
+                                                              [(lam show_52 show_52)
+                                                                (lam n_53
+                                                                  (case
+                                                                    [[(builtin lessThanInteger) n_53] [fromInt_56 (con integer 0)]]
+                                                                    [[applyForward_54 [[applyForward_54 n_53] decimal_55]] (builtin decodeUtf8)]
+                                                                    [[applyForward_54
+                                                                      [[applyForward_54
+                                                                        [[applyForward_54
+                                                                          [[applyForward_54 n_53]
+                                                                            [(builtin subtractInteger) [fromInt_56 (con integer 0)]]]]
+                                                                          decimal_55]]
+                                                                        (builtin decodeUtf8)]]
+                                                                      [(builtin appendString) [fromString_57 message_65]]]))])
+                                                              (lam x_63 x_63)])
+                                                            [(lam self_143 [self_143 self_143])
+                                                              (lam self_143
+                                                                (lam n_60
+                                                                  (case
+                                                                    [[(builtin lessThanInteger) n_60] [fromInt_56 (con integer 10)]]
+                                                                    [[(builtin appendByteString)
+                                                                      [[self_143 self_143]
+                                                                        [[(builtin quotientInteger) n_60] [fromInt_56 (con integer 10)]]]]
+                                                                      [[(builtin consByteString)
+                                                                        [[(builtin addInteger) [fromInt_56 (con integer 48)]]
+                                                                          [[(builtin remainderInteger) n_60] [fromInt_56 (con integer 10)]]]]
+                                                                        [fromBytes_61 (con bytestring #)]]]
+                                                                    [[(builtin consByteString)
+                                                                      [[(builtin addInteger) [fromInt_56 (con integer 48)]] n_60]]
+                                                                      [fromBytes_61 (con bytestring #)]])))]]
+                                                            generated_50]])
+                                                        (lam x_64 x_64)])
+                                                      (lam x_62 x_62)])
+                                                    (lam x_58 (lam f_59 [f_59 x_58]))])
+                                                  message_136])
+                                                match_82])
+                                              generated_66])
+                                            projection_132])
+                                          (case values_49 (lam generated_150 (lam generated_151 generated_151)))])
+                                        match_83])
+                                      generated_50])
+                                    projection_131])
+                                  (case values_49 (lam generated_152 (lam generated_153 generated_152)))])])
+                            (lam generator_111
+                              (lam property_112
+                                (lam display_113
+                                  (lam state_114
+                                    [(lam match_122
+                                      (case
+                                        match_122
+                                        (lam field_123
+                                          (case
+                                            field_123
+                                            (lam field_124
+                                              (lam field_125
+                                                [(lam value_115
+                                                  [(lam next_116
+                                                    [(lam field_117 (constr 0 field_117))
+                                                      (constr 0
+                                                        next_116
+                                                        (lam arg_118 (case arg_118 [property_112 value_115]))
+                                                        (lam arg_120 (case arg_120 [display_113 value_115])))])
+                                                    field_125])
+                                                  field_124]))))
+                                        (constr 1)))
+                                      [generator_111 state_114]]))))])
+                          (lam prefix_106
+                            (lam value_107
+                              (lam rest_108
+                                [[assertAt_46 [[(builtin appendString) prefix_106] value_107]] rest_108])))])
+                        (lam marker_109
+                          (lam rest_110
+                            [[[(force (builtin trace)) marker_109] rest_110] [fromUnit_94 (con unit ())]]))])
+                      (lam first_88
+                        (lam rest_89
+                          (lam state_90
+                            [(lam match_102
+                              (case
+                                match_102
+                                (lam field_103
+                                  (case
+                                    field_103
+                                    (lam field_104
+                                      (lam field_105
+                                        [(lam a_92
+                                          [(lam next_93
+                                            [(lam match_98
+                                              (case
+                                                match_98
+                                                (lam field_99
+                                                  (case
+                                                    field_99
+                                                    (lam field_100
+                                                      (lam field_101
+                                                        [(lam b_95
+                                                          [(lam final_96
+                                                            [(lam field_97 (constr 0 field_97)) (constr 0 (constr 0 a_92 b_95) final_96)])
+                                                            field_101])
+                                                          field_100]))))
+                                                (constr 1)))
+                                              [[rest_89 [fromUnit_94 (con unit ())]] next_93]])
+                                            field_105])
+                                          field_104]))))
+                                (constr 1)))
+                              [[group_91 first_88] state_90]])))])
+                    (lam value_128 value_128)])
+                  (lam generator_126 (lam state_127 [generator_126 state_127]))])
+                (lam x_87 x_87)])
+              (lam arg_85 [(lam match_86 (constr 1)) arg_85])])
+            (con string "\0assert\0\48\0\50\0")])
+          (con string "\0assert\0\48\0\49\0")])
+        (con string "-")])
+      (con string "\0assert\0\48")])
+    (con string "first")])
+--- optimized Core
+let message#141 : string = "-" in
+let assertAt#173 : string -> (unit -> unit) -> unit = \marker#171 : string (rest#172 : unit -> unit) -> let anf#280 : unit -> unit = trace marker#171 rest#172 in
+anf#280 () in
+let assertCapture#177 : string -> string -> (unit -> unit) -> unit = \prefix#174 : string value#175 : string (rest#176 : unit -> unit) -> let anf#282 : string = appendString prefix#174 value#175 in
+assertAt#173 anf#282 rest#176 in
+let anf#285 : nash/base:Prop.prng -> nash/base:Option.option (int, nash/base:Prop.prng) = trace "first" in \arg#144 : nash/base:Prop.prng -> constr 1 in
+\state#181 : nash/base:Prop.prng -> let match#157 : nash/base:Option.option ('erased, nash/base:Prop.prng) = anf#285 state#181 in
+let match#182 : nash/base:Option.option ('erased, nash/base:Prop.prng) = case@Tag match#157 of
+  0 field#158 -> case@Tag field#158 of
+    0 field#159 field#160 -> let beta#398 : nash/base:Prop.prng -> nash/base:Option.option (int, nash/base:Prop.prng) = error in
+    let match#163 : nash/base:Option.option ('erased, nash/base:Prop.prng) = beta#398 field#160 in
+    case@Tag match#163 of
+      0 field#164 -> case@Tag field#164 of
+        0 field#165 field#166 -> let anf#278 : ('erased, 'erased) = constr 0 field#159 field#165 in
+        let anf#279 : (('erased, 'erased), nash/base:Prop.prng) = constr 0 anf#278 field#166 in
+        constr 0 anf#279
+      1 -> constr 1
+  1 -> constr 1 in
+case@Tag match#182 of
+  0 field#183 -> case@Tag field#183 of
+    0 field#184 field#185 -> let anf#283 : (nash/base:Prop.prng, unit -> unit, unit -> list string) = constr 0 field#185 (\arg#189 : unit -> let projection#196 : int = field@0/2 field#184 in
+    let projection#200 : int = field@1/2 field#184 in
+    let apply#206 : int -> bool = equalsInteger projection#196 in
+    let anf#287 : bool = apply#206 projection#200 in
+    case@Bool anf#287 of
+      True -> ()
+      False -> assertAt#173 "\0assert\00" (\unit#208 : unit -> let applyForward#212 : 'erased -> ('erased -> 'erased) -> 'erased = \x#210 : 'erased (f#211 : 'erased -> 'erased) -> f#211 x#210 in
+      let anf#288 : string -> (unit -> unit) -> unit = assertCapture#177 "\0assert\00\01\0" in
+      letrec
+        decimal#217 : int -> bytes [static []] = \n#218 : int -> let anf#290 : bool = lessThanInteger n#218 10 in
+        case@Bool anf#290 of
+          True -> let anf#292 : int = addInteger 48 n#218 in
+          consByteString anf#292 (con bytestring #)
+          False -> let anf#295 : int = quotientInteger n#218 10 in
+          let anf#296 : bytes = decimal#217 anf#295 in
+          let anf#299 : int = remainderInteger n#218 10 in
+          let anf#300 : int = addInteger 48 anf#299 in
+          let anf#302 : bytes = consByteString anf#300 (con bytestring #) in
+          appendByteString anf#296 anf#302
+      in
+      let anf#304 : bool = lessThanInteger projection#196 0 in
+      let anf#315 : string = case@Bool anf#304 of
+        True -> let anf#305 : (int -> int) -> int = applyForward#212 projection#196 in
+        let anf#307 : int -> int = subtractInteger 0 in
+        let anf#308 : int = anf#305 anf#307 in
+        let anf#309 : bytes = applyForward#212 anf#308 decimal#217 in
+        let anf#310 : string = applyForward#212 anf#309 decodeUtf8 in
+        let anf#311 : (string -> string) -> string = applyForward#212 anf#310 in
+        let anf#313 : string -> string = appendString message#141 in
+        anf#311 anf#313
+        False -> let anf#314 : bytes = applyForward#212 projection#196 decimal#217 in
+        applyForward#212 anf#314 decodeUtf8 in
+      anf#288 anf#315 (\unit#223 : unit -> let applyForward#227 : 'erased -> ('erased -> 'erased) -> 'erased = \x#225 : 'erased (f#226 : 'erased -> 'erased) -> f#226 x#225 in
+      let anf#316 : string -> (unit -> unit) -> unit = assertCapture#177 "\0assert\00\02\0" in
+      letrec
+        decimal#232 : int -> bytes [static []] = \n#233 : int -> let anf#318 : bool = lessThanInteger n#233 10 in
+        case@Bool anf#318 of
+          True -> let anf#320 : int = addInteger 48 n#233 in
+          consByteString anf#320 (con bytestring #)
+          False -> let anf#323 : int = quotientInteger n#233 10 in
+          let anf#324 : bytes = decimal#232 anf#323 in
+          let anf#327 : int = remainderInteger n#233 10 in
+          let anf#328 : int = addInteger 48 anf#327 in
+          let anf#330 : bytes = consByteString anf#328 (con bytestring #) in
+          appendByteString anf#324 anf#330
+      in
+      let anf#332 : bool = lessThanInteger projection#200 0 in
+      let anf#343 : string = case@Bool anf#332 of
+        True -> let anf#333 : (int -> int) -> int = applyForward#227 projection#200 in
+        let anf#335 : int -> int = subtractInteger 0 in
+        let anf#336 : int = anf#333 anf#335 in
+        let anf#337 : bytes = applyForward#227 anf#336 decimal#232 in
+        let anf#338 : string = applyForward#227 anf#337 decodeUtf8 in
+        let anf#339 : (string -> string) -> string = applyForward#227 anf#338 in
+        let anf#341 : string -> string = appendString message#141 in
+        anf#339 anf#341
+        False -> let anf#342 : bytes = applyForward#227 projection#200 decimal#232 in
+        applyForward#227 anf#342 decodeUtf8 in
+      anf#316 anf#343 (\unit#238 : unit -> error)))) (\arg#191 : unit -> let projection#240 : int = field@0/2 field#184 in
+    let projection#244 : int = field@1/2 field#184 in
+    let applyForward#251 : 'erased -> ('erased -> 'erased) -> 'erased = \x#249 : 'erased (f#250 : 'erased -> 'erased) -> f#250 x#249 in
+    letrec
+      decimal#256 : int -> bytes [static []] = \n#257 : int -> let anf#345 : bool = lessThanInteger n#257 10 in
+      case@Bool anf#345 of
+        True -> let anf#347 : int = addInteger 48 n#257 in
+        consByteString anf#347 (con bytestring #)
+        False -> let anf#350 : int = quotientInteger n#257 10 in
+        let anf#351 : bytes = decimal#256 anf#350 in
+        let anf#354 : int = remainderInteger n#257 10 in
+        let anf#355 : int = addInteger 48 anf#354 in
+        let anf#357 : bytes = consByteString anf#355 (con bytestring #) in
+        appendByteString anf#351 anf#357
+    in
+    let anf#359 : bool = lessThanInteger projection#240 0 in
+    let evaluated#262 : string = case@Bool anf#359 of
+      True -> let anf#360 : (int -> int) -> int = applyForward#251 projection#240 in
+      let anf#362 : int -> int = subtractInteger 0 in
+      let anf#363 : int = anf#360 anf#362 in
+      let anf#364 : bytes = applyForward#251 anf#363 decimal#256 in
+      let anf#365 : string = applyForward#251 anf#364 decodeUtf8 in
+      let anf#366 : (string -> string) -> string = applyForward#251 anf#365 in
+      let anf#368 : string -> string = appendString message#141 in
+      anf#366 anf#368
+      False -> let anf#369 : bytes = applyForward#251 projection#240 decimal#256 in
+      applyForward#251 anf#369 decodeUtf8 in
+    let applyForward#266 : 'erased -> ('erased -> 'erased) -> 'erased = \x#264 : 'erased (f#265 : 'erased -> 'erased) -> f#265 x#264 in
+    letrec
+      decimal#271 : int -> bytes [static []] = \n#272 : int -> let anf#371 : bool = lessThanInteger n#272 10 in
+      case@Bool anf#371 of
+        True -> let anf#373 : int = addInteger 48 n#272 in
+        consByteString anf#373 (con bytestring #)
+        False -> let anf#376 : int = quotientInteger n#272 10 in
+        let anf#377 : bytes = decimal#271 anf#376 in
+        let anf#380 : int = remainderInteger n#272 10 in
+        let anf#381 : int = addInteger 48 anf#380 in
+        let anf#383 : bytes = consByteString anf#381 (con bytestring #) in
+        appendByteString anf#377 anf#383
+    in
+    let anf#385 : bool = lessThanInteger projection#244 0 in
+    let anf#396 : string = case@Bool anf#385 of
+      True -> let anf#386 : (int -> int) -> int = applyForward#266 projection#244 in
+      let anf#388 : int -> int = subtractInteger 0 in
+      let anf#389 : int = anf#386 anf#388 in
+      let anf#390 : bytes = applyForward#266 anf#389 decimal#271 in
+      let anf#391 : string = applyForward#266 anf#390 decodeUtf8 in
+      let anf#392 : (string -> string) -> string = applyForward#266 anf#391 in
+      let anf#394 : string -> string = appendString message#141 in
+      anf#392 anf#394
+      False -> let anf#395 : bytes = applyForward#266 projection#244 decimal#271 in
+      applyForward#266 anf#395 decodeUtf8 in
+    let anf#397 : list string = mkCons anf#396 (con (list string) []) in
+    mkCons evaluated#262 anf#397) in
+    constr 0 anf#283
+  1 -> constr 1
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_154
+    [(lam builtin_159
+      [(lam partial_160
+        [(lam partial_161
+          [(lam message_9
+            [(lam assertAt_13
+              [(lam assertCapture_18
+                [(lam anf_20
+                  (lam state_21
+                    [(lam match_22
+                      [(lam match_33
+                        (case
+                          match_33
+                          (lam field_34
+                            (case
+                              field_34
+                              (lam field_35
+                                (lam field_36
+                                  [(lam anf_149 (constr 0 anf_149))
+                                    (constr 0
+                                      field_36
+                                      (lam arg_37
+                                        [(lam projection_38
+                                          [(lam projection_39
+                                            [(lam apply_40
+                                              [(lam anf_41
+                                                (case
+                                                  anf_41
+                                                  [[assertAt_13 (con string "\0assert\0\48")]
+                                                    (lam unit_42
+                                                      [(lam applyForward_45
+                                                        [(lam anf_46
+                                                          [(lam decimal_57
+                                                            [(lam anf_58
+                                                              [(lam anf_67
+                                                                [[anf_46 anf_67]
+                                                                  (lam unit_68
+                                                                    [(lam applyForward_71
+                                                                      [(lam anf_72
+                                                                        [(lam decimal_83
+                                                                          [(lam anf_84
+                                                                            [(lam anf_93 [[anf_72 anf_93] (lam unit_94 (error))])
+                                                                              (case
+                                                                                anf_84
+                                                                                [(lam anf_92 [[applyForward_71 anf_92] (builtin decodeUtf8)])
+                                                                                  [[applyForward_71 projection_39] decimal_83]]
+                                                                                [(lam anf_85
+                                                                                  [(lam anf_86
+                                                                                    [(lam anf_87
+                                                                                      [(lam anf_88
+                                                                                        [(lam anf_89
+                                                                                          [(lam anf_90 [(lam anf_91 [anf_90 anf_91]) [(builtin appendString) message_9]])
+                                                                                            [applyForward_71 anf_89]])
+                                                                                          [[applyForward_71 anf_88] (builtin decodeUtf8)]])
+                                                                                        [[applyForward_71 anf_87] decimal_83]])
+                                                                                      [anf_85 anf_86]])
+                                                                                    partial_160])
+                                                                                  [applyForward_71 projection_39]])])
+                                                                            [[(builtin lessThanInteger) projection_39] (con integer 0)]])
+                                                                          [(lam self_73 [self_73 self_73])
+                                                                            (lam self_74
+                                                                              (lam n_75
+                                                                                [(lam anf_76
+                                                                                  (case
+                                                                                    anf_76
+                                                                                    [(lam anf_78
+                                                                                      [(lam anf_79
+                                                                                        [(lam anf_80
+                                                                                          [(lam anf_81
+                                                                                            [(lam anf_82 [[(builtin appendByteString) anf_79] anf_82])
+                                                                                              [[(builtin consByteString) anf_81] (con bytestring #)]])
+                                                                                            [partial_161 anf_80]])
+                                                                                          [[(builtin remainderInteger) n_75] (con integer 10)]])
+                                                                                        [[self_74 self_74] anf_78]])
+                                                                                      [[(builtin quotientInteger) n_75] (con integer 10)]]
+                                                                                    [(lam anf_77 [[(builtin consByteString) anf_77] (con bytestring #)])
+                                                                                      [partial_161 n_75]]))
+                                                                                  [[(builtin lessThanInteger) n_75] (con integer 10)]]))]])
+                                                                        [assertCapture_18 (con string "\0assert\0\48\0\50\0")]])
+                                                                      (lam x_69 (lam f_70 [f_70 x_69]))])])
+                                                                (case
+                                                                  anf_58
+                                                                  [(lam anf_66 [[applyForward_45 anf_66] (builtin decodeUtf8)])
+                                                                    [[applyForward_45 projection_38] decimal_57]]
+                                                                  [(lam anf_59
+                                                                    [(lam anf_60
+                                                                      [(lam anf_61
+                                                                        [(lam anf_62
+                                                                          [(lam anf_63
+                                                                            [(lam anf_64 [(lam anf_65 [anf_64 anf_65]) [(builtin appendString) message_9]])
+                                                                              [applyForward_45 anf_63]])
+                                                                            [[applyForward_45 anf_62] (builtin decodeUtf8)]])
+                                                                          [[applyForward_45 anf_61] decimal_57]])
+                                                                        [anf_59 anf_60]])
+                                                                      partial_160])
+                                                                    [applyForward_45 projection_38]])])
+                                                              [[(builtin lessThanInteger) projection_38] (con integer 0)]])
+                                                            [(lam self_47 [self_47 self_47])
+                                                              (lam self_48
+                                                                (lam n_49
+                                                                  [(lam anf_50
+                                                                    (case
+                                                                      anf_50
+                                                                      [(lam anf_52
+                                                                        [(lam anf_53
+                                                                          [(lam anf_54
+                                                                            [(lam anf_55
+                                                                              [(lam anf_56 [[(builtin appendByteString) anf_53] anf_56])
+                                                                                [[(builtin consByteString) anf_55] (con bytestring #)]])
+                                                                              [partial_161 anf_54]])
+                                                                            [[(builtin remainderInteger) n_49] (con integer 10)]])
+                                                                          [[self_48 self_48] anf_52]])
+                                                                        [[(builtin quotientInteger) n_49] (con integer 10)]]
+                                                                      [(lam anf_51 [[(builtin consByteString) anf_51] (con bytestring #)])
+                                                                        [partial_161 n_49]]))
+                                                                    [[(builtin lessThanInteger) n_49] (con integer 10)]]))]])
+                                                          [assertCapture_18 (con string "\0assert\0\48\0\49\0")]])
+                                                        (lam x_43 (lam f_44 [f_44 x_43]))])]
+                                                  (con unit ())))
+                                                [apply_40 projection_39]])
+                                              [(builtin equalsInteger) projection_38]])
+                                            (case field_35 (lam generated_150 (lam generated_151 generated_151)))])
+                                          (case field_35 (lam generated_152 (lam generated_153 generated_152)))])
+                                      (lam arg_95
+                                        [(lam projection_96
+                                          [(lam projection_97
+                                            [(lam applyForward_100
+                                              [(lam decimal_111
+                                                [(lam anf_112
+                                                  [(lam evaluated_121
+                                                    [(lam applyForward_124
+                                                      [(lam decimal_135
+                                                        [(lam anf_136
+                                                          [(lam anf_147
+                                                            [(lam anf_148 [[builtin_154 evaluated_121] anf_148])
+                                                              [[builtin_154 anf_147] (con (list string) [])]])
+                                                            (case
+                                                              anf_136
+                                                              [(lam anf_146 [[applyForward_124 anf_146] (builtin decodeUtf8)])
+                                                                [[applyForward_124 projection_97] decimal_135]]
+                                                              [(lam anf_137
+                                                                [(lam anf_138
+                                                                  [(lam anf_139
+                                                                    [(lam anf_140
+                                                                      [(lam anf_142
+                                                                        [(lam anf_143
+                                                                          [(lam anf_145 [anf_143 anf_145]) [(builtin appendString) message_9]])
+                                                                          [applyForward_124 anf_142]])
+                                                                        [[applyForward_124 anf_140] (builtin decodeUtf8)]])
+                                                                      [[applyForward_124 anf_139] decimal_135]])
+                                                                    [anf_137 anf_138]])
+                                                                  partial_160])
+                                                                [applyForward_124 projection_97]])])
+                                                          [[(builtin lessThanInteger) projection_97] (con integer 0)]])
+                                                        [(lam self_125 [self_125 self_125])
+                                                          (lam self_126
+                                                            (lam n_127
+                                                              [(lam anf_128
+                                                                (case
+                                                                  anf_128
+                                                                  [(lam anf_130
+                                                                    [(lam anf_131
+                                                                      [(lam anf_132
+                                                                        [(lam anf_133
+                                                                          [(lam anf_134 [[(builtin appendByteString) anf_131] anf_134])
+                                                                            [[(builtin consByteString) anf_133] (con bytestring #)]])
+                                                                          [partial_161 anf_132]])
+                                                                        [[(builtin remainderInteger) n_127] (con integer 10)]])
+                                                                      [[self_126 self_126] anf_130]])
+                                                                    [[(builtin quotientInteger) n_127] (con integer 10)]]
+                                                                  [(lam anf_129 [[(builtin consByteString) anf_129] (con bytestring #)])
+                                                                    [partial_161 n_127]]))
+                                                                [[(builtin lessThanInteger) n_127] (con integer 10)]]))]])
+                                                      (lam x_122 (lam f_123 [f_123 x_122]))])
+                                                    (case
+                                                      anf_112
+                                                      [(lam anf_120 [[applyForward_100 anf_120] (builtin decodeUtf8)])
+                                                        [[applyForward_100 projection_96] decimal_111]]
+                                                      [(lam anf_113
+                                                        [(lam anf_114
+                                                          [(lam anf_115
+                                                            [(lam anf_116
+                                                              [(lam anf_117
+                                                                [(lam anf_118
+                                                                  [(lam anf_119 [anf_118 anf_119]) [(builtin appendString) message_9]])
+                                                                  [applyForward_100 anf_117]])
+                                                                [[applyForward_100 anf_116] (builtin decodeUtf8)]])
+                                                              [[applyForward_100 anf_115] decimal_111]])
+                                                            [anf_113 anf_114]])
+                                                          partial_160])
+                                                        [applyForward_100 projection_96]])])
+                                                  [[(builtin lessThanInteger) projection_96] (con integer 0)]])
+                                                [(lam self_101 [self_101 self_101])
+                                                  (lam self_102
+                                                    (lam n_103
+                                                      [(lam anf_104
+                                                        (case
+                                                          anf_104
+                                                          [(lam anf_106
+                                                            [(lam anf_107
+                                                              [(lam anf_108
+                                                                [(lam anf_109
+                                                                  [(lam anf_110 [[(builtin appendByteString) anf_107] anf_110])
+                                                                    [[(builtin consByteString) anf_109] (con bytestring #)]])
+                                                                  [partial_161 anf_108]])
+                                                                [[(builtin remainderInteger) n_103] (con integer 10)]])
+                                                              [[self_102 self_102] anf_106]])
+                                                            [[(builtin quotientInteger) n_103] (con integer 10)]]
+                                                          [(lam anf_105 [[(builtin consByteString) anf_105] (con bytestring #)])
+                                                            [partial_161 n_103]]))
+                                                        [[(builtin lessThanInteger) n_103] (con integer 10)]]))]])
+                                              (lam x_98 (lam f_99 [f_99 x_98]))])
+                                            (case field_35 (lam generated_155 (lam generated_156 generated_156)))])
+                                          (case field_35 (lam generated_157 (lam generated_158 generated_157)))]))]))))
+                          (constr 1)))
+                        (case
+                          match_22
+                          (lam field_23
+                            (case
+                              field_23
+                              (lam field_24
+                                (lam field_25
+                                  [(lam beta_26
+                                    [(lam match_27
+                                      (case
+                                        match_27
+                                        (lam field_28
+                                          (case
+                                            field_28
+                                            (lam field_29
+                                              (lam field_30
+                                                [(lam anf_31 [(lam anf_32 (constr 0 anf_32)) (constr 0 anf_31 field_30)])
+                                                  (constr 0 field_24 field_29)]))))
+                                        (constr 1)))
+                                      [beta_26 field_25]])
+                                    (error)]))))
+                          (constr 1))])
+                      [anf_20 state_21]]))
+                  (force [[builtin_159 (con string "first")] (delay (lam arg_19 (constr 1)))])])
+                (lam prefix_14
+                  (lam value_15
+                    (lam rest_16
+                      [(lam anf_17 [[assertAt_13 anf_17] rest_16])
+                        [[(builtin appendString) prefix_14] value_15]])))])
+              (lam marker_10
+                (lam rest_11
+                  [(lam anf_12 [anf_12 (con unit ())]) [[builtin_159 marker_10] rest_11]]))])
+            (con string "-")])
+          [(builtin addInteger) (con integer 48)]])
+        [(builtin subtractInteger) (con integer 0)]])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
+--- encoded target UPLC
 --- prepare
 (program 1.1.0
   [(lam i0

@@ -1,8 +1,55 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 895
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- optimized\\n{}\",\npretty(core), pretty(after), semantic_output(&baseline),\nsemantic_output(&optimized),)"
+assertion_line: 786
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- optimized\\n{}\",\npretty(core), pretty(after), semantic_output(&baseline),\nsemantic_output(&optimized),))"
 ---
+--- unoptimized Core
+letrec
+  countdown#1 : int -> int [static []] = \n#2 : int -> case@Bool equalsInteger n#2 0 of
+    True -> 42
+    False -> countdown#1 (trace "step" in subtractInteger n#2 1)
+in
+countdown#1 2
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam countdown_1 [countdown_1 (con integer 2)])
+    [(lam self_3 [self_3 self_3])
+      (lam self_3
+        (lam n_2
+          (case
+            [[(builtin equalsInteger) n_2] (con integer 0)]
+            [[self_3 self_3]
+              (force
+                [[(force (builtin trace)) (con string "step")]
+                  (delay [[(builtin subtractInteger) n_2] (con integer 1)])])]
+            (con integer 42))))]])
+--- optimized Core
+letrec
+  countdown#3 : int -> int [static []] = \n#4 : int -> let anf#5 : bool = equalsInteger n#4 0 in
+  case@Bool anf#5 of
+    True -> 42
+    False -> let anf#6 : int = trace "step" in subtractInteger n#4 1 in
+    countdown#3 anf#6
+in
+countdown#3 2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_13
+    [(lam countdown_12 [countdown_12 (con integer 2)])
+      [(lam self_7 [self_7 self_7])
+        (lam self_8
+          (lam n_9
+            [(lam anf_10
+              (case
+                anf_10
+                [(lam anf_11 [[self_8 self_8] anf_11])
+                  (force
+                    [[builtin_13 (con string "step")]
+                      (delay [[(builtin subtractInteger) n_9] (con integer 1)])])]
+                (con integer 42)))
+              [[(builtin equalsInteger) n_9] (con integer 0)]]))]])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 letrec
   countdown#1 : int -> int [static []] = \n#2 : int -> case@Bool equalsInteger n#2 0 of

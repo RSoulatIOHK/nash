@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 1487
+assertion_line: 1465
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int, e : Int, f : Int }\nselect : Record -> int\nselect r = Builtin.addInteger (Builtin.unIData r.b)\n    (Builtin.addInteger (Builtin.unIData r.e) (Builtin.unIData r.f))\nmain = select { a = 1, b = 2, c = 3, d = 4, e = 5, f = 6 }\n"
 ---
---- core
+--- unoptimized Core
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } -> let projection#13 : list Data = unListData r#4 in
 case@List projection#13 of
   Cons head#5 tail#6 -> case@List tail#6 of
@@ -16,7 +16,7 @@ case@List projection#13 of
 let fromInt#3 : int -> Int = iData in
 let main#1 : int = select#2 (listData (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (mkCons (fromInt#3 3) (mkCons (fromInt#3 4) (mkCons (fromInt#3 5) (mkCons (fromInt#3 6) (con (list data) [])))))))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam select_2
     [(lam fromInt_3
@@ -61,6 +61,98 @@ main#1
                 (error))))
           (error)))
         [(builtin unListData) r_4]])])
+--- optimized Core
+let fromInt#31 : int -> Int = iData in
+let anf#35 : Int = fromInt#31 1 in
+let anf#36 : Int = fromInt#31 2 in
+let anf#37 : Int = fromInt#31 3 in
+let anf#38 : Int = fromInt#31 4 in
+let anf#39 : Int = fromInt#31 5 in
+let anf#40 : Int = fromInt#31 6 in
+let anf#41 : list Data = mkCons anf#40 (con (list data) []) in
+let anf#42 : list Data = mkCons anf#39 anf#41 in
+let anf#43 : list Data = mkCons anf#38 anf#42 in
+let anf#44 : list Data = mkCons anf#37 anf#43 in
+let anf#45 : list Data = mkCons anf#36 anf#44 in
+let anf#46 : list Data = mkCons anf#35 anf#45 in
+let anf#47 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } = listData anf#46 in
+let projection#18 : list Data = unListData anf#47 in
+case@List projection#18 of
+  Cons head#19 tail#20 -> case@List tail#20 of
+    Cons head#21 tail#22 -> let evaluated#23 : int = unIData head#21 in
+    let projection#24 : list Data = dropList 2 tail#22 in
+    case@List projection#24 of
+      Cons head#25 tail#26 -> let evaluated#27 : int = unIData head#25 in
+      case@List tail#26 of
+        Cons head#28 tail#29 -> let anf#33 : int = unIData head#28 in
+        let anf#34 : int = addInteger evaluated#27 anf#33 in
+        addInteger evaluated#23 anf#34
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_57
+    [(lam builtin_58
+      [(lam fromInt_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam anf_6
+                  [(lam anf_7
+                    [(lam anf_8
+                      [(lam anf_9
+                        [(lam anf_10
+                          [(lam anf_11
+                            [(lam anf_12
+                              [(lam anf_13
+                                [(lam anf_14
+                                  [(lam projection_15
+                                    (case
+                                      projection_15
+                                      (lam head_16
+                                        (lam tail_17
+                                          (case
+                                            tail_17
+                                            (lam head_30
+                                              (lam tail_32
+                                                [(lam evaluated_48
+                                                  [(lam projection_49
+                                                    (case
+                                                      projection_49
+                                                      (lam head_50
+                                                        (lam tail_51
+                                                          [(lam evaluated_52
+                                                            (case
+                                                              tail_51
+                                                              (lam head_53
+                                                                (lam tail_54
+                                                                  [(lam anf_55
+                                                                    [(lam anf_56 [[(builtin addInteger) evaluated_48] anf_56])
+                                                                      [[(builtin addInteger) evaluated_52] anf_55]])
+                                                                    [(builtin unIData) head_53]]))
+                                                              (error)))
+                                                            [(builtin unIData) head_50]]))
+                                                      (error)))
+                                                    [[builtin_57 (con integer 2)] tail_32]])
+                                                  [(builtin unIData) head_30]]))
+                                            (error))))
+                                      (error)))
+                                    [(builtin unListData) anf_14]])
+                                  [(builtin listData) anf_13]])
+                                [[builtin_58 anf_2] anf_12]])
+                              [[builtin_58 anf_3] anf_11]])
+                            [[builtin_58 anf_4] anf_10]])
+                          [[builtin_58 anf_5] anf_9]])
+                        [[builtin_58 anf_6] anf_8]])
+                      [[builtin_58 anf_7] (con (list data) [])]])
+                    [fromInt_1 (con integer 6)]])
+                  [fromInt_1 (con integer 5)]])
+                [fromInt_1 (con integer 4)]])
+              [fromInt_1 (con integer 3)]])
+            [fromInt_1 (con integer 2)]])
+          [fromInt_1 (con integer 1)]])
+        (builtin iData)])
+      (force (builtin mkCons))])
+    (force (builtin dropList))])
 --- result
 (con integer 13)
 --- logs

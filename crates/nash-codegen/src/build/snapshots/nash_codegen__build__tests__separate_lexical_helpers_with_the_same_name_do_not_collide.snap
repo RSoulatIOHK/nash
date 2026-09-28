@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nfirst x =\n    let\n        helper y = x\n    in\n    helper ()\nsecond x =\n    let\n        helper y = y\n    in\n    helper x\nmain : (bool, unit)\nmain = (first True, second ())\n"
 ---
---- core
+--- unoptimized Core
 let fromUnit#5 : unit -> unit = \value#13 : unit -> value#13 in
 let first#2 : 'erased -> 'erased = \x#6 : 'erased -> let helper#7 : 'erased -> 'erased = \y#8 : 'erased -> x#6 in
 helper#7 (fromUnit#5 ()) in
@@ -11,7 +12,7 @@ let second#4 : 'erased -> 'erased = \x#10 : 'erased -> let helper#11 : 'erased -
 helper#11 x#10 in
 let main#1 : (bool, unit) = constr 0 (first#2 (fromBool#3 true)) (second#4 (fromUnit#5 ())) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromUnit_5
     [(lam first_2
@@ -25,6 +26,10 @@ main#1
         (lam value_9 value_9)])
       (lam x_6 [(lam helper_7 [helper_7 [fromUnit_5 (con unit ())]]) (lam y_8 x_6)])])
     (lam value_13 value_13)])
+--- optimized Core
+constr 0 true ()
+--- optimized UPLC
+(program 1.1.0 (constr 0 (con bool True) (con unit ())))
 --- result
 (constr 0 (con bool True) (con unit ()))
 --- logs

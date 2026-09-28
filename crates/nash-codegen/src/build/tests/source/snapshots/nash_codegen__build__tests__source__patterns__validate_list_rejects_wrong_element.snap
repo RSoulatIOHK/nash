@@ -1,16 +1,18 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 1112
+assertion_line: 1054
 description: "module Main exposing (..)\nimport Data exposing (ToData, Validate)\nmain : List Int\nmain = validate (toData (Builtin.listData [Builtin.bData #\"ff\"]))\n"
 ---
---- core
+--- unoptimized Core
 let applyForward#7 : 'erased -> ('erased -> 'erased) -> 'erased = \x#13 : 'erased (f#14 : 'erased -> 'erased) -> f#14 x#13 in
-let mapList#8 : ('erased -> Data) -> list 'erased -> list Data = \(f#15 : 'erased -> Data) values#16 : list 'erased -> (\self#26 : @self (list 'erased -> list Data) -> self#26 self#26) (\self#26 : @self (list 'erased -> list Data) values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
-case@List match#19 of
-  Nil -> (con (list data) [])
-  Cons field#20 field#21 -> let first#17 : 'erased = field#20 in
-  let rest#18 : list 'erased = field#21 in
-  mkCons (f#15 first#17) (self#26 self#26 rest#18)) values#16 in
+letrec
+  mapList#8 : ('erased -> Data) -> list 'erased -> list Data [static [0]] = \(f#15 : 'erased -> Data) values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
+  case@List match#19 of
+    Nil -> (con (list data) [])
+    Cons field#20 field#21 -> let first#17 : 'erased = field#20 in
+    let rest#18 : list 'erased = field#21 in
+    mkCons (f#15 first#17) (mapList#8 f#15 rest#18)
+in
 let validate#9 : Data -> Int = \value#22 : Data -> let candidate#23 : Int = (\coerce#25 : Data -> coerce#25) value#22 in
 let destruct#24 : int = unIData candidate#23 in
 candidate#23 in
@@ -20,7 +22,7 @@ let toData#3 : 'erased -> Data = \coerce#11 : 'erased -> coerce#11 in
 let fromBytes#4 : bytes -> bytes = \value#12 : bytes -> value#12 in
 let main#1 : List Int = validate#2 (toData#3 (listData (mkCons (bData (fromBytes#4 (con bytestring #ff))) (con (list data) [])))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam applyForward_7
     [(lam mapList_8
@@ -66,6 +68,53 @@ main#1
                   values_16]))]
             values_16]))])
     (lam x_13 (lam f_14 [f_14 x_13]))])
+--- optimized Core
+let applyForward#28 : 'erased -> ('erased -> 'erased) -> 'erased = \x#26 : 'erased (f#27 : 'erased -> 'erased) -> f#27 x#26 in
+let anf#60 : Bytes = bData (con bytestring #ff) in
+let anf#61 : list Bytes = mkCons anf#60 (con (list data) []) in
+let anf#62 : List Bytes = listData anf#61 in
+let anf#55 : list Data = applyForward#28 anf#62 unListData in
+let anf#56 : (list Data -> list Data) -> list Data = applyForward#28 anf#55 in
+let anf#58 : list Data = anf#56 (\values#31 : list 'erased -> letrec
+  worker#52 : list 'erased -> list Data [static []] = \values#51 : list 'erased -> case@List values#51 of
+    Nil -> (con (list data) [])
+    Cons field#33 field#34 -> let destruct#40 : int = unIData field#33 in
+    let anf#54 : list Data = worker#52 field#34 in
+    mkCons field#33 anf#54
+in
+worker#52 values#31) in
+applyForward#28 anf#58 listData
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_21
+    [(lam applyForward_5
+      [(lam anf_6
+        [(lam anf_7
+          [(lam anf_8
+            [(lam anf_9
+              [(lam anf_10
+                [(lam anf_20 [[applyForward_5 anf_20] (builtin listData)])
+                  [anf_10
+                    (lam values_11
+                      [(lam worker_19 [worker_19 values_11])
+                        [(lam self_12 [self_12 self_12])
+                          (lam self_13
+                            (lam values_14
+                              (case
+                                values_14
+                                (lam field_15
+                                  (lam field_16
+                                    [(lam destruct_17
+                                      [(lam anf_18 [[builtin_21 field_15] anf_18]) [[self_13 self_13] field_16]])
+                                      [(builtin unIData) field_15]]))
+                                (con (list data) []))))]])]])
+                [applyForward_5 anf_9]])
+              [[applyForward_5 anf_8] (builtin unListData)]])
+            [(builtin listData) anf_7]])
+          [[builtin_21 anf_6] (con (list data) [])]])
+        [(builtin bData) (con bytestring #ff)]])
+      (lam x_3 (lam f_4 [f_4 x_3]))])
+    (force (builtin mkCons))])
 --- result
 error: Runtime(MalFormedData(ByteString([255])))
 --- logs

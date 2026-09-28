@@ -1,8 +1,53 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+letrec
+  same#1 : int -> int [static [0]] = \x#2 : int -> case@Bool true of
+    True -> trace "selected" in x#2
+    False -> same#1 x#2
+in
+same#1 (trace "argument" in 42)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam same_1
+    [same_1
+      (force
+        [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])])
+    (lam x_2
+      (force
+        [(lam self_3 [self_3 self_3])
+          (lam self_3
+            (delay
+              (case
+                (con bool True)
+                (force [self_3 self_3])
+                (force [[(force (builtin trace)) (con string "selected")] (delay x_2)]))))]))])
+--- optimized Core
+let anf#6 : int = trace "argument" in 42 in
+letrec
+  worker#5 : @delay int [static []] = \ -> delay (case@Bool true of
+    True -> trace "selected" in anf#6
+    False -> force worker#5)
+in
+force worker#5
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_8
+    [(lam anf_2
+      [(lam worker_7 (force worker_7))
+        [(lam self_3 [self_3 self_3])
+          (lam self_4
+            (delay
+              (case
+                (con bool True)
+                (force [self_4 self_4])
+                (force [[builtin_8 (con string "selected")] (delay anf_2)]))))]])
+      (force [[builtin_8 (con string "argument")] (delay (con integer 42))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 letrec
   same#4 : int -> int [static [0]] = \x#5 : int -> case@Bool true of

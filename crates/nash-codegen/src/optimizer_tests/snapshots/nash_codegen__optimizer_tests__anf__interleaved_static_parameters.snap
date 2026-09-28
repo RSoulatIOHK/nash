@@ -1,8 +1,94 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+letrec
+  countdown#1 : int -> int -> int -> int -> int [static [0, 2]] = \config#2 : int n#3 : int limit#4 : int acc#5 : int -> case@Bool equalsInteger n#3 0 of
+    True -> addInteger config#2 (addInteger limit#4 acc#5)
+    False -> countdown#1 config#2 (trace "next n" in subtractInteger n#3 1) limit#4 (trace "next acc" in addInteger acc#5 1)
+in
+countdown#1 (trace "config" in 40) (trace "n" in 2) (trace "limit" in 2) (trace "acc" in 0)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam countdown_1
+    [[[[countdown_1
+      (force
+        [[(force (builtin trace)) (con string "config")] (delay (con integer 40))])]
+      (force [[(force (builtin trace)) (con string "n")] (delay (con integer 2))])]
+      (force [[(force (builtin trace)) (con string "limit")] (delay (con integer 2))])]
+      (force [[(force (builtin trace)) (con string "acc")] (delay (con integer 0))])])
+    (lam config_2
+      (lam n_3
+        (lam limit_4
+          (lam acc_5
+            [[[(lam self_6 [self_6 self_6])
+              (lam self_6
+                (lam n_3
+                  (lam acc_5
+                    (case
+                      [[(builtin equalsInteger) n_3] (con integer 0)]
+                      [[[self_6 self_6]
+                        (force
+                          [[(force (builtin trace)) (con string "next n")]
+                            (delay [[(builtin subtractInteger) n_3] (con integer 1)])])]
+                        (force
+                          [[(force (builtin trace)) (con string "next acc")]
+                            (delay [[(builtin addInteger) acc_5] (con integer 1)])])]
+                      [[(builtin addInteger) config_2] [[(builtin addInteger) limit_4] acc_5]]))))]
+              n_3]
+              acc_5]))))])
+--- optimized Core
+let anf#19 : int = trace "config" in 40 in
+let anf#21 : int = trace "n" in 2 in
+let anf#23 : int = trace "limit" in 2 in
+let anf#25 : int = trace "acc" in 0 in
+letrec
+  worker#13 : int -> int -> int [static []] = \n#11 : int acc#12 : int -> let anf#14 : bool = equalsInteger n#11 0 in
+  case@Bool anf#14 of
+    True -> let anf#15 : int = addInteger anf#23 acc#12 in
+    addInteger anf#19 anf#15
+    False -> let anf#16 : int = trace "next n" in subtractInteger n#11 1 in
+    let anf#17 : int -> int = worker#13 anf#16 in
+    let anf#18 : int = trace "next acc" in addInteger acc#12 1 in
+    anf#17 anf#18
+in
+worker#13 anf#21 anf#25
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_30
+    [(lam anf_4
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7
+            [(lam worker_29 [[worker_29 anf_5] anf_7])
+              [(lam self_8 [self_8 self_8])
+                (lam self_9
+                  (lam n_10
+                    (lam acc_20
+                      [(lam anf_22
+                        (case
+                          anf_22
+                          [(lam anf_26
+                            [(lam anf_27
+                              [(lam anf_28 [anf_27 anf_28])
+                                (force
+                                  [[builtin_30 (con string "next acc")]
+                                    (delay [[(builtin addInteger) acc_20] (con integer 1)])])])
+                              [[self_9 self_9] anf_26]])
+                            (force
+                              [[builtin_30 (con string "next n")]
+                                (delay [[(builtin subtractInteger) n_10] (con integer 1)])])]
+                          [(lam anf_24 [[(builtin addInteger) anf_4] anf_24])
+                            [[(builtin addInteger) anf_6] acc_20]]))
+                        [[(builtin equalsInteger) n_10] (con integer 0)]])))]])
+            (force [[builtin_30 (con string "acc")] (delay (con integer 0))])])
+          (force [[builtin_30 (con string "limit")] (delay (con integer 2))])])
+        (force [[builtin_30 (con string "n")] (delay (con integer 2))])])
+      (force [[builtin_30 (con string "config")] (delay (con integer 40))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 letrec
   countdown#7 : int -> int -> int -> int -> int [static [0, 2]] = \config#8 : int n#9 : int limit#10 : int acc#11 : int -> case@Bool equalsInteger n#9 0 of

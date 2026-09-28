@@ -1,13 +1,32 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+let d#1 : @delay int = delay (trace "delayed" in 42) in
+trace "before force" in force d#1
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam d_1
+    (force
+      [[(force (builtin trace)) (con string "before force")] (delay (force d_1))]))
+    (delay
+      (force
+        [[(force (builtin trace)) (con string "delayed")] (delay (con integer 42))]))])
+--- optimized Core
+trace "before force" in trace "delayed" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force
+      [[builtin_1 (con string "before force")]
+        (delay (force [[builtin_1 (con string "delayed")] (delay (con integer 42))]))]))
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let d#1 : @delay int = delay (trace "delayed" in 42) in
 trace "before force" in force d#1
---- core after
-trace "before force" in force (delay (trace "delayed" in 42))
 --- baseline
 --- uplc
 (program 1.1.0
@@ -21,6 +40,8 @@ trace "before force" in force (delay (trace "delayed" in 42))
 (con integer 42)
 --- logs
 ["before force", "delayed"]
+--- core after
+trace "before force" in force (delay (trace "delayed" in 42))
 --- candidate
 --- uplc
 (program 1.1.0

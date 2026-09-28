@@ -1,8 +1,25 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+let unused function#2 : int -> int = \x#1 : int -> trace "lambda body" in error in
+let unused delay#3 : @delay int = delay (trace "delay body" in error) in
+42
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam n756e757365642066756e6374696f6e_2
+    [(lam n756e757365642064656c6179_3 (con integer 42))
+      (delay
+        (force [[(force (builtin trace)) (con string "delay body")] (delay (error))]))])
+    (lam x_1
+      (force [[(force (builtin trace)) (con string "lambda body")] (delay (error))]))])
+--- optimized Core
+42
+--- optimized UPLC
+(program 1.1.0 (con integer 42))
+--- isolated pass
 --- core before static lifting
 let unused function#5 : int -> int = \x#4 : int -> trace "lambda body" in error in
 let unused delay#6 : @delay int = delay (trace "delay body" in error) in

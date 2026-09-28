@@ -1,14 +1,30 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
---- core before
+--- unoptimized Core
 let x#1 : int = trace "failure" in error in
 case@Bool true of
   True -> 42
   False -> x#1
---- core after
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam x_1 (case (con bool True) x_1 (con integer 42)))
+    (force [[(force (builtin trace)) (con string "failure")] (delay (error))])])
+--- optimized Core
+let x#2 : int = trace "failure" in error in
+case@Bool true of
+  True -> 42
+  False -> x#2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam x_1 (case (con bool True) x_1 (con integer 42)))
+      (force [[builtin_2 (con string "failure")] (delay (error))])])
+    (force (builtin trace))])
+--- isolated pass
+--- core before
 let x#1 : int = trace "failure" in error in
 case@Bool true of
   True -> 42
@@ -22,6 +38,11 @@ case@Bool true of
 error: ExplicitErrorTerm
 --- logs
 ["failure"]
+--- core after
+let x#1 : int = trace "failure" in error in
+case@Bool true of
+  True -> 42
+  False -> x#1
 --- candidate
 --- uplc
 (program 1.1.0

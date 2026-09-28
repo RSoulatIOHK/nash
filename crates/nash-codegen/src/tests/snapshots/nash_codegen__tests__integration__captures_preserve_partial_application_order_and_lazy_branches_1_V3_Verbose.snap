@@ -1,8 +1,256 @@
 ---
 source: crates/nash-codegen/src/tests/integration.rs
-description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal\nimport Logic exposing (..)\ncompare : int -> int -> bool\ncompare x = trace \"partial\" (\\y -> Builtin.equalsInteger x y)\none : int\none = 1\nbadBool : unit -> bool\nbadBool _ = fail \"unselected\"\nordinary : unit\nordinary = if True || (badBool ()) then () else (fail \"wrong\")\ntests\n    test \"ordered\" = do\n        assert (compare (trace \"left\" one) (trace \"right\" 2))\n    test \"lazy\" = do\n        assert (if False then (fail \"unselected\") else True)\n    test \"lazy or\" = do\n        assert (True || (badBool ()))\n    test \"lazy and\" = do\n        assert (if False && (badBool ()) then False else True)\n    test \"ordinary lowering is lazy\" = do\n        ordinary\n"
+assertion_line: 196
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal\nimport Logic exposing (..)\nimport TestLogic exposing ((==))\ncompare : int -> int -> bool\ncompare x = trace \"partial\" (\\y -> Builtin.equalsInteger x y)\none : int\none = 1\nbadBool : unit -> bool\nbadBool _ = fail \"unselected\"\nordinary : unit\nordinary = if True || (badBool ()) then () else (fail \"wrong\")\ntests\n    test \"ordered\" = do\n        assert (compare (trace \"left\" one) (trace \"right\" 2))\n    test \"lazy\" = do\n        assert (if False then (fail \"unselected\") else True)\n    test \"lazy or\" = do\n        assert (True || (badBool ()))\n    test \"lazy and\" = do\n        assert (if False && (badBool ()) then False else True)\n    test \"ordinary lowering is lazy\" = do\n        ordinary\n"
 ---
 --- ordered
+--- unoptimized Core
+let message#44 : string = "partial" in
+let message#45 : string = "left" in
+let message#46 : string = "right" in
+let message#47 : string = "\0assert\00" in
+let message#48 : string = "-" in
+let message#49 : string = "\0assert\00\01\0" in
+let fromString#3 : string -> string = \x#35 : string -> x#35 in
+let compare#1 : int -> int -> bool = \x#33 : int -> trace (fromString#3 message#44) in \y#34 : int -> equalsInteger x#33 y#34 in
+let fromInt#26 : int -> int = \x#36 : int -> x#36 in
+let one#6 : int = fromInt#26 1 in
+let fromUnit#42 : unit -> unit = \value#43 : unit -> value#43 in
+let assertAt#32 : string -> (unit -> unit) -> unit = \marker#40 : string (rest#41 : unit -> unit) -> trace marker#40 rest#41 (fromUnit#42 ()) in
+let assertCapture#30 : string -> string -> (unit -> unit) -> unit = \prefix#37 : string value#38 : string (rest#39 : unit -> unit) -> assertAt#32 (appendString prefix#37 value#38) rest#39 in
+let assert_value#2 : int -> int -> bool = compare#1 in
+let assert_value#4 : string = fromString#3 message#45 in
+let assert_trace#5 : unit = trace assert_value#4 in () in
+let assert_value#7 : int = one#6 in
+let assert_value#22 : int = assert_value#7 in
+let apply#23 : int -> bool = assert_value#2 assert_value#22 in
+let assert_value#24 : string = fromString#3 message#46 in
+let assert_trace#25 : unit = trace assert_value#24 in () in
+let assert_value#27 : int = fromInt#26 2 in
+let assert_value#28 : int = assert_value#27 in
+case@Bool apply#23 assert_value#28 of
+  True -> ()
+  False -> assertAt#32 message#47 (\unit#31 : unit -> let message#21 : string = message#48 in
+  let applyForward#10 : 'erased -> ('erased -> 'erased) -> 'erased = \x#14 : 'erased (f#15 : 'erased -> 'erased) -> f#15 x#14 in
+  let fromInt#12 : int -> int = \x#18 : int -> x#18 in
+  let fromBytes#17 : bytes -> bytes = \x#20 : bytes -> x#20 in
+  assertCapture#30 message#49 ((letrec
+    decimal#11 : int -> bytes [static []] = \n#16 : int -> case@Bool lessThanInteger n#16 (fromInt#12 10) of
+      True -> consByteString (addInteger (fromInt#12 48) n#16) (fromBytes#17 (con bytestring #))
+      False -> appendByteString (decimal#11 (quotientInteger n#16 (fromInt#12 10))) (consByteString (addInteger (fromInt#12 48) (remainderInteger n#16 (fromInt#12 10))) (fromBytes#17 (con bytestring #)))
+  in
+  let fromString#13 : string -> string = \x#19 : string -> x#19 in
+  let show#8 : int -> string = \n#9 : int -> case@Bool lessThanInteger n#9 (fromInt#12 0) of
+    True -> applyForward#10 (applyForward#10 (applyForward#10 (applyForward#10 n#9 (subtractInteger (fromInt#12 0))) decimal#11) decodeUtf8) (appendString (fromString#13 message#21))
+    False -> applyForward#10 (applyForward#10 n#9 decimal#11) decodeUtf8 in
+  show#8) assert_value#7) (\unit#29 : unit -> error))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam message_44
+    [(lam message_45
+      [(lam message_46
+        [(lam message_47
+          [(lam message_48
+            [(lam message_49
+              [(lam fromString_3
+                [(lam compare_1
+                  [(lam fromInt_26
+                    [(lam one_6
+                      [(lam fromUnit_42
+                        [(lam assertAt_32
+                          [(lam assertCapture_30
+                            [(lam assert_value_2
+                              [(lam assert_value_4
+                                (case
+                                  (force [[(force (builtin trace)) assert_value_4] (delay (con unit ()))])
+                                  [(lam assert_value_7
+                                    [(lam assert_value_22
+                                      [(lam apply_23
+                                        [(lam assert_value_24
+                                          (case
+                                            (force [[(force (builtin trace)) assert_value_24] (delay (con unit ()))])
+                                            [(lam assert_value_27
+                                              [(lam assert_value_28
+                                                (case
+                                                  [apply_23 assert_value_28]
+                                                  [[assertAt_32 message_47]
+                                                    (lam unit_31
+                                                      [(lam message_21
+                                                        [(lam applyForward_10
+                                                          [(lam fromInt_12
+                                                            [(lam fromBytes_17
+                                                              [[[assertCapture_30 message_49]
+                                                                [[(lam decimal_11
+                                                                  [(lam fromString_13
+                                                                    [(lam show_8 show_8)
+                                                                      (lam n_9
+                                                                        (case
+                                                                          [[(builtin lessThanInteger) n_9] [fromInt_12 (con integer 0)]]
+                                                                          [[applyForward_10 [[applyForward_10 n_9] decimal_11]] (builtin decodeUtf8)]
+                                                                          [[applyForward_10
+                                                                            [[applyForward_10
+                                                                              [[applyForward_10
+                                                                                [[applyForward_10 n_9] [(builtin subtractInteger) [fromInt_12 (con integer 0)]]]]
+                                                                                decimal_11]]
+                                                                              (builtin decodeUtf8)]]
+                                                                            [(builtin appendString) [fromString_13 message_21]]]))])
+                                                                    (lam x_19 x_19)])
+                                                                  [(lam self_50 [self_50 self_50])
+                                                                    (lam self_50
+                                                                      (lam n_16
+                                                                        (case
+                                                                          [[(builtin lessThanInteger) n_16] [fromInt_12 (con integer 10)]]
+                                                                          [[(builtin appendByteString)
+                                                                            [[self_50 self_50]
+                                                                              [[(builtin quotientInteger) n_16] [fromInt_12 (con integer 10)]]]]
+                                                                            [[(builtin consByteString)
+                                                                              [[(builtin addInteger) [fromInt_12 (con integer 48)]]
+                                                                                [[(builtin remainderInteger) n_16] [fromInt_12 (con integer 10)]]]]
+                                                                              [fromBytes_17 (con bytestring #)]]]
+                                                                          [[(builtin consByteString)
+                                                                            [[(builtin addInteger) [fromInt_12 (con integer 48)]] n_16]]
+                                                                            [fromBytes_17 (con bytestring #)]])))]]
+                                                                  assert_value_7]]
+                                                                (lam unit_29 (error))])
+                                                              (lam x_20 x_20)])
+                                                            (lam x_18 x_18)])
+                                                          (lam x_14 (lam f_15 [f_15 x_14]))])
+                                                        message_48])]
+                                                  (con unit ())))
+                                                assert_value_27])
+                                              [fromInt_26 (con integer 2)]]))
+                                          [fromString_3 message_46]])
+                                        [assert_value_2 assert_value_22]])
+                                      assert_value_7])
+                                    one_6]))
+                                [fromString_3 message_45]])
+                              compare_1])
+                            (lam prefix_37
+                              (lam value_38
+                                (lam rest_39
+                                  [[assertAt_32 [[(builtin appendString) prefix_37] value_38]] rest_39])))])
+                          (lam marker_40
+                            (lam rest_41
+                              [[[(force (builtin trace)) marker_40] rest_41] [fromUnit_42 (con unit ())]]))])
+                        (lam value_43 value_43)])
+                      [fromInt_26 (con integer 1)]])
+                    (lam x_36 x_36)])
+                  (lam x_33
+                    (force
+                      [[(force (builtin trace)) [fromString_3 message_44]]
+                        (delay (lam y_34 [[(builtin equalsInteger) x_33] y_34]))]))])
+                (lam x_35 x_35)])
+              (con string "\0assert\0\48\0\49\0")])
+            (con string "-")])
+          (con string "\0assert\0\48")])
+        (con string "right")])
+      (con string "left")])
+    (con string "partial")])
+--- optimized Core
+let assertAt#68 : string -> (unit -> unit) -> unit = \marker#66 : string (rest#67 : unit -> unit) -> let anf#100 : unit -> unit = trace marker#66 rest#67 in
+anf#100 () in
+let assert_trace#75 : unit = trace "left" in () in
+let apply#78 : int -> bool = trace "partial" in \y#59 : int -> equalsInteger 1 y#59 in
+let assert_trace#80 : unit = trace "right" in () in
+let anf#103 : bool = apply#78 2 in
+case@Bool anf#103 of
+  True -> ()
+  False -> assertAt#68 "\0assert\00" (\unit#83 : unit -> let applyForward#87 : 'erased -> ('erased -> 'erased) -> 'erased = \x#85 : 'erased (f#86 : 'erased -> 'erased) -> f#86 x#85 in
+  letrec
+    decimal#92 : int -> bytes [static []] = \n#93 : int -> let anf#106 : bool = lessThanInteger n#93 10 in
+    case@Bool anf#106 of
+      True -> let anf#108 : int = addInteger 48 n#93 in
+      consByteString anf#108 (con bytestring #)
+      False -> let anf#111 : int = quotientInteger n#93 10 in
+      let anf#112 : bytes = decimal#92 anf#111 in
+      let anf#115 : int = remainderInteger n#93 10 in
+      let anf#116 : int = addInteger 48 anf#115 in
+      let anf#118 : bytes = consByteString anf#116 (con bytestring #) in
+      appendByteString anf#112 anf#118
+  in
+  let anf#120 : bool = lessThanInteger 1 0 in
+  let anf#131 : string = case@Bool anf#120 of
+    True -> let anf#121 : (int -> int) -> int = applyForward#87 1 in
+    let anf#123 : int -> int = subtractInteger 0 in
+    let anf#124 : int = anf#121 anf#123 in
+    let anf#125 : bytes = applyForward#87 anf#124 decimal#92 in
+    let anf#126 : string = applyForward#87 anf#125 decodeUtf8 in
+    let anf#127 : (string -> string) -> string = applyForward#87 anf#126 in
+    let anf#129 : string -> string = appendString "-" in
+    anf#127 anf#129
+    False -> let anf#130 : bytes = applyForward#87 1 decimal#92 in
+    applyForward#87 anf#130 decodeUtf8 in
+  let anf#102 : string = appendString "\0assert\00\01\0" anf#131 in
+  assertAt#68 anf#102 (\unit#98 : unit -> error))
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_39
+    [(lam partial_40
+      [(lam assertAt_6
+        (case
+          (force [[builtin_39 (con string "left")] (delay (con unit ()))])
+          [(lam apply_9
+            (case
+              (force [[builtin_39 (con string "right")] (delay (con unit ()))])
+              [(lam anf_11
+                (case
+                  anf_11
+                  [[assertAt_6 (con string "\0assert\0\48")]
+                    (lam unit_12
+                      [(lam applyForward_15
+                        [(lam decimal_26
+                          [(lam anf_27
+                            [(lam anf_36
+                              [(lam anf_37 [[assertAt_6 anf_37] (lam unit_38 (error))])
+                                [[(builtin appendString) (con string "\0assert\0\48\0\49\0")] anf_36]])
+                              (case
+                                anf_27
+                                [(lam anf_35 [[applyForward_15 anf_35] (builtin decodeUtf8)])
+                                  [[applyForward_15 (con integer 1)] decimal_26]]
+                                [(lam anf_28
+                                  [(lam anf_29
+                                    [(lam anf_30
+                                      [(lam anf_31
+                                        [(lam anf_32
+                                          [(lam anf_33
+                                            [(lam anf_34 [anf_33 anf_34]) [(builtin appendString) (con string "-")]])
+                                            [applyForward_15 anf_32]])
+                                          [[applyForward_15 anf_31] (builtin decodeUtf8)]])
+                                        [[applyForward_15 anf_30] decimal_26]])
+                                      [anf_28 anf_29]])
+                                    [(builtin subtractInteger) (con integer 0)]])
+                                  [applyForward_15 (con integer 1)]])])
+                            [[(builtin lessThanInteger) (con integer 1)] (con integer 0)]])
+                          [(lam self_16 [self_16 self_16])
+                            (lam self_17
+                              (lam n_18
+                                [(lam anf_19
+                                  (case
+                                    anf_19
+                                    [(lam anf_21
+                                      [(lam anf_22
+                                        [(lam anf_23
+                                          [(lam anf_24
+                                            [(lam anf_25 [[(builtin appendByteString) anf_22] anf_25])
+                                              [[(builtin consByteString) anf_24] (con bytestring #)]])
+                                            [partial_40 anf_23]])
+                                          [[(builtin remainderInteger) n_18] (con integer 10)]])
+                                        [[self_17 self_17] anf_21]])
+                                      [[(builtin quotientInteger) n_18] (con integer 10)]]
+                                    [(lam anf_20 [[(builtin consByteString) anf_20] (con bytestring #)])
+                                      [partial_40 n_18]]))
+                                  [[(builtin lessThanInteger) n_18] (con integer 10)]]))]])
+                        (lam x_13 (lam f_14 [f_14 x_13]))])]
+                  (con unit ())))
+                [apply_9 (con integer 2)]]))
+            (force
+              [[builtin_39 (con string "partial")]
+                (delay (lam y_8 [[(builtin equalsInteger) (con integer 1)] y_8]))])]))
+        (lam marker_3
+          (lam rest_4 [(lam anf_5 [anf_5 (con unit ())]) [[builtin_39 marker_3] rest_4]]))])
+      [(builtin addInteger) (con integer 48)]])
+    (force (builtin trace))])
+--- encoded target UPLC
 (program 1.1.0
   [(lam i0
     [(lam i1
@@ -95,6 +343,67 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
       (con string "left")])
     (con string "partial")])
 --- lazy
+--- unoptimized Core
+let message#12 : string = "unselected" in
+let message#13 : string = "\0assert\00" in
+let fromBool#1 : bool -> bool = \value#6 : bool -> value#6 in
+let fromString#3 : string -> string = \x#7 : string -> x#7 in
+let fromUnit#10 : unit -> unit = \value#11 : unit -> value#11 in
+let assertAt#5 : string -> (unit -> unit) -> unit = \marker#8 : string (rest#9 : unit -> unit) -> trace marker#8 rest#9 (fromUnit#10 ()) in
+let assert_value#2 : bool = fromBool#1 false in
+case@Bool (case@Bool assert_value#2 of
+  True -> trace (fromString#3 message#12) in error
+  False -> fromBool#1 true) of
+  True -> ()
+  False -> assertAt#5 message#13 (\unit#4 : unit -> error)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam message_12
+    [(lam message_13
+      [(lam fromBool_1
+        [(lam fromString_3
+          [(lam fromUnit_10
+            [(lam assertAt_5
+              [(lam assert_value_2
+                (case
+                  (case
+                    assert_value_2
+                    [fromBool_1 (con bool True)]
+                    (force [[(force (builtin trace)) [fromString_3 message_12]] (delay (error))]))
+                  [[assertAt_5 message_13] (lam unit_4 (error))]
+                  (con unit ())))
+                [fromBool_1 (con bool False)]])
+              (lam marker_8
+                (lam rest_9
+                  [[[(force (builtin trace)) marker_8] rest_9] [fromUnit_10 (con unit ())]]))])
+            (lam value_11 value_11)])
+          (lam x_7 x_7)])
+        (lam value_6 value_6)])
+      (con string "\0assert\0\48")])
+    (con string "unselected")])
+--- optimized Core
+let anf#30 : bool = case@Bool false of
+  True -> trace "unselected" in error
+  False -> true in
+case@Bool anf#30 of
+  True -> ()
+  False -> let anf#27 : unit -> unit = trace "\0assert\00" (\unit#26 : unit -> error) in
+  anf#27 ()
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    [(lam anf_1
+      (case
+        anf_1
+        [(lam anf_3 [anf_3 (con unit ())])
+          [[builtin_4 (con string "\0assert\0\48")] (lam unit_2 (error))]]
+        (con unit ())))
+      (case
+        (con bool False)
+        (con bool True)
+        (force [[builtin_4 (con string "unselected")] (delay (error))]))])
+    (force (builtin trace))])
+--- encoded target UPLC
 (program 1.1.0
   [(lam i0
     [(lam i1
@@ -118,6 +427,71 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
       (con string "\0assert\0\48")])
     (con string "unselected")])
 --- lazy or
+--- unoptimized Core
+let message#15 : string = "unselected" in
+let message#16 : string = "\0assert\00" in
+let fromBool#1 : bool -> bool = \value#7 : bool -> value#7 in
+let fromString#9 : string -> string = \x#14 : string -> x#14 in
+let badBool#3 : unit -> bool = \arg#8 : unit -> let match#10 : unit = arg#8 in
+trace (fromString#9 message#15) in error in
+let fromUnit#4 : unit -> unit = \value#11 : unit -> value#11 in
+let assertAt#6 : string -> (unit -> unit) -> unit = \marker#12 : string (rest#13 : unit -> unit) -> trace marker#12 rest#13 (fromUnit#4 ()) in
+let assert_value#2 : bool = fromBool#1 true in
+case@Bool (case@Bool assert_value#2 of
+  True -> true
+  False -> badBool#3 (fromUnit#4 ())) of
+  True -> ()
+  False -> assertAt#6 message#16 (\unit#5 : unit -> error)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam message_15
+    [(lam message_16
+      [(lam fromBool_1
+        [(lam fromString_9
+          [(lam badBool_3
+            [(lam fromUnit_4
+              [(lam assertAt_6
+                [(lam assert_value_2
+                  (case
+                    (case assert_value_2 [badBool_3 [fromUnit_4 (con unit ())]] (con bool True))
+                    [[assertAt_6 message_16] (lam unit_5 (error))]
+                    (con unit ())))
+                  [fromBool_1 (con bool True)]])
+                (lam marker_12
+                  (lam rest_13
+                    [[[(force (builtin trace)) marker_12] rest_13] [fromUnit_4 (con unit ())]]))])
+              (lam value_11 value_11)])
+            (lam arg_8
+              (case
+                arg_8
+                (force [[(force (builtin trace)) [fromString_9 message_15]] (delay (error))])))])
+          (lam x_14 x_14)])
+        (lam value_7 value_7)])
+      (con string "\0assert\0\48")])
+    (con string "unselected")])
+--- optimized Core
+let anf#37 : bool = case@Bool true of
+  True -> true
+  False -> trace "unselected" in error in
+case@Bool anf#37 of
+  True -> ()
+  False -> let anf#34 : unit -> unit = trace "\0assert\00" (\unit#32 : unit -> error) in
+  anf#34 ()
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    [(lam anf_1
+      (case
+        anf_1
+        [(lam anf_3 [anf_3 (con unit ())])
+          [[builtin_4 (con string "\0assert\0\48")] (lam unit_2 (error))]]
+        (con unit ())))
+      (case
+        (con bool True)
+        (force [[builtin_4 (con string "unselected")] (delay (error))])
+        (con bool True))])
+    (force (builtin trace))])
+--- encoded target UPLC
 (program 1.1.0
   [(lam i0
     [(lam i1
@@ -140,6 +514,124 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
       (con string "\0assert\0\48")])
     (con string "unselected")])
 --- lazy and
+--- unoptimized Core
+let message#27 : string = "unselected" in
+let message#28 : string = "\0assert\00" in
+let message#29 : string = "True" in
+let message#30 : string = "False" in
+let message#31 : string = "\0assert\00\00\0" in
+let fromBool#1 : bool -> bool = \value#16 : bool -> value#16 in
+let fromString#18 : string -> string = \x#26 : string -> x#26 in
+let badBool#3 : unit -> bool = \arg#17 : unit -> let match#19 : unit = arg#17 in
+trace (fromString#18 message#27) in error in
+let fromUnit#4 : unit -> unit = \value#20 : unit -> value#20 in
+let assertAt#15 : string -> (unit -> unit) -> unit = \marker#24 : string (rest#25 : unit -> unit) -> trace marker#24 rest#25 (fromUnit#4 ()) in
+let assertCapture#13 : string -> string -> (unit -> unit) -> unit = \prefix#21 : string value#22 : string (rest#23 : unit -> unit) -> assertAt#15 (appendString prefix#21 value#22) rest#23 in
+let assert_value#2 : bool = fromBool#1 false in
+let assert_value#5 : bool = case@Bool assert_value#2 of
+  True -> badBool#3 (fromUnit#4 ())
+  False -> false in
+case@Bool (case@Bool assert_value#5 of
+  True -> fromBool#1 false
+  False -> fromBool#1 true) of
+  True -> ()
+  False -> assertAt#15 message#28 (\unit#14 : unit -> let message#10 : string = message#29 in
+  let message#11 : string = message#30 in
+  let fromString#8 : string -> string = \x#9 : string -> x#9 in
+  let show#6 : bool -> string = \value#7 : bool -> case@Bool value#7 of
+    True -> fromString#8 message#10
+    False -> fromString#8 message#11 in
+  assertCapture#13 message#31 (show#6 assert_value#5) (\unit#12 : unit -> error))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam message_27
+    [(lam message_28
+      [(lam message_29
+        [(lam message_30
+          [(lam message_31
+            [(lam fromBool_1
+              [(lam fromString_18
+                [(lam badBool_3
+                  [(lam fromUnit_4
+                    [(lam assertAt_15
+                      [(lam assertCapture_13
+                        [(lam assert_value_2
+                          [(lam assert_value_5
+                            (case
+                              (case assert_value_5 [fromBool_1 (con bool True)] [fromBool_1 (con bool False)])
+                              [[assertAt_15 message_28]
+                                (lam unit_14
+                                  [(lam message_10
+                                    [(lam message_11
+                                      [(lam fromString_8
+                                        [(lam show_6
+                                          [[[assertCapture_13 message_31] [show_6 assert_value_5]] (lam unit_12 (error))])
+                                          (lam value_7 (case value_7 [fromString_8 message_11] [fromString_8 message_10]))])
+                                        (lam x_9 x_9)])
+                                      message_30])
+                                    message_29])]
+                              (con unit ())))
+                            (case assert_value_2 (con bool False) [badBool_3 [fromUnit_4 (con unit ())]])])
+                          [fromBool_1 (con bool False)]])
+                        (lam prefix_21
+                          (lam value_22
+                            (lam rest_23
+                              [[assertAt_15 [[(builtin appendString) prefix_21] value_22]] rest_23])))])
+                      (lam marker_24
+                        (lam rest_25
+                          [[[(force (builtin trace)) marker_24] rest_25] [fromUnit_4 (con unit ())]]))])
+                    (lam value_20 value_20)])
+                  (lam arg_17
+                    (case
+                      arg_17
+                      (force [[(force (builtin trace)) [fromString_18 message_27]] (delay (error))])))])
+                (lam x_26 x_26)])
+              (lam value_16 value_16)])
+            (con string "\0assert\0\48\0\48\0")])
+          (con string "False")])
+        (con string "True")])
+      (con string "\0assert\0\48")])
+    (con string "unselected")])
+--- optimized Core
+let assertAt#48 : string -> (unit -> unit) -> unit = \marker#46 : string (rest#47 : unit -> unit) -> let anf#64 : unit -> unit = trace marker#46 rest#47 in
+anf#64 () in
+let assert_value#54 : bool = case@Bool false of
+  True -> trace "unselected" in error
+  False -> false in
+let anf#68 : bool = case@Bool assert_value#54 of
+  True -> false
+  False -> true in
+case@Bool anf#68 of
+  True -> ()
+  False -> assertAt#48 "\0assert\00" (\unit#55 : unit -> let anf#70 : string = case@Bool assert_value#54 of
+    True -> "True"
+    False -> "False" in
+  let anf#66 : string = appendString "\0assert\00\00\0" anf#70 in
+  assertAt#48 anf#66 (\unit#62 : unit -> error))
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_11
+    [(lam assertAt_4
+      [(lam assert_value_5
+        [(lam anf_6
+          (case
+            anf_6
+            [[assertAt_4 (con string "\0assert\0\48")]
+              (lam unit_7
+                [(lam anf_8
+                  [(lam anf_9 [[assertAt_4 anf_9] (lam unit_10 (error))])
+                    [[(builtin appendString) (con string "\0assert\0\48\0\48\0")] anf_8]])
+                  (case assert_value_5 (con string "False") (con string "True"))])]
+            (con unit ())))
+          (case assert_value_5 (con bool True) (con bool False))])
+        (case
+          (con bool False)
+          (con bool False)
+          (force [[builtin_11 (con string "unselected")] (delay (error))]))])
+      (lam marker_1
+        (lam rest_2 [(lam anf_3 [anf_3 (con unit ())]) [[builtin_11 marker_1] rest_2]]))])
+    (force (builtin trace))])
+--- encoded target UPLC
 (program 1.1.0
   [(lam i0
     [(lam i1
@@ -181,6 +673,66 @@ description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport 
       (con string "\0assert\0\48")])
     (con string "unselected")])
 --- ordinary lowering is lazy
+--- unoptimized Core
+let message#11 : string = "unselected" in
+let message#12 : string = "wrong" in
+let fromString#2 : string -> string = \x#6 : string -> x#6 in
+let fromBool#3 : bool -> bool = \value#7 : bool -> value#7 in
+let badBool#4 : unit -> bool = \arg#8 : unit -> let match#9 : unit = arg#8 in
+trace (fromString#2 message#11) in error in
+let fromUnit#5 : unit -> unit = \value#10 : unit -> value#10 in
+let ordinary#1 : unit = case@Bool (case@Bool fromBool#3 true of
+  True -> true
+  False -> badBool#4 (fromUnit#5 ())) of
+  True -> fromUnit#5 ()
+  False -> trace (fromString#2 message#12) in error in
+ordinary#1
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam message_11
+    [(lam message_12
+      [(lam fromString_2
+        [(lam fromBool_3
+          [(lam badBool_4
+            [(lam fromUnit_5
+              [(lam ordinary_1 ordinary_1)
+                (case
+                  (case
+                    [fromBool_3 (con bool True)]
+                    [badBool_4 [fromUnit_5 (con unit ())]]
+                    (con bool True))
+                  (force [[(force (builtin trace)) [fromString_2 message_12]] (delay (error))])
+                  [fromUnit_5 (con unit ())])])
+              (lam value_10 value_10)])
+            (lam arg_8
+              (case
+                arg_8
+                (force [[(force (builtin trace)) [fromString_2 message_11]] (delay (error))])))])
+          (lam value_7 value_7)])
+        (lam x_6 x_6)])
+      (con string "wrong")])
+    (con string "unselected")])
+--- optimized Core
+let anf#28 : bool = case@Bool true of
+  True -> true
+  False -> trace "unselected" in error in
+case@Bool anf#28 of
+  True -> ()
+  False -> trace "wrong" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam anf_1
+      (case
+        anf_1
+        (force [[builtin_2 (con string "wrong")] (delay (error))])
+        (con unit ())))
+      (case
+        (con bool True)
+        (force [[builtin_2 (con string "unselected")] (delay (error))])
+        (con bool True))])
+    (force (builtin trace))])
+--- encoded target UPLC
 (program 1.1.0
   [(lam i0
     [(lam i1

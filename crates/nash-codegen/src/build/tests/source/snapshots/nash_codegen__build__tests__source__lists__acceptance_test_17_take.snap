@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 432
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nslice bytes start end = sliceByteString start end bytes\ntake bytes n = slice bytes 0 n\nmain = eq (take #\"010203\" 2) #\"0102\"\n"
 ---
---- core
+--- unoptimized Core
 let eq#2 : bytes -> bytes -> bool = equalsByteString in
 let fromInt#5 : int -> int = \value#10 : int -> value#10 in
 let slice#8 : bytes -> int -> int -> bytes = \bytes#11 : bytes start#12 : int end#13 : int -> sliceByteString start#12 end#13 bytes#11 in
@@ -10,7 +11,7 @@ let take#3 : bytes -> int -> bytes = \bytes#6 : bytes n#7 : int -> slice#8 bytes
 let fromBytes#4 : bytes -> bytes = \value#9 : bytes -> value#9 in
 let main#1 : bool = eq#2 (take#3 (fromBytes#4 (con bytestring #010203)) (fromInt#5 2)) (fromBytes#4 (con bytestring #0102)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam eq_2
     [(lam fromInt_5
@@ -28,6 +29,16 @@ main#1
             (lam end_13 [[[(builtin sliceByteString) start_12] end_13] bytes_11])))])
       (lam value_10 value_10)])
     (builtin equalsByteString)])
+--- optimized Core
+let anf#32 : bytes = sliceByteString 0 2 (con bytestring #010203) in
+let anf#33 : bytes -> bool = equalsByteString anf#32 in
+anf#33 (con bytestring #0102)
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam anf_2 [anf_2 (con bytestring #0102)]) [(builtin equalsByteString) anf_1]])
+    [[[(builtin sliceByteString) (con integer 0)] (con integer 2)]
+      (con bytestring #010203)]])
 --- result
 (con bool True)
 --- logs

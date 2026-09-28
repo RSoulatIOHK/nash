@@ -3,7 +3,7 @@ source: crates/nash-codegen/src/build/tests/source/builtins.rs
 assertion_line: 1
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias proof = { piA : bls_g1, piB : bls_g2 }\nencode : proof -> Data\nencode p = Builtin.constrData 0 [B (bls12_381_g1_compress p.piA), B (bls12_381_g2_compress p.piB)]\npk : proof\npk =\n    { piA = (bls12_381_g1_uncompress #\"b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce\")\n    , piB = (bls12_381_g2_uncompress #\"b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423\")\n    }\nmain : bool\nmain = equalsData (encode pk) (encode pk)\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#5 : int -> int = \value#9 : int -> value#9 in
 let encode#2 : { _0 : bls_g1, _1 : bls_g2 } -> Data = \p#4 : { _0 : bls_g1, _1 : bls_g2 } -> let evaluated#14 : int = fromInt#5 0 in
 let projection#11 : bls_g1 = field@0/2 p#4 in
@@ -14,7 +14,7 @@ let fromBytes#8 : bytes -> bytes = \value#10 : bytes -> value#10 in
 let pk#3 : { _0 : bls_g1, _1 : bls_g2 } = constr 0 (bls12_381_G1_uncompress (fromBytes#8 (con bytestring #b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce))) (bls12_381_G2_uncompress (fromBytes#8 (con bytestring #b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423))) in
 let main#1 : bool = equalsData (encode#2 pk#3) (encode#2 pk#3) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_5
     [(lam encode_2
@@ -46,6 +46,55 @@ main#1
             (case p_4 (lam generated_17 (lam generated_18 generated_17)))])
           [fromInt_5 (con integer 0)]])])
     (lam value_9 value_9)])
+--- optimized Core
+let encode#24 : { _0 : bls_g1, _1 : bls_g2 } -> Data = \p#17 : { _0 : bls_g1, _1 : bls_g2 } -> let projection#19 : bls_g1 = field@0/2 p#17 in
+let anf#29 : bytes = bls12_381_G1_compress projection#19 in
+let evaluated#21 : Data = bData anf#29 in
+let projection#22 : bls_g2 = field@1/2 p#17 in
+let anf#30 : bytes = bls12_381_G2_compress projection#22 in
+let anf#31 : Data = bData anf#30 in
+let anf#32 : list Data = mkCons anf#31 (con (list data) []) in
+let anf#33 : list Data = mkCons evaluated#21 anf#32 in
+constrData 0 anf#33 in
+let anf#35 : bls_g1 = bls12_381_G1_uncompress (con bytestring #b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce) in
+let anf#37 : bls_g2 = bls12_381_G2_uncompress (con bytestring #b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423) in
+let pk#27 : { _0 : bls_g1, _1 : bls_g2 } = constr 0 anf#35 anf#37 in
+let anf#38 : Data = encode#24 pk#27 in
+let anf#39 : Data = encode#24 pk#27 in
+equalsData anf#38 anf#39
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_16
+    [(lam encode_10
+      [(lam anf_11
+        [(lam anf_12
+          [(lam pk_13
+            [(lam anf_14
+              [(lam anf_15 [[(builtin equalsData) anf_14] anf_15]) [encode_10 pk_13]])
+              [encode_10 pk_13]])
+            (constr 0 anf_11 anf_12)])
+          [(builtin bls12_381_G2_uncompress)
+            (con bytestring #b9215e5bc481ba6552384c89c23d45bd650b69462868248bfbb83aee7060579404dba41c781dec7c2bec5fccec06842e0e66ad6d86c7c76c468a32c9c0080eea0219d0953b44b1c4f5605afb1e5a3193264ff730222e94f55207628235f3b423)]])
+        [(builtin bls12_381_G1_uncompress)
+          (con bytestring #b28cb29bc282be68df977b35eb9d8e98b3a0a3fc7c372990bddc50419ca86693e491755338fed4fb42231a7c081252ce)]])
+      (lam p_1
+        [(lam projection_2
+          [(lam anf_3
+            [(lam evaluated_4
+              [(lam projection_5
+                [(lam anf_6
+                  [(lam anf_7
+                    [(lam anf_8
+                      [(lam anf_9 [[(builtin constrData) (con integer 0)] anf_9])
+                        [[builtin_16 evaluated_4] anf_8]])
+                      [[builtin_16 anf_7] (con (list data) [])]])
+                    [(builtin bData) anf_6]])
+                  [(builtin bls12_381_G2_compress) projection_5]])
+                (case p_1 (lam generated_17 (lam generated_18 generated_18)))])
+              [(builtin bData) anf_3]])
+            [(builtin bls12_381_G1_compress) projection_2]])
+          (case p_1 (lam generated_19 (lam generated_20 generated_19)))])])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

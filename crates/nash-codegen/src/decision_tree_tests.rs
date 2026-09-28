@@ -855,7 +855,7 @@ fn big_list_tail_binding_is_only_reconstructed_when_used() {
             omit_expression => true,
             snapshot_suffix => if keep_tail { "used" } else { "ignored" },
         }, {
-            insta::assert_snapshot!(evaluated.to_string());
+            insta::assert_snapshot!(crate::harness::source_snapshot(&arena, core, &evaluated));
         });
     }
 }

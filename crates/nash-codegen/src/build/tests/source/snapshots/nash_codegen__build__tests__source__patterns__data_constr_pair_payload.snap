@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 712
+assertion_line: 682
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nrewrap value =\n    case value of\n        Constr payload -> Constr payload\n        _ -> fail\nmain : int\nmain =\n    case rewrap (Builtin.constrData 7 [I 42]) of\n        Constr pair(index, [I number]) -> Builtin.addInteger index number\n        _ -> fail\n"
 ---
---- core
+--- unoptimized Core
 let rewrap#2 : Data -> Data = \value#41 : Data -> let match#46 : Data = value#41 in
 let leaf#52 : @delay Data = delay error in
 case@Data match#46 of
@@ -36,7 +36,7 @@ let main#1 : int = case@Data match#7 of
   DataI field#39 -> force leaf#24
   DataB field#40 -> force leaf#24 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam rewrap_2
     [(lam fromInt_3
@@ -109,6 +109,99 @@ main#1
             match_46])
           (delay (error))])
         value_41])])
+--- optimized Core
+let anf#77 : Data = iData 42 in
+let anf#78 : list Data = mkCons anf#77 (con (list data) []) in
+let anf#79 : Data = constrData 7 anf#78 in
+let leaf#10 : @delay Data = delay error in
+let match#47 : Data = case@Data anf#79 of
+  DataConstr field#11 -> case@Pair field#11 of
+    Pair tag#14 fields#15 -> constrData tag#14 fields#15
+  DataMap field#16 -> force leaf#10
+  DataList field#17 -> force leaf#10
+  DataI field#18 -> force leaf#10
+  DataB field#19 -> force leaf#10 in
+let leaf#48 : @delay int = delay error in
+case@Data match#47 of
+  DataConstr field#49 -> case@Pair field#49 of
+    Pair field#50 field#51 -> case@List field#51 of
+      Nil -> force leaf#48
+      Cons field#59 field#60 -> case@Data field#59 of
+        DataConstr field#61 -> force leaf#48
+        DataMap field#62 -> force leaf#48
+        DataList field#63 -> force leaf#48
+        DataI field#64 -> case@List field#60 of
+          Nil -> addInteger field#50 field#64
+          Cons field#67 field#68 -> force leaf#48
+        DataB field#69 -> force leaf#48
+  DataMap field#70 -> force leaf#48
+  DataList field#71 -> force leaf#48
+  DataI field#72 -> force leaf#48
+  DataB field#73 -> force leaf#48
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_40
+    [(lam builtin_42
+      [(lam anf_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam leaf_4
+              [(lam match_20
+                [(lam leaf_21
+                  [(lam generated_38
+                    (force
+                      [[[[[[builtin_40 generated_38]
+                        (delay
+                          [(lam field_22
+                            (case
+                              field_22
+                              (lam field_23
+                                (lam field_24
+                                  (case
+                                    field_24
+                                    (lam field_25
+                                      (lam field_26
+                                        [(lam generated_39
+                                          (force
+                                            [[[[[[builtin_40 generated_39] (delay (force leaf_21))] (delay (force leaf_21))]
+                                              (delay (force leaf_21))]
+                                              (delay
+                                                [(lam field_30
+                                                  (case
+                                                    field_26
+                                                    (lam field_31 (lam field_32 (force leaf_21)))
+                                                    [[(builtin addInteger) field_23] field_30]))
+                                                  [(builtin unIData) generated_39]])]
+                                              (delay (force leaf_21))]))
+                                          field_25]))
+                                    (force leaf_21))))))
+                            [(builtin unConstrData) generated_38]])]
+                        (delay (force leaf_21))]
+                        (delay (force leaf_21))]
+                        (delay (force leaf_21))]
+                        (delay (force leaf_21))]))
+                    match_20])
+                  (delay (error))])
+                [(lam generated_41
+                  (force
+                    [[[[[[builtin_40 generated_41]
+                      (delay
+                        [(lam field_5
+                          (case
+                            field_5
+                            (lam tag_6 (lam fields_7 [[(builtin constrData) tag_6] fields_7]))))
+                          [(builtin unConstrData) generated_41]])]
+                      (delay (force leaf_4))]
+                      (delay (force leaf_4))]
+                      (delay (force leaf_4))]
+                      (delay (force leaf_4))]))
+                  anf_3]])
+              (delay (error))])
+            [[(builtin constrData) (con integer 7)] anf_2]])
+          [[builtin_42 anf_1] (con (list data) [])]])
+        [(builtin iData) (con integer 42)]])
+      (force (builtin mkCons))])
+    (force (builtin chooseData))])
 --- result
 (con integer 49)
 --- logs

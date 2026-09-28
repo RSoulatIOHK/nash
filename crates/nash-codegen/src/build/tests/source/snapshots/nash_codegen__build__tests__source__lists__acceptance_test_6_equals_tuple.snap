@@ -1,27 +1,29 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
-assertion_line: 200
+assertion_line: 190
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nsame : (int, list int) -> (int, list int) -> bool\nsame (a, b) (c, d) = if eq a c then eq b d else False\nmain = same (1, []) (1, [])\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#10 : bool -> bool = \value#20 : bool -> value#20 in
 let eq#11 : int -> int -> bool = equalsInteger in
-let eq#12 : list 'erased -> list 'erased -> bool = (\self#36 : @self (list 'erased -> list 'erased -> bool) -> self#36 self#36) (\self#36 : @self (list 'erased -> list 'erased -> bool) xs#21 : list 'erased ys#22 : list 'erased -> let match#33 : list 'erased = xs#21 in
-case@List match#33 of
-  Nil -> let match#23 : list 'erased = ys#22 in
-  case@List match#23 of
-    Nil -> fromBool#10 true
-    Cons field#24 field#25 -> fromBool#10 false
-  Cons field#34 field#35 -> let x#26 : 'erased = field#34 in
-  let restX#27 : list 'erased = field#35 in
-  let match#30 : list 'erased = ys#22 in
-  case@List match#30 of
-    Nil -> fromBool#10 false
-    Cons field#31 field#32 -> let y#28 : 'erased = field#31 in
-    let restY#29 : list 'erased = field#32 in
-    case@Bool eq#11 x#26 y#28 of
-      True -> self#36 self#36 restX#27 restY#29
-      False -> false) in
+letrec
+  eq#12 : list 'erased -> list 'erased -> bool [static []] = \xs#21 : list 'erased ys#22 : list 'erased -> let match#33 : list 'erased = xs#21 in
+  case@List match#33 of
+    Nil -> let match#23 : list 'erased = ys#22 in
+    case@List match#23 of
+      Nil -> fromBool#10 true
+      Cons field#24 field#25 -> fromBool#10 false
+    Cons field#34 field#35 -> let x#26 : 'erased = field#34 in
+    let restX#27 : list 'erased = field#35 in
+    let match#30 : list 'erased = ys#22 in
+    case@List match#30 of
+      Nil -> fromBool#10 false
+      Cons field#31 field#32 -> let y#28 : 'erased = field#31 in
+      let restY#29 : list 'erased = field#32 in
+      case@Bool eq#11 x#26 y#28 of
+        True -> eq#12 restX#27 restY#29
+        False -> false
+in
 let same#2 : (int, list int) -> (int, list int) -> bool = \arg#4 : (int, list int) arg#7 : (int, list int) -> let match#16 : (int, list int) = arg#4 in
 case@Tag match#16 of
   0 field#17 field#18 -> let a#5 : int = field#17 in
@@ -36,7 +38,7 @@ case@Tag match#16 of
 let fromInt#3 : int -> int = \value#19 : int -> value#19 in
 let main#1 : bool = same#2 (constr 0 (fromInt#3 1) (con (list integer) [])) (constr 0 (fromInt#3 1) (con (list integer) [])) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_10
     [(lam eq_11
@@ -107,6 +109,64 @@ main#1
                   xs_21])))]])
       (builtin equalsInteger)])
     (lam value_20 value_20)])
+--- optimized Core
+let eq#38 : int -> int -> bool = equalsInteger in
+letrec
+  eq#39 : list 'erased -> list 'erased -> bool [static []] = \xs#40 : list 'erased ys#41 : list 'erased -> case@List xs#40 of
+    Nil -> case@List ys#41 of
+      Nil -> true
+      Cons field#44 field#45 -> false
+    Cons field#46 field#47 -> case@List ys#41 of
+      Nil -> false
+      Cons field#51 field#52 -> let anf#71 : bool = eq#38 field#46 field#51 in
+      case@Bool anf#71 of
+        True -> eq#39 field#47 field#52
+        False -> false
+in
+let anf#74 : (int, list int) = constr 0 1 (con (list integer) []) in
+let anf#77 : (int, list int) = constr 0 1 (con (list integer) []) in
+case@Tag anf#74 of
+  0 field#58 field#59 -> case@Tag anf#77 of
+    0 field#63 field#64 -> let anf#72 : bool = eq#38 field#58 field#63 in
+    case@Bool anf#72 of
+      True -> eq#39 field#59 field#64
+      False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam eq_4
+    [(lam eq_16
+      [(lam anf_17
+        [(lam anf_18
+          (case
+            anf_17
+            (lam field_19
+              (lam field_20
+                (case
+                  anf_18
+                  (lam field_21
+                    (lam field_22
+                      [(lam anf_23 (case anf_23 (con bool False) [[eq_16 field_20] field_22]))
+                        [[eq_4 field_19] field_21]])))))))
+          (constr 0 (con integer 1) (con (list integer) []))])
+        (constr 0 (con integer 1) (con (list integer) []))])
+      [(lam self_5 [self_5 self_5])
+        (lam self_6
+          (lam xs_7
+            (lam ys_8
+              (case
+                xs_7
+                (lam field_11
+                  (lam field_12
+                    (case
+                      ys_8
+                      (lam field_13
+                        (lam field_14
+                          [(lam anf_15
+                            (case anf_15 (con bool False) [[[self_6 self_6] field_12] field_14]))
+                            [[eq_4 field_11] field_13]]))
+                      (con bool False))))
+                (case ys_8 (lam field_9 (lam field_10 (con bool False))) (con bool True))))))]])
+    (builtin equalsInteger)])
 --- result
 (con bool True)
 --- logs

@@ -7,10 +7,15 @@ use nash_ast::{PackageName, QualifiedName, primitives};
 use nash_can::{CanResult, Interface};
 use nash_codegen::{
     build::{Build, Input, TraceConfig},
+    lower,
     program::assemble_core,
+    recursion,
 };
 use nash_plutus::{arena::Arena, data::PlutusData, pretty, term::Term};
 use nash_solve::SolvedTypes;
+
+#[path = "support/optimizer.rs"]
+mod snapshot_optimizer;
 
 struct SourceModule<'a> {
     canonical: CanResult<'a>,
@@ -75,7 +80,27 @@ fn fixture_modules<'a>(arena: &'a Arena, source: &str) -> Vec<SourceModule<'a>> 
     modules
 }
 
-fn baseline(source: &str, parameter: bool) -> String {
+struct Snapshot {
+    text: String,
+    outcomes: Vec<(String, Vec<String>)>,
+    boundaries: Vec<(i128, bool, bool)>,
+}
+
+impl Snapshot {
+    fn assert_equivalent(&self) {
+        for pair in self.outcomes.as_chunks::<2>().0 {
+            assert_eq!(pair[0], pair[1], "optimizer preserves outcome and logs");
+        }
+        for (minimum, actual, expected) in &self.boundaries {
+            assert_eq!(
+                actual, expected,
+                "minimum lock {minimum} must affect the claim boundary"
+            );
+        }
+    }
+}
+
+fn baseline(source: &str, parameter: bool) -> Snapshot {
     let arena = Arena::new();
     let modules = fixture_modules(&arena, source);
     let validator = modules.last().unwrap();
@@ -91,11 +116,20 @@ fn baseline(source: &str, parameter: bool) -> String {
     let compiled = build
         .compile(&arena, root, None, TraceConfig::default())
         .expect("vesting fixture compiles");
-    let core = nash_ir::pretty::pretty(compiled.core);
+    let code = snapshot_optimizer::code_snapshot(&arena, compiled.core);
     let assembled =
         assemble_core(&arena, compiled.core).expect("vesting fixture lowers to closed UPLC");
-    let uplc = pretty::program(assembled.program);
+    let optimized_core = snapshot_optimizer::candidate(&arena, compiled.core);
+    let optimized_term = lower::lower_with_constant_sharing(&arena, optimized_core).unwrap();
+    let optimized_term = nash_plutus::debruijn::to_debruijn(&arena, optimized_term).unwrap();
+    let optimized_program = nash_plutus::program::Program::new(
+        &arena,
+        nash_plutus::program::Version::plutus_v3(&arena),
+        optimized_term,
+    );
     let mut outcomes = String::new();
+    let mut observations = Vec::new();
+    let mut boundaries = Vec::new();
     for (name, deadline, redeemer, signer, expected) in [
         ("claim after deadline", 10, 0, &b""[..], true),
         ("claim before deadline", 30, 0, &b""[..], false),
@@ -119,37 +153,39 @@ fn baseline(source: &str, parameter: bool) -> String {
                 PlutusData::byte_string(&arena, signer),
             ]),
         );
-        let program = if parameter {
-            assembled
-                .program
-                .apply(&arena, Term::integer_from(&arena, 5))
-        } else {
-            assembled.program
-        };
-        let program = program
-            .apply(&arena, Term::data(&arena, datum))
-            .apply(&arena, Term::data(&arena, action))
-            .apply(&arena, Term::data(&arena, context));
-        let evaluation = program.eval(&arena);
-        assert_eq!(
-            evaluation.term.is_ok(),
-            expected,
-            "{name}: {:?}",
-            evaluation.term
-        );
-        use std::fmt::Write;
-        writeln!(
-            outcomes,
-            "--- scenario\n{name}\n--- result\n{}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
-            match &evaluation.term {
+        for (phase, validator) in [
+            ("unoptimized", assembled.program),
+            ("optimized", optimized_program),
+        ] {
+            let program = if parameter {
+                validator.apply(&arena, Term::integer_from(&arena, 5))
+            } else {
+                validator
+            };
+            let evaluation = program
+                .apply(&arena, Term::data(&arena, datum))
+                .apply(&arena, Term::data(&arena, action))
+                .apply(&arena, Term::data(&arena, context))
+                .eval(&arena);
+            assert_eq!(
+                evaluation.term.is_ok(),
+                expected,
+                "{phase} {name}: {:?}",
+                evaluation.term
+            );
+            let result = match &evaluation.term {
                 Ok(term) => pretty::term(term),
                 Err(error) => format!("error: {error:?}"),
-            },
-            evaluation.info.logs,
-            evaluation.info.consumed_budget.cpu,
-            evaluation.info.consumed_budget.mem
-        )
-        .unwrap();
+            };
+            observations.push((result.clone(), evaluation.info.logs.clone()));
+            if phase == "unoptimized" {
+                use std::fmt::Write;
+                writeln!(outcomes,
+                    "--- scenario\n{name}\n--- result\n{result}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
+                    evaluation.info.logs, evaluation.info.consumed_budget.cpu, evaluation.info.consumed_budget.mem,
+                ).unwrap();
+            }
+        }
     }
     // The four baseline rows also pass if the extra parameter is ignored.
     // Probe its boundary separately so the test proves it affects execution.
@@ -172,35 +208,40 @@ fn baseline(source: &str, parameter: bool) -> String {
             ]),
         );
         for (minimum, expected) in [(0, true), (5, false)] {
-            let result = assembled
-                .program
-                .apply(&arena, Term::integer_from(&arena, minimum))
-                .apply(&arena, Term::data(&arena, datum))
-                .apply(&arena, Term::data(&arena, action))
-                .apply(&arena, Term::data(&arena, context))
-                .eval(&arena);
-            assert_eq!(
-                result.term.is_ok(),
-                expected,
-                "minimum lock {minimum} must affect the claim boundary"
-            );
+            for validator in [assembled.program, optimized_program] {
+                let result = validator
+                    .apply(&arena, Term::integer_from(&arena, minimum))
+                    .apply(&arena, Term::data(&arena, datum))
+                    .apply(&arena, Term::data(&arena, action))
+                    .apply(&arena, Term::data(&arena, context))
+                    .eval(&arena);
+                boundaries.push((minimum, result.term.is_ok(), expected));
+            }
         }
     }
-    format!("--- core\n{core}\n--- uplc\n{uplc}\n{outcomes}")
+    Snapshot {
+        text: format!("{code}\n{outcomes}"),
+        outcomes: observations,
+        boundaries,
+    }
 }
 
 #[test]
 fn vesting_four_ledger_outcomes() {
     let source = include_str!("fixtures/Vesting.nash");
     let _settings = snapshot_settings(source).bind_to_scope();
-    insta::assert_snapshot!("vesting", baseline(source, false));
+    let snapshot = baseline(source, false);
+    insta::assert_snapshot!("vesting", snapshot.text);
+    snapshot.assert_equivalent();
 }
 
 #[test]
 fn vesting_const_parameter_four_ledger_outcomes() {
     let source = include_str!("fixtures/VestingParam.nash");
     let _settings = snapshot_settings(source).bind_to_scope();
-    insta::assert_snapshot!("vesting_parameter", baseline(source, true));
+    let snapshot = baseline(source, true);
+    insta::assert_snapshot!("vesting_parameter", snapshot.text);
+    snapshot.assert_equivalent();
 }
 
 fn snapshot_settings(source: &str) -> insta::Settings {

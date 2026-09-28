@@ -1348,6 +1348,13 @@ Retain named phase sections for raw Core, ANF, optimized recursive Core, rewritt
 Core and lowered output (plus any separately accepted later cleanup). Keep each optimization's before/after pair in
 one snapshot at the representation it transforms. Differentially evaluate baseline
 and optimized programs, including selected traits, Logic laziness and Big/little case fixtures.
+Every executable codegen snapshot must expose the original Core and O0 UPLC,
+then accepted optimized Core and optimized UPLC, using the shared test pipeline
+in `crates/nash-codegen/tests/support/optimizer.rs`. Thus accepting a pass updates
+the full source and hand-built fixture corpus, not only its dedicated examples.
+Retain isolated-pass and intermediate-phase evidence after this common comparison.
+Metadata and invalid-Core diagnostics remain focused; close open fixtures explicitly
+for rendering, and never execute deliberately divergent fixtures.
 Keep O0 snapshots; never mass-replace them with optimized ones. Run ordinary
 semantic checks separately from the explicit performance regression command.
 

@@ -1,13 +1,40 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/known_bool.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+assertion_line: 22
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), left.uplc, pretty(after), right.uplc, right.result,\nright.logs))"
 ---
+--- unoptimized Core
+force (case@Bool true of
+  True -> delay (trace "forced" in 42)
+  False -> error)
+--- unoptimized UPLC
+(program 1.1.0
+  (force
+    (case
+      (con bool True)
+      (error)
+      (delay
+        (force
+          [[(force (builtin trace)) (con string "forced")] (delay (con integer 42))])))))
+--- optimized Core
+let anf#1 : @delay int = case@Bool true of
+  True -> delay (trace "forced" in 42)
+  False -> error in
+force anf#1
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam anf_2 (force anf_2))
+      (case
+        (con bool True)
+        (error)
+        (delay (force [[builtin_3 (con string "forced")] (delay (con integer 42))])))])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 force (case@Bool true of
   True -> delay (trace "forced" in 42)
   False -> error)
---- core after
-force (delay (trace "forced" in 42))
 --- uplc before
 (program 1.1.0
   (force
@@ -17,6 +44,8 @@ force (delay (trace "forced" in 42))
       (delay
         (force
           [[(force (builtin trace)) (con string "forced")] (delay (con integer 42))])))))
+--- core after
+force (delay (trace "forced" in 42))
 --- uplc after
 (program 1.1.0
   (force

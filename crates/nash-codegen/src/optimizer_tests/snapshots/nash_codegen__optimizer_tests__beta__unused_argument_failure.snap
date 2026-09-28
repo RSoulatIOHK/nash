@@ -1,14 +1,31 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/beta.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+(\unused#1 : int -> trace "unreachable body" in 42) (trace "argument" in error)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam unused_1
+    (force
+      [[(force (builtin trace)) (con string "unreachable body")]
+        (delay (con integer 42))]))
+    (force [[(force (builtin trace)) (con string "argument")] (delay (error))])])
+--- optimized Core
+let anf#3 : int = trace "argument" in error in
+trace "unreachable body" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam anf_1
+      (force [[builtin_2 (con string "unreachable body")] (delay (con integer 42))]))
+      (force [[builtin_2 (con string "argument")] (delay (error))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let anf#2 : int = trace "argument" in error in
 (\unused#1 : int -> trace "unreachable body" in 42) anf#2
---- core after
-let anf#2 : int = trace "argument" in error in
-trace "unreachable body" in 42
 --- baseline
 --- uplc
 (program 1.1.0
@@ -23,6 +40,9 @@ trace "unreachable body" in 42
 error: ExplicitErrorTerm
 --- logs
 ["argument"]
+--- core after
+let anf#2 : int = trace "argument" in error in
+trace "unreachable body" in 42
 --- candidate
 --- uplc
 (program 1.1.0

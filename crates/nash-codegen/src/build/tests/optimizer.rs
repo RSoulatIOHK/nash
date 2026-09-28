@@ -1,9 +1,6 @@
 //! Source-to-optimized snapshots reuse the normal Base fixture compiler.
 use super::*;
-use nash_ir::{
-    anf, build::Builder, hygiene, known_bool, pretty::pretty, small_inline, static_lift,
-    unused_params,
-};
+use nash_ir::{anf, build::Builder, hygiene, known_bool, pretty::pretty, small_inline};
 
 macro_rules! boolean_case_snapshot {
     ($name:ident, $source:literal) => {
@@ -13,10 +10,7 @@ macro_rules! boolean_case_snapshot {
             with_base(source, |arena, build, root| {
                 let compiled = build.compile(arena, root, None, TraceConfig::default()).expect("source compiles to Core");
                 let b = Builder::new(arena);
-                let fresh = hygiene::freshen(&b, compiled.core);
-                let lifted = static_lift::lift(&b, fresh);
-                let shortened = unused_params::reduce(&b, lifted);
-                let accepted = small_inline::simplify(&b, anf::normalize(&b, shortened));
+                let accepted = crate::snapshot_optimizer::optimize(arena, compiled.core);
                 let mut after = accepted;
                 loop {
                     let next = small_inline::simplify(&b, known_bool::reduce(&b, after));

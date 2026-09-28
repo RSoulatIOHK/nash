@@ -1,13 +1,28 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
---- core before
+--- unoptimized Core
 let x#1 : int = trace "capture" in 1 in
 let unused#3 : int -> int = \y#2 : int -> x#1 in
 42
---- core after
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam x_1 [(lam unused_3 (con integer 42)) (lam y_2 x_1)])
+    (force
+      [[(force (builtin trace)) (con string "capture")] (delay (con integer 1))])])
+--- optimized Core
+let x#4 : int = trace "capture" in 1 in
+42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam x_1 (con integer 42))
+      (force [[builtin_2 (con string "capture")] (delay (con integer 1))])])
+    (force (builtin trace))])
+--- isolated pass
+--- core before
 let x#1 : int = trace "capture" in 1 in
 let unused#3 : int -> int = \y#2 : int -> x#1 in
 42
@@ -21,6 +36,10 @@ let unused#3 : int -> int = \y#2 : int -> x#1 in
 (con integer 42)
 --- logs
 ["capture"]
+--- core after
+let x#1 : int = trace "capture" in 1 in
+let unused#3 : int -> int = \y#2 : int -> x#1 in
+42
 --- candidate
 --- uplc
 (program 1.1.0

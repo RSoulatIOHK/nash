@@ -1,20 +1,39 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1098
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias Record = { first : Int, second : Int }\nmain : Record -> (Int, Int)\nmain d = (d.first, d.second)\n"
 ---
---- core
+--- unoptimized Core
 let main#1 : { _0 : Int, _1 : Int } -> (Int, Int) = \d#2 : { _0 : Int, _1 : Int } -> let projection#9 : list Data = unListData d#2 in
 case@List projection#9 of
   Cons head#3 tail#4 -> case@List tail#4 of
     Cons head#7 tail#8 -> constr 0 head#3 head#7 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0 i0)
-    (lam i0
-      [(lam i1
+  [(lam main_1 main_1)
+    (lam d_2
+      [(lam projection_9
         (case
-          i1
-          (lam i2 (lam i3 (case i3 (lam i4 (lam i5 (constr 0 i2 i4))) (error))))
+          projection_9
+          (lam head_3
+            (lam tail_4
+              (case tail_4 (lam head_7 (lam tail_8 (constr 0 head_3 head_7))) (error))))
           (error)))
-        [(builtin unListData) i0]])])
+        [(builtin unListData) d_2]])])
+--- optimized Core
+\d#5 : { _0 : Int, _1 : Int } -> let projection#6 : list Data = unListData d#5 in
+case@List projection#6 of
+  Cons head#10 tail#11 -> case@List tail#11 of
+    Cons head#12 tail#13 -> constr 0 head#10 head#12
+--- optimized UPLC
+(program 1.1.0
+  (lam d_1
+    [(lam projection_2
+      (case
+        projection_2
+        (lam head_3
+          (lam tail_4
+            (case tail_4 (lam head_7 (lam tail_8 (constr 0 head_3 head_7))) (error))))
+        (error)))
+      [(builtin unListData) d_1]]))

@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        _ -> trace \"fallback\" fail\nmain = choose (One 2)\n"
 ---
---- core
+--- unoptimized Core
 let message#23 : string = "subject" in
 let message#24 : string = "fallback" in
 let fromString#6 : string -> string = \value#20 : string -> value#20 in
@@ -20,7 +20,7 @@ case@Pair projection#22 of
 let fromInt#4 : int -> Int = iData in
 let main#1 : int = choose#2 ((\field#3 : Int -> constrData 2 (mkCons field#3 (con (list data) []))) (fromInt#4 2)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_23
     [(lam message_24
@@ -57,6 +57,42 @@ main#1
         (lam value_20 value_20)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let anf#36 : Int = iData 2 in
+let anf#35 : list Data = mkCons anf#36 (con (list data) []) in
+let anf#37 : Main.Choice = constrData 2 anf#35 in
+let match#17 : Main.Choice = trace "subject" in anf#37 in
+let leaf#25 : @delay int = delay (trace "fallback" in error) in
+let projection#26 : pair int (list Data) = unConstrData match#17 in
+case@Pair projection#26 of
+  Pair tag#27 fields#28 -> case@Tag tag#27 of
+    0 -> 1
+    1 -> force leaf#25
+    2 -> force leaf#25
+    3 -> force leaf#25
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_9
+    [(lam builtin_10
+      [(lam anf_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam match_4
+              [(lam leaf_5
+                [(lam projection_6
+                  (case
+                    projection_6
+                    (lam tag_7
+                      (lam fields_8
+                        (case tag_7 (con integer 1) (force leaf_5) (force leaf_5) (force leaf_5))))))
+                  [(builtin unConstrData) match_4]])
+                (delay (force [[builtin_9 (con string "fallback")] (delay (error))]))])
+              (force [[builtin_9 (con string "subject")] (delay anf_3)])])
+            [[(builtin constrData) (con integer 2)] anf_2]])
+          [[builtin_10 anf_1] (con (list data) [])]])
+        [(builtin iData) (con integer 2)]])
+      (force (builtin mkCons))])
+    (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm
 --- logs

@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 1783
+assertion_line: 1744
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nselect : Record -> int\nselect r =\n    let\n        updated = { r | a = 10 }\n    in\n    Builtin.addInteger (Builtin.unIData r.c) (Builtin.unIData updated.a)\nmain = select { a = 1, b = 2, c = 3, d = 4 }\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> Int = iData in
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let base#10 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#4 in
 let evaluated#14 : Int = fromInt#3 10 in
@@ -18,7 +18,7 @@ case@List projection#13 of
         Cons head#8 tail#9 -> addInteger evaluated#18 (unIData head#8) in
 let main#1 : int = select#2 (listData (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (mkCons (fromInt#3 3) (mkCons (fromInt#3 4) (con (list data) [])))))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam select_2
@@ -63,6 +63,87 @@ main#1
             [fromInt_3 (con integer 10)]])
           r_4])])
     (builtin iData)])
+--- optimized Core
+let fromInt#19 : int -> Int = iData in
+let anf#39 : Int = fromInt#19 1 in
+let anf#40 : Int = fromInt#19 2 in
+let anf#41 : Int = fromInt#19 3 in
+let anf#42 : Int = fromInt#19 4 in
+let anf#43 : list Data = mkCons anf#42 (con (list data) []) in
+let anf#44 : list Data = mkCons anf#41 anf#43 in
+let anf#45 : list Data = mkCons anf#40 anf#44 in
+let anf#46 : list Data = mkCons anf#39 anf#45 in
+let anf#47 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#46 in
+let evaluated#22 : Int = fromInt#19 10 in
+let projection#23 : list Data = unListData anf#47 in
+case@List projection#23 of
+  Cons head#24 tail#25 -> let anf#37 : list Data = mkCons evaluated#22 tail#25 in
+  let updated#26 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#37 in
+  case@List tail#25 of
+    Cons head#27 tail#28 -> case@List tail#28 of
+      Cons head#29 tail#30 -> let evaluated#31 : int = unIData head#29 in
+      let projection#32 : list Data = unListData updated#26 in
+      case@List projection#32 of
+        Cons head#33 tail#34 -> let anf#38 : int = unIData head#33 in
+        addInteger evaluated#31 anf#38
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_51
+    [(lam fromInt_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4
+            [(lam anf_5
+              [(lam anf_6
+                [(lam anf_7
+                  [(lam anf_8
+                    [(lam anf_9
+                      [(lam anf_10
+                        [(lam evaluated_11
+                          [(lam projection_12
+                            (case
+                              projection_12
+                              (lam head_13
+                                (lam tail_14
+                                  [(lam anf_15
+                                    [(lam updated_16
+                                      (case
+                                        tail_14
+                                        (lam head_17
+                                          (lam tail_18
+                                            (case
+                                              tail_18
+                                              (lam head_20
+                                                (lam tail_21
+                                                  [(lam evaluated_35
+                                                    [(lam projection_36
+                                                      (case
+                                                        projection_36
+                                                        (lam head_48
+                                                          (lam tail_49
+                                                            [(lam anf_50 [[(builtin addInteger) evaluated_35] anf_50])
+                                                              [(builtin unIData) head_48]]))
+                                                        (error)))
+                                                      [(builtin unListData) updated_16]])
+                                                    [(builtin unIData) head_20]]))
+                                              (error))))
+                                        (error)))
+                                      [(builtin listData) anf_15]])
+                                    [[builtin_51 evaluated_11] tail_14]]))
+                              (error)))
+                            [(builtin unListData) anf_10]])
+                          [fromInt_1 (con integer 10)]])
+                        [(builtin listData) anf_9]])
+                      [[builtin_51 anf_2] anf_8]])
+                    [[builtin_51 anf_3] anf_7]])
+                  [[builtin_51 anf_4] anf_6]])
+                [[builtin_51 anf_5] (con (list data) [])]])
+              [fromInt_1 (con integer 4)]])
+            [fromInt_1 (con integer 3)]])
+          [fromInt_1 (con integer 2)]])
+        [fromInt_1 (con integer 1)]])
+      (builtin iData)])
+    (force (builtin mkCons))])
 --- result
 (con integer 13)
 --- logs

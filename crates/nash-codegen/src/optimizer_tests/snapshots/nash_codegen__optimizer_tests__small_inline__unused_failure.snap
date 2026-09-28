@@ -1,7 +1,41 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 37
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline uplc\\n{}\\n--- core after\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let increment#3 : int -> int -> int = \x#1 : int unused#2 : int -> addInteger x#1 1 in
+addInteger (increment#3 1 (trace "failure" in error)) (increment#3 (trace "unreached" in 1) 2)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam increment_3
+    [[(builtin addInteger)
+      [[increment_3 (con integer 1)]
+        (force [[(force (builtin trace)) (con string "failure")] (delay (error))])]]
+      [[increment_3
+        (force
+          [[(force (builtin trace)) (con string "unreached")] (delay (con integer 1))])]
+        (con integer 2)]])
+    (lam x_1 (lam unused_2 [[(builtin addInteger) x_1] (con integer 1)]))])
+--- optimized Core
+let arg#7 : int = trace "failure" in error in
+let anf#9 : int = addInteger 1 1 in
+let arg#8 : int = trace "unreached" in 1 in
+let anf#10 : int = addInteger arg#8 1 in
+addInteger anf#9 anf#10
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam arg_1
+      [(lam anf_2
+        [(lam arg_3
+          [(lam anf_4 [[(builtin addInteger) anf_2] anf_4])
+            [[(builtin addInteger) arg_3] (con integer 1)]])
+          (force [[builtin_5 (con string "unreached")] (delay (con integer 1))])])
+        [[(builtin addInteger) (con integer 1)] (con integer 1)]])
+      (force [[builtin_5 (con string "failure")] (delay (error))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let increment#3 : int -> int -> int = \x#1 : int unused#2 : int -> addInteger x#1 1 in
 let anf#4 : int -> int = increment#3 1 in
@@ -9,12 +43,6 @@ let anf#5 : int = trace "failure" in error in
 let anf#6 : int = anf#4 anf#5 in
 let anf#7 : int = trace "unreached" in 1 in
 let anf#8 : int = increment#3 anf#7 2 in
-addInteger anf#6 anf#8
---- core after
-let anf#5 : int = trace "failure" in error in
-let anf#6 : int = addInteger 1 1 in
-let anf#7 : int = trace "unreached" in 1 in
-let anf#8 : int = addInteger anf#7 1 in
 addInteger anf#6 anf#8
 --- baseline uplc
 (program 1.1.0
@@ -31,6 +59,12 @@ addInteger anf#6 anf#8
         (force [[(force (builtin trace)) (con string "failure")] (delay (error))])])
       [increment_3 (con integer 1)]])
     (lam x_1 (lam unused_2 [[(builtin addInteger) x_1] (con integer 1)]))])
+--- core after
+let anf#5 : int = trace "failure" in error in
+let anf#6 : int = addInteger 1 1 in
+let anf#7 : int = trace "unreached" in 1 in
+let anf#8 : int = addInteger anf#7 1 in
+addInteger anf#6 anf#8
 --- optimized uplc
 (program 1.1.0
   [(lam anf_5

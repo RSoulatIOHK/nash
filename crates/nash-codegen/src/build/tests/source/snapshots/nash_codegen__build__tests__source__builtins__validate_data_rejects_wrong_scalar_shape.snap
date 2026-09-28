@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 470
+assertion_line: 443
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (validate)\ndecoded : Int\ndecoded = validate (B #\"aa\")\nmain = unIData decoded\n"
 ---
---- core
+--- unoptimized Core
 let validate#3 : Data -> Int = \value#6 : Data -> let candidate#7 : Int = (\coerce#9 : Data -> coerce#9) value#6 in
 let destruct#8 : int = unIData candidate#7 in
 candidate#7 in
@@ -11,7 +11,7 @@ let fromBytes#5 : bytes -> bytes = \value#10 : bytes -> value#10 in
 let decoded#2 : Int = validate#3 ((\field#4 : bytes -> bData field#4) (fromBytes#5 (con bytestring #aa))) in
 let main#1 : int = unIData decoded#2 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam validate_3
     [(lam fromBytes_5
@@ -22,6 +22,15 @@ main#1
     (lam value_6
       [(lam candidate_7 [(lam destruct_8 candidate_7) [(builtin unIData) candidate_7]])
         [(lam coerce_9 coerce_9) value_6]])])
+--- optimized Core
+let anf#22 : Data = bData (con bytestring #aa) in
+let destruct#14 : int = unIData anf#22 in
+unIData anf#22
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam destruct_2 [(builtin unIData) anf_1]) [(builtin unIData) anf_1]])
+    [(builtin bData) (con bytestring #aa)]])
 --- result
 error: Runtime(MalFormedData(ByteString([170])))
 --- logs

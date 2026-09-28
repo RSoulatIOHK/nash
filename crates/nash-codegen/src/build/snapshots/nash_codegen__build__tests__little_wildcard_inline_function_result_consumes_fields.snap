@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Two int int\nchoose : choice -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> \\n -> n\n        _ -> trace \"fallback\" (\\n -> addInteger n 1)\nmain = (choose Stop 10, choose (Two 3 4) 20)\n"
 ---
---- core
+--- unoptimized Core
 let message#15 : string = "subject" in
 let message#16 : string = "fallback" in
 let fromInt#3 : int -> int = \value#13 : int -> value#13 in
@@ -13,7 +14,7 @@ case@Tag match#10 of
   1 field#11 field#12 -> trace (fromString#7 message#16) in \n#9 : int -> addInteger n#9 (fromInt#3 1) in
 let main#1 : (int, int) = constr 0 (choose#2 (constr 0) (fromInt#3 10)) (choose#2 ((\field#4 : int field#5 : int -> constr 1 field#4 field#5) (fromInt#3 3) (fromInt#3 4)) (fromInt#3 20)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_15
     [(lam message_16
@@ -43,6 +44,44 @@ main#1
         (lam value_13 value_13)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let choose#29 : Main.choice -> int -> int = \subject#23 : Main.choice -> let match#24 : Main.choice = trace "subject" in subject#23 in
+case@Tag match#24 of
+  0 -> \n#25 : int -> n#25
+  1 field#26 field#27 -> trace "fallback" in \n#28 : int -> addInteger n#28 1 in
+let anf#36 : Main.choice = constr 0 in
+let anf#37 : int -> int = choose#29 anf#36 in
+let anf#39 : int = anf#37 10 in
+let anf#43 : Main.choice = constr 1 3 4 in
+let anf#44 : int -> int = choose#29 anf#43 in
+let anf#46 : int = anf#44 20 in
+constr 0 anf#39 anf#46
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_14
+    [(lam choose_7
+      [(lam anf_8
+        [(lam anf_9
+          [(lam anf_10
+            [(lam anf_11
+              [(lam anf_12 [(lam anf_13 (constr 0 anf_10 anf_13)) [anf_12 (con integer 20)]])
+                [choose_7 anf_11]])
+              (constr 1 (con integer 3) (con integer 4))])
+            [anf_9 (con integer 10)]])
+          [choose_7 anf_8]])
+        (constr 0)])
+      (lam subject_1
+        [(lam match_2
+          (case
+            match_2
+            (lam n_3 n_3)
+            (lam field_4
+              (lam field_5
+                (force
+                  [[builtin_14 (con string "fallback")]
+                    (delay (lam n_6 [[(builtin addInteger) n_6] (con integer 1)]))])))))
+          (force [[builtin_14 (con string "subject")] (delay subject_1)])])])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 10) (con integer 21))
 --- logs

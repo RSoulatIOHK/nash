@@ -1,14 +1,38 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/beta.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+(\x#1 : int -> trace "intermediate" in \y#2 : int -> trace "returned body" in y#2) 0 (trace "extra" in 42)
+--- unoptimized UPLC
+(program 1.1.0
+  [[(lam x_1
+    (force
+      [[(force (builtin trace)) (con string "intermediate")]
+        (delay
+          (lam y_2
+            (force [[(force (builtin trace)) (con string "returned body")] (delay y_2)])))]))
+    (con integer 0)]
+    (force
+      [[(force (builtin trace)) (con string "extra")] (delay (con integer 42))])])
+--- optimized Core
+let anf#5 : int -> int = trace "intermediate" in \y#4 : int -> trace "returned body" in y#4 in
+let anf#6 : int = trace "extra" in 42 in
+anf#5 anf#6
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    [(lam anf_2
+      [(lam anf_3 [anf_2 anf_3])
+        (force [[builtin_4 (con string "extra")] (delay (con integer 42))])])
+      (force
+        [[builtin_4 (con string "intermediate")]
+          (delay (lam y_1 (force [[builtin_4 (con string "returned body")] (delay y_1)])))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let anf#3 : int -> int = (\x#1 : int -> trace "intermediate" in \y#2 : int -> trace "returned body" in y#2) 0 in
-let anf#4 : int = trace "extra" in 42 in
-anf#3 anf#4
---- core after
-let anf#3 : int -> int = trace "intermediate" in \y#2 : int -> trace "returned body" in y#2 in
 let anf#4 : int = trace "extra" in 42 in
 anf#3 anf#4
 --- baseline
@@ -29,6 +53,10 @@ anf#3 anf#4
 (con integer 42)
 --- logs
 ["intermediate", "extra", "returned body"]
+--- core after
+let anf#3 : int -> int = trace "intermediate" in \y#2 : int -> trace "returned body" in y#2 in
+let anf#4 : int = trace "extra" in 42 in
+anf#3 anf#4
 --- candidate
 --- uplc
 (program 1.1.0

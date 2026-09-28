@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 796
+assertion_line: 791
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nmain = neq () ()\n"
 ---
---- core
+--- unoptimized Core
 let not#6 : 'erased -> bool = \value#9 : 'erased -> case@Bool (\identity#10 : bool -> identity#10) value#9 of
   True -> false
   False -> true in
@@ -15,15 +15,25 @@ let neq#2 : 'erased -> 'erased -> bool = \a#4 : 'erased b#5 : 'erased -> not#6 (
 let fromUnit#3 : unit -> unit = \value#8 : unit -> value#8 in
 let main#1 : bool = neq#2 (fromUnit#3 ()) (fromUnit#3 ()) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2
-        [(lam i3
-          [(lam i4 [(lam i5 i5) [[i3 [i4 (con unit ())]] [i4 (con unit ())]]])
-            (lam i4 i4)])
-          (lam i3 (lam i4 [i0 [[i2 i3] i4]]))])
-        (lam i2 (lam i3 (case i2 (case i3 [i1 (con bool True)]))))])
-      (lam i1 i1)])
-    (lam i0 (case [(lam i1 i1) i0] (con bool True) (con bool False)))])
+  [(lam not_6
+    [(lam fromBool_13
+      [(lam eq_7
+        [(lam neq_2
+          [(lam fromUnit_3
+            [(lam main_1 main_1)
+              [[neq_2 [fromUnit_3 (con unit ())]] [fromUnit_3 (con unit ())]]])
+            (lam value_8 value_8)])
+          (lam a_4 (lam b_5 [not_6 [[eq_7 a_4] b_5]]))])
+        (lam arg_11
+          (lam arg_12 (case arg_11 (case arg_12 [fromBool_13 (con bool True)]))))])
+      (lam value_16 value_16)])
+    (lam value_9
+      (case [(lam identity_10 identity_10) value_9] (con bool True) (con bool False)))])
+--- optimized Core
+case@Bool true of
+  True -> false
+  False -> true
+--- optimized UPLC
+(program 1.1.0 (case (con bool True) (con bool True) (con bool False)))

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype First = First\ntype Second = Second\nencodeFirst : First -> Data\nencodeFirst value =\n    case value of\n        First -> Builtin.constrData 0 []\nencodeSecond : Second -> Data\nencodeSecond value =\n    case value of\n        Second -> Builtin.constrData 1 []\nmain = Builtin.equalsData (encodeFirst First) (encodeSecond Second)\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#5 : int -> int = \value#9 : int -> value#9 in
 let encodeFirst#2 : Main.First -> Data = \value#4 : Main.First -> let match#6 : Main.First = value#4 in
 constrData (fromInt#5 0) (con (list data) []) in
@@ -10,7 +11,7 @@ let encodeSecond#3 : Main.Second -> Data = \value#7 : Main.Second -> let match#8
 constrData (fromInt#5 1) (con (list data) []) in
 let main#1 : bool = equalsData (encodeFirst#2 (constrData 0 (con (list data) []))) (encodeSecond#3 (constrData 0 (con (list data) []))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_5
     [(lam encodeFirst_2
@@ -28,6 +29,24 @@ main#1
           [[(builtin constrData) [fromInt_5 (con integer 0)]] (con (list data) [])])
           value_4])])
     (lam value_9 value_9)])
+--- optimized Core
+let anf#21 : Main.First = constrData 0 (con (list data) []) in
+let anf#22 : Data = constrData 0 (con (list data) []) in
+let anf#23 : Main.Second = constrData 0 (con (list data) []) in
+let anf#24 : Data = constrData 1 (con (list data) []) in
+equalsData anf#22 anf#24
+--- optimized UPLC
+(program 1.1.0
+  [(lam partial_5
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4 [[(builtin equalsData) anf_2] anf_4])
+            [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+          [partial_5 (con (list data) [])]])
+        [partial_5 (con (list data) [])]])
+      [partial_5 (con (list data) [])]])
+    [(builtin constrData) (con integer 0)]])
 --- result
 (con bool False)
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nvalue = trace \"instance\" 42\nsmall : int\nsmall = value\nbig : Int\nbig = value\nmain = (small, small, big)\n"
 ---
---- core
+--- unoptimized Core
 let message#11 : string = "instance" in
 let fromInt#6 : int -> int = \value#9 : int -> value#9 in
 let fromString#7 : string -> string = \value#10 : string -> value#10 in
@@ -13,7 +14,7 @@ let value#5 : 'erased = trace (fromString#7 message#11) in fromInt#8 42 in
 let big#3 : Int = value#5 in
 let main#1 : (int, int, Int) = constr 0 small#2 small#2 big#3 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_11
     [(lam fromInt_6
@@ -34,6 +35,21 @@ main#1
         (lam value_10 value_10)])
       (lam value_9 value_9)])
     (con string "instance")])
+--- optimized Core
+let message#12 : string = "instance" in
+let value#17 : 'erased = trace message#12 in 42 in
+let value#20 : 'erased = trace message#12 in iData 42 in
+constr 0 value#17 value#17 value#20
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    [(lam message_1
+      [(lam value_2
+        [(lam value_3 (constr 0 value_2 value_2 value_3))
+          (force [[builtin_4 message_1] (delay [(builtin iData) (con integer 42)])])])
+        (force [[builtin_4 message_1] (delay (con integer 42))])])
+      (con string "instance")])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 42) (con integer 42) (con data (I 42)))
 --- logs

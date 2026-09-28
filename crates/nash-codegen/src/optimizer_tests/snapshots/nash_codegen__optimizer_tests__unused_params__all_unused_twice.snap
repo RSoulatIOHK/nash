@@ -1,16 +1,35 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let helper#2 : int -> int = \x#1 : int -> trace "body" in 21 in
+addInteger (helper#2 1) (helper#2 2)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam helper_2
+    [[(builtin addInteger) [helper_2 (con integer 1)]] [helper_2 (con integer 2)]])
+    (lam x_1
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
+--- optimized Core
+let helper#4 : @delay int = delay (trace "body" in 21) in
+let anf#5 : int = force helper#4 in
+let anf#6 : int = force helper#4 in
+addInteger anf#5 anf#6
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    [(lam helper_1
+      [(lam anf_2 [(lam anf_3 [[(builtin addInteger) anf_2] anf_3]) (force helper_1)])
+        (force helper_1)])
+      (delay (force [[builtin_4 (con string "body")] (delay (con integer 21))]))])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let helper#2 : int -> int = \x#1 : int -> trace "body" in 21 in
 let anf#3 : int = helper#2 1 in
 let anf#4 : int = helper#2 2 in
-addInteger anf#3 anf#4
---- core after
-let helper#2 : @delay int = delay (trace "body" in 21) in
-let anf#3 : int = force helper#2 in
-let anf#4 : int = force helper#2 in
 addInteger anf#3 anf#4
 --- uplc before
 (program 1.1.0
@@ -20,6 +39,11 @@ addInteger anf#3 anf#4
       [helper_2 (con integer 1)]])
     (lam x_1
       (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
+--- core after
+let helper#2 : @delay int = delay (trace "body" in 21) in
+let anf#3 : int = force helper#2 in
+let anf#4 : int = force helper#2 in
+addInteger anf#3 anf#4
 --- uplc after
 (program 1.1.0
   [(lam helper_2

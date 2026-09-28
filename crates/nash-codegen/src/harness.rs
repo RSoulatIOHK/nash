@@ -143,3 +143,27 @@ pub(crate) fn eval_named<'a>(
         budget: evaluation.info.consumed_budget,
     }
 }
+
+/// Source snapshots always compare the original compiled Core with all accepted passes.
+pub(crate) fn source_snapshot<'a>(
+    arena: &'a Arena,
+    core: &'a Core<'a>,
+    evaluated: &Evaluated,
+) -> String {
+    format!(
+        "{}\n--- result\n{}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
+        crate::snapshot_optimizer::code_snapshot(arena, core),
+        evaluated.result,
+        evaluated.logs,
+        evaluated.budget.cpu,
+        evaluated.budget.mem
+    )
+}
+
+/// Keep isolated-pass evidence while every executable fixture tracks the accepted pipeline.
+pub(crate) fn pass_snapshot<'a>(arena: &'a Arena, core: &'a Core<'a>, isolated: String) -> String {
+    format!(
+        "{}\n--- isolated pass\n{isolated}",
+        crate::snapshot_optimizer::code_snapshot(arena, core)
+    )
+}

@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nsame : int -> int -> bool\nsame = eq\nmain = if neq (Builtin.addInteger 20 21) 42 then same 42 42 else False\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#2 : bool -> bool = \value#6 : bool -> value#6 in
 let not#9 : 'erased -> bool = \value#12 : 'erased -> case@Bool (\identity#13 : bool -> identity#13) value#12 of
   True -> false
@@ -16,7 +16,7 @@ let main#1 : bool = case@Bool neq#3 (addInteger (fromInt#4 20) (fromInt#4 21)) (
   True -> same#5 (fromInt#4 42) (fromInt#4 42)
   False -> fromBool#2 false in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_2
     [(lam not_9
@@ -39,6 +39,31 @@ main#1
       (lam value_12
         (case [(lam identity_13 identity_13) value_12] (con bool True) (con bool False)))])
     (lam value_6 value_6)])
+--- optimized Core
+let eq#19 : int -> int -> bool = equalsInteger in
+let anf#31 : int = addInteger 20 21 in
+let anf#28 : bool = eq#19 anf#31 42 in
+let anf#34 : bool = case@Bool anf#28 of
+  True -> false
+  False -> true in
+case@Bool anf#34 of
+  True -> let anf#36 : int -> bool = eq#19 42 in
+  anf#36 42
+  False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam eq_1
+    [(lam anf_2
+      [(lam anf_3
+        [(lam anf_4
+          (case
+            anf_4
+            (con bool False)
+            [(lam anf_5 [anf_5 (con integer 42)]) [eq_1 (con integer 42)]]))
+          (case anf_3 (con bool True) (con bool False))])
+        [[eq_1 anf_2] (con integer 42)]])
+      [[(builtin addInteger) (con integer 20)] (con integer 21)]])
+    (builtin equalsInteger)])
 --- result
 (con bool True)
 --- logs

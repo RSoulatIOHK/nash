@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 445
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\nimpl Eq 'a => Eq (option 'a) where\n    eq a b =\n        case (a, b) of\n            (None, None) -> True\n            (Some x, Some y) -> eq x y\n            _ -> False\norElse opt default =\n    case opt of\n        None -> default\n        Some a -> a\nmain = equalsInteger (orElse (Some 42) 14) 42\n"
 ---
---- core
+--- unoptimized Core
 let orElse#2 : Main.option 'erased -> 'erased -> 'erased = \opt#5 : Main.option 'erased default#6 : 'erased -> let match#8 : Main.option 'erased = opt#5 in
 case@Tag match#8 of
   0 -> default#6
@@ -11,7 +12,7 @@ case@Tag match#8 of
 let fromInt#4 : int -> int = \value#10 : int -> value#10 in
 let main#1 : bool = equalsInteger (orElse#2 ((\field#3 : int -> constr 1 field#3) (fromInt#4 42)) (fromInt#4 14)) (fromInt#4 42) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam orElse_2
     [(lam fromInt_4
@@ -25,6 +26,18 @@ main#1
       (lam default_6
         [(lam match_8 (case match_8 default_6 (lam field_9 [(lam a_7 a_7) field_9])))
           opt_5]))])
+--- optimized Core
+let anf#22 : Main.option int = constr 1 42 in
+let anf#25 : int = case@Tag anf#22 of
+  0 -> 14
+  1 field#14 -> field#14 in
+equalsInteger anf#25 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam anf_3 [[(builtin equalsInteger) anf_3] (con integer 42)])
+      (case anf_1 (con integer 14) (lam field_2 field_2))])
+    (constr 1 (con integer 42))])
 --- result
 (con bool True)
 --- logs

@@ -1,7 +1,62 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 37
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline uplc\\n{}\\n--- core after\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let subtract#3 : int -> int -> int = \x#1 : int y#2 : int -> subtractInteger y#2 x#1 in
+let twice#4 : int -> int = \x#5 : int -> addInteger x#5 x#5 in
+addInteger (subtract#3 (trace "first" in 2) (trace "second" in 5)) (addInteger (subtract#3 1 4) (addInteger (twice#4 (trace "once" in 10)) (twice#4 11)))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam subtract_3
+    [(lam twice_4
+      [[(builtin addInteger)
+        [[subtract_3
+          (force [[(force (builtin trace)) (con string "first")] (delay (con integer 2))])]
+          (force
+            [[(force (builtin trace)) (con string "second")] (delay (con integer 5))])]]
+        [[(builtin addInteger) [[subtract_3 (con integer 1)] (con integer 4)]]
+          [[(builtin addInteger)
+            [twice_4
+              (force [[(force (builtin trace)) (con string "once")] (delay (con integer 10))])]]
+            [twice_4 (con integer 11)]]]])
+      (lam x_5 [[(builtin addInteger) x_5] x_5])])
+    (lam x_1 (lam y_2 [[(builtin subtractInteger) y_2] x_1]))])
+--- optimized Core
+let anf#11 : int = trace "first" in 2 in
+let anf#13 : int = trace "second" in 5 in
+let anf#14 : int = subtractInteger anf#13 anf#11 in
+let anf#15 : int = subtractInteger 4 1 in
+let anf#16 : int = trace "once" in 10 in
+let anf#17 : int = addInteger anf#16 anf#16 in
+let anf#18 : int = addInteger 11 11 in
+let anf#19 : int = addInteger anf#17 anf#18 in
+let anf#20 : int = addInteger anf#15 anf#19 in
+addInteger anf#14 anf#20
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_10
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4
+            [(lam anf_5
+              [(lam anf_6
+                [(lam anf_7
+                  [(lam anf_8
+                    [(lam anf_9 [[(builtin addInteger) anf_3] anf_9])
+                      [[(builtin addInteger) anf_4] anf_8]])
+                    [[(builtin addInteger) anf_6] anf_7]])
+                  [[(builtin addInteger) (con integer 11)] (con integer 11)]])
+                [[(builtin addInteger) anf_5] anf_5]])
+              (force [[builtin_10 (con string "once")] (delay (con integer 10))])])
+            [[(builtin subtractInteger) (con integer 4)] (con integer 1)]])
+          [[(builtin subtractInteger) anf_2] anf_1]])
+        (force [[builtin_10 (con string "second")] (delay (con integer 5))])])
+      (force [[builtin_10 (con string "first")] (delay (con integer 2))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let subtract#3 : int -> int -> int = \x#1 : int y#2 : int -> subtractInteger y#2 x#1 in
 let twice#4 : int -> int = \x#5 : int -> addInteger x#5 x#5 in
@@ -13,17 +68,6 @@ let anf#10 : int = subtract#3 1 4 in
 let anf#11 : int = trace "once" in 10 in
 let anf#12 : int = twice#4 anf#11 in
 let anf#13 : int = twice#4 11 in
-let anf#14 : int = addInteger anf#12 anf#13 in
-let anf#15 : int = addInteger anf#10 anf#14 in
-addInteger anf#9 anf#15
---- core after
-let anf#6 : int = trace "first" in 2 in
-let anf#8 : int = trace "second" in 5 in
-let anf#9 : int = subtractInteger anf#8 anf#6 in
-let anf#10 : int = subtractInteger 4 1 in
-let anf#11 : int = trace "once" in 10 in
-let anf#12 : int = addInteger anf#11 anf#11 in
-let anf#13 : int = addInteger 11 11 in
 let anf#14 : int = addInteger anf#12 anf#13 in
 let anf#15 : int = addInteger anf#10 anf#14 in
 addInteger anf#9 anf#15
@@ -54,6 +98,17 @@ addInteger anf#9 anf#15
         (force [[(force (builtin trace)) (con string "first")] (delay (con integer 2))])])
       (lam x_5 [[(builtin addInteger) x_5] x_5])])
     (lam x_1 (lam y_2 [[(builtin subtractInteger) y_2] x_1]))])
+--- core after
+let anf#6 : int = trace "first" in 2 in
+let anf#8 : int = trace "second" in 5 in
+let anf#9 : int = subtractInteger anf#8 anf#6 in
+let anf#10 : int = subtractInteger 4 1 in
+let anf#11 : int = trace "once" in 10 in
+let anf#12 : int = addInteger anf#11 anf#11 in
+let anf#13 : int = addInteger 11 11 in
+let anf#14 : int = addInteger anf#12 anf#13 in
+let anf#15 : int = addInteger anf#10 anf#14 in
+addInteger anf#9 anf#15
 --- optimized uplc
 (program 1.1.0
   [(lam anf_6

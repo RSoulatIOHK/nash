@@ -1,7 +1,32 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/constant_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 34
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+force (delay (addInteger (trace "same" in 20) (trace "same" in 22)))
+--- unoptimized UPLC
+(program 1.1.0
+  (force
+    (delay
+      [[(builtin addInteger)
+        (force [[(force (builtin trace)) (con string "same")] (delay (con integer 20))])]
+        (force [[(force (builtin trace)) (con string "same")] (delay (con integer 22))])])))
+--- optimized Core
+let anf#1 : int = trace "same" in 20 in
+let anf#2 : int = trace "same" in 22 in
+addInteger anf#1 anf#2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam partial_6
+      [(lam anf_3
+        [(lam anf_4 [[(builtin addInteger) anf_3] anf_4])
+          (force [partial_6 (delay (con integer 22))])])
+        (force [partial_6 (delay (con integer 20))])])
+      [builtin_5 (con string "same")]])
+    (force (builtin trace))])
+--- isolated pass
 --- uplc before
 [(lam builtin_1
   (force

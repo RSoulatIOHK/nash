@@ -1,16 +1,18 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 1281
+assertion_line: 1266
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ncount : int -> int -> int\ncount n step =\n    if Builtin.equalsInteger n 0 then 0\n    else Builtin.addInteger step (count (Builtin.subtractInteger n 1) step)\nmain : int\nmain = count 3 7\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#6 : int -> value#6 in
-let count#2 : int -> int -> int = \n#4 : int step#5 : int -> (\self#7 : @self (int -> int) -> self#7 self#7) (\self#7 : @self (int -> int) n#4 : int -> case@Bool equalsInteger n#4 (fromInt#3 0) of
-  True -> fromInt#3 0
-  False -> addInteger step#5 (self#7 self#7 (subtractInteger n#4 (fromInt#3 1)))) n#4 in
+letrec
+  count#2 : int -> int -> int [static [1]] = \n#4 : int step#5 : int -> case@Bool equalsInteger n#4 (fromInt#3 0) of
+    True -> fromInt#3 0
+    False -> addInteger step#5 (count#2 (subtractInteger n#4 (fromInt#3 1)) step#5)
+in
 let main#1 : int = count#2 (fromInt#3 3) (fromInt#3 7) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam count_2
@@ -28,6 +30,31 @@ main#1
                   [fromInt_3 (con integer 0)])))]
             n_4]))])
     (lam value_6 value_6)])
+--- optimized Core
+letrec
+  worker#14 : int -> int [static []] = \n#13 : int -> let anf#16 : bool = equalsInteger n#13 0 in
+  case@Bool anf#16 of
+    True -> 0
+    False -> let anf#18 : int = subtractInteger n#13 1 in
+    let anf#19 : int = worker#14 anf#18 in
+    addInteger 7 anf#19
+in
+worker#14 3
+--- optimized UPLC
+(program 1.1.0
+  [(lam worker_9 [worker_9 (con integer 3)])
+    [(lam self_3 [self_3 self_3])
+      (lam self_4
+        (lam n_5
+          [(lam anf_6
+            (case
+              anf_6
+              [(lam anf_7
+                [(lam anf_8 [[(builtin addInteger) (con integer 7)] anf_8])
+                  [[self_4 self_4] anf_7]])
+                [[(builtin subtractInteger) n_5] (con integer 1)]]
+              (con integer 0)))
+            [[(builtin equalsInteger) n_5] (con integer 0)]]))]])
 --- result
 (con integer 21)
 --- logs

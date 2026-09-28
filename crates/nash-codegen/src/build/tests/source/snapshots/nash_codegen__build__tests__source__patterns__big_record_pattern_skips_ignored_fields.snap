@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 964
 description: "module Main exposing (..)\ntype alias Record = { a : Int, b : Int, c : Int, d : Int, e : Int }\nread : Record -> int\nread value = case value of\n    { b, d, e } -> Builtin.addInteger (Builtin.unIData b) (Builtin.addInteger (Builtin.unIData d) (Builtin.unIData e))\nmain : int\nmain = read { a = 1, b = 2, c = 3, d = 4, e = 5 }\n"
 ---
---- core
+--- unoptimized Core
 let read#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int } -> int = \value#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int } -> let match#8 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int } = value#4 in
 let projection#21 : list Data = unListData match#8 in
 case@List projection#21 of
@@ -17,7 +18,7 @@ case@List projection#21 of
 let fromInt#3 : int -> Int = iData in
 let main#1 : int = read#2 (listData (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (mkCons (fromInt#3 3) (mkCons (fromInt#3 4) (mkCons (fromInt#3 5) (con (list data) []))))))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam read_2
     [(lam fromInt_3
@@ -68,6 +69,93 @@ main#1
             (error)))
           [(builtin unListData) match_8]])
         value_4])])
+--- optimized Core
+let fromInt#37 : int -> Int = iData in
+let anf#43 : Int = fromInt#37 1 in
+let anf#44 : Int = fromInt#37 2 in
+let anf#45 : Int = fromInt#37 3 in
+let anf#46 : Int = fromInt#37 4 in
+let anf#47 : Int = fromInt#37 5 in
+let anf#48 : list Data = mkCons anf#47 (con (list data) []) in
+let anf#49 : list Data = mkCons anf#46 anf#48 in
+let anf#50 : list Data = mkCons anf#45 anf#49 in
+let anf#51 : list Data = mkCons anf#44 anf#50 in
+let anf#52 : list Data = mkCons anf#43 anf#51 in
+let anf#53 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int } = listData anf#52 in
+let projection#22 : list Data = unListData anf#53 in
+case@List projection#22 of
+  Cons ignored#23 fieldTail#24 -> case@List fieldTail#24 of
+    Cons field#25 fieldTail#26 -> case@List fieldTail#26 of
+      Cons ignored#27 fieldTail#28 -> case@List fieldTail#28 of
+        Cons field#29 fieldTail#30 -> case@List fieldTail#30 of
+          Cons field#31 fieldTail#32 -> let anf#39 : int = unIData field#25 in
+          let anf#40 : int = unIData field#29 in
+          let anf#41 : int = unIData field#31 in
+          let anf#42 : int = addInteger anf#40 anf#41 in
+          addInteger anf#39 anf#42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_55
+    [(lam fromInt_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4
+            [(lam anf_5
+              [(lam anf_6
+                [(lam anf_7
+                  [(lam anf_8
+                    [(lam anf_9
+                      [(lam anf_10
+                        [(lam anf_11
+                          [(lam anf_12
+                            [(lam projection_13
+                              (case
+                                projection_13
+                                (lam ignored_14
+                                  (lam fieldTail_15
+                                    (case
+                                      fieldTail_15
+                                      (lam field_16
+                                        (lam fieldTail_17
+                                          (case
+                                            fieldTail_17
+                                            (lam ignored_18
+                                              (lam fieldTail_19
+                                                (case
+                                                  fieldTail_19
+                                                  (lam field_20
+                                                    (lam fieldTail_21
+                                                      (case
+                                                        fieldTail_21
+                                                        (lam field_33
+                                                          (lam fieldTail_34
+                                                            [(lam anf_35
+                                                              [(lam anf_36
+                                                                [(lam anf_38
+                                                                  [(lam anf_54 [[(builtin addInteger) anf_35] anf_54])
+                                                                    [[(builtin addInteger) anf_36] anf_38]])
+                                                                  [(builtin unIData) field_33]])
+                                                                [(builtin unIData) field_20]])
+                                                              [(builtin unIData) field_16]]))
+                                                        (error))))
+                                                  (error))))
+                                            (error))))
+                                      (error))))
+                                (error)))
+                              [(builtin unListData) anf_12]])
+                            [(builtin listData) anf_11]])
+                          [[builtin_55 anf_2] anf_10]])
+                        [[builtin_55 anf_3] anf_9]])
+                      [[builtin_55 anf_4] anf_8]])
+                    [[builtin_55 anf_5] anf_7]])
+                  [[builtin_55 anf_6] (con (list data) [])]])
+                [fromInt_1 (con integer 5)]])
+              [fromInt_1 (con integer 4)]])
+            [fromInt_1 (con integer 3)]])
+          [fromInt_1 (con integer 2)]])
+        [fromInt_1 (con integer 1)]])
+      (builtin iData)])
+    (force (builtin mkCons))])
 --- result
 (con integer 11)
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-description: "module Main exposing (..)\nimport Primitive exposing (type bool(..))\nimport Bool\nimport Lift exposing (Lift)\nboth : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool\nboth a b = Bool.and a b\nbad : unit -> Bool.Bool\nbad _ = fail\nmain : bool\nmain =\n    if Bool.or Bool.True (bad ()) then\n        both Bool.True True\n    else False\n"
+assertion_line: 772
+description: "module Main exposing (..)\nimport Primitive exposing (type bool(..))\nimport Bool\nimport Logic\nimport Lift exposing (Lift)\nboth : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool\nboth a b = Logic.and a b\nbad : unit -> Bool.Bool\nbad _ = fail\nmain : bool\nmain =\n    if Logic.or Bool.True (bad ()) then\n        both Bool.True True\n    else False\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#2 : bool -> bool = \value#18 : bool -> value#18 in
 let bad#9 : unit -> nash/base:Bool.Bool = \arg#19 : unit -> let match#20 : unit = arg#19 in
 error in
@@ -37,7 +38,7 @@ let main#1 : bool = case@Bool (case@Bool lower#3 (constrData 1 (con (list data) 
   True -> both#17 (constrData 1 (con (list data) [])) (fromBool#2 true)
   False -> fromBool#2 false in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_2
     [(lam bad_9
@@ -89,6 +90,66 @@ main#1
         (lam value_21 value_21)])
       (lam arg_19 (case arg_19 (error)))])
     (lam value_18 value_18)])
+--- optimized Core
+let anf#66 : nash/base:Bool.Bool = constrData 1 (con (list data) []) in
+let projection#52 : pair int (list Data) = unConstrData anf#66 in
+let anf#67 : bool = case@Pair projection#52 of
+  Pair tag#54 fields#55 -> case@Tag tag#54 of
+    0 -> false
+    1 -> true in
+let anf#70 : bool = case@Bool anf#67 of
+  True -> true
+  False -> let anf#69 : nash/base:Bool.Bool = error in
+  let projection#59 : pair int (list Data) = unConstrData anf#69 in
+  case@Pair projection#59 of
+    Pair tag#61 fields#62 -> case@Tag tag#61 of
+      0 -> false
+      1 -> true in
+case@Bool anf#70 of
+  True -> let anf#71 : nash/base:Bool.Bool = constrData 1 (con (list data) []) in
+  let projection#44 : pair int (list Data) = unConstrData anf#71 in
+  let anf#65 : bool = case@Pair projection#44 of
+    Pair tag#46 fields#47 -> case@Tag tag#46 of
+      0 -> false
+      1 -> true in
+  case@Bool anf#65 of
+    True -> true
+    False -> false
+  False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam partial_16
+    [(lam anf_1
+      [(lam projection_2
+        [(lam anf_5
+          [(lam anf_10
+            (case
+              anf_10
+              (con bool False)
+              [(lam anf_11
+                [(lam projection_12
+                  [(lam anf_15 (case anf_15 (con bool False) (con bool True)))
+                    (case
+                      projection_12
+                      (lam tag_13 (lam fields_14 (case tag_13 (con bool False) (con bool True)))))])
+                  [(builtin unConstrData) anf_11]])
+                [partial_16 (con (list data) [])]]))
+            (case
+              anf_5
+              [(lam anf_6
+                [(lam projection_7
+                  (case
+                    projection_7
+                    (lam tag_8 (lam fields_9 (case tag_8 (con bool False) (con bool True))))))
+                  [(builtin unConstrData) anf_6]])
+                (error)]
+              (con bool True))])
+          (case
+            projection_2
+            (lam tag_3 (lam fields_4 (case tag_3 (con bool False) (con bool True)))))])
+        [(builtin unConstrData) anf_1]])
+      [partial_16 (con (list data) [])]])
+    [(builtin constrData) (con integer 1)]])
 --- result
 (con bool True)
 --- logs

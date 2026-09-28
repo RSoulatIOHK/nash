@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 849
+assertion_line: 811
 description: "module Main exposing (..)\nimport Primitive exposing (type bool(..), coerce)\nimport Bool\nimport Logic\nimport Lift exposing (Lift)\ntype alias flag = bool\nimpl Lift bool flag where\n    lift value = coerce value\n    lower value = if coerce value then False else True\noff : flag\noff = coerce True\nboth : (Lift bool 'a, Lift bool 'b) => 'a -> 'b -> bool\nboth a b = Logic.and a b\nmain : bool\nmain = if Logic.and off True then True else both off True\n"
 ---
---- core
+--- unoptimized Core
 let both#2 : 'erased -> 'erased -> bool = \a#10 : 'erased b#11 : 'erased -> let fromBool#14 : bool -> bool = \value#16 : bool -> value#16 in
 let lower#12 : bool -> bool = \value#13 : bool -> case@Bool (\coerce#15 : bool -> coerce#15) value#13 of
   True -> fromBool#14 false
@@ -23,7 +23,7 @@ let main#1 : bool = case@Bool (case@Bool lower#5 off#3 of
   True -> fromBool#4 true
   False -> both#2 off#3 (fromBool#4 true) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam both_2
     [(lam fromBool_4
@@ -53,6 +53,35 @@ main#1
                 [fromBool_14 (con bool True)]
                 [fromBool_14 (con bool False)]))])
           (lam value_16 value_16)]))])
+--- optimized Core
+let value#49 : bool = true in
+let anf#41 : bool = case@Bool value#49 of
+  True -> false
+  False -> true in
+let anf#42 : bool = case@Bool anf#41 of
+  True -> true
+  False -> false in
+case@Bool anf#42 of
+  True -> true
+  False -> let anf#38 : bool = case@Bool value#49 of
+    True -> false
+    False -> true in
+  case@Bool anf#38 of
+    True -> true
+    False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam value_1
+    [(lam anf_2
+      [(lam anf_3
+        (case
+          anf_3
+          [(lam anf_4 (case anf_4 (con bool False) (con bool True)))
+            (case value_1 (con bool True) (con bool False))]
+          (con bool True)))
+        (case anf_2 (con bool False) (con bool True))])
+      (case value_1 (con bool True) (con bool False))])
+    (con bool True)])
 --- result
 (con bool False)
 --- logs

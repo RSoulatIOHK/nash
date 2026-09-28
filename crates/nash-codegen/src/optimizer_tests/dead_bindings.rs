@@ -33,14 +33,18 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, removes: bool, fails: b
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core after\n{}\n--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            pretty(before),
-            pretty(after),
-            baseline.uplc,
-            candidate.uplc,
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            before,
+            format!(
+                "--- core before\n{}\n--- uplc before\n{}\n--- core after\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                baseline.uplc,
+                pretty(after),
+                candidate.uplc,
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     // Properties independent of the expected snapshot.
@@ -194,10 +198,14 @@ fn diverging_call_is_retained() {
     hygiene::validate(after, &[]).unwrap();
     insta::assert_snapshot!(
         "diverging_call",
-        format!(
-            "--- core before\n{}\n--- core after\n{}",
-            pretty(root),
-            pretty(after)
+        crate::harness::pass_snapshot(
+            b.arena,
+            root,
+            format!(
+                "--- core before\n{}\n--- core after\n{}",
+                pretty(root),
+                pretty(after)
+            )
         )
     );
 }
@@ -249,12 +257,16 @@ fn accepted_cleanup_removes_safe_ignored_arguments() {
         assert_eq!(baseline.logs, candidate.logs);
         insta::assert_snapshot!(
             name,
-            format!(
-                "--- core before\n{}\n--- core after\n{}\n--- result\n{}\n--- logs\n{:?}",
-                pretty(before),
-                pretty(after),
-                candidate.result,
-                candidate.logs
+            crate::harness::pass_snapshot(
+                b.arena,
+                before,
+                format!(
+                    "--- core before\n{}\n--- core after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                    pretty(before),
+                    pretty(after),
+                    candidate.result,
+                    candidate.logs
+                )
             )
         );
     }

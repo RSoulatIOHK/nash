@@ -1,16 +1,40 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/beta.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+(\x#1 : int y#2 : int -> trace "body" in subtractInteger x#1 y#2) (trace "first" in 44) (trace "second" in 2)
+--- unoptimized UPLC
+(program 1.1.0
+  [[(lam x_1
+    (lam y_2
+      (force
+        [[(force (builtin trace)) (con string "body")]
+          (delay [[(builtin subtractInteger) x_1] y_2])])))
+    (force
+      [[(force (builtin trace)) (con string "first")] (delay (con integer 44))])]
+    (force
+      [[(force (builtin trace)) (con string "second")] (delay (con integer 2))])])
+--- optimized Core
+let anf#5 : int = trace "first" in 44 in
+let anf#7 : int = trace "second" in 2 in
+trace "body" in subtractInteger anf#5 anf#7
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam anf_1
+      [(lam anf_2
+        (force
+          [[builtin_3 (con string "body")]
+            (delay [[(builtin subtractInteger) anf_1] anf_2])]))
+        (force [[builtin_3 (con string "second")] (delay (con integer 2))])])
+      (force [[builtin_3 (con string "first")] (delay (con integer 44))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let anf#3 : int = trace "first" in 44 in
 let anf#4 : int -> int = (\x#1 : int y#2 : int -> trace "body" in subtractInteger x#1 y#2) anf#3 in
-let anf#5 : int = trace "second" in 2 in
-anf#4 anf#5
---- core after
-let anf#3 : int = trace "first" in 44 in
-let anf#4 : int -> int = \y#2 : int -> trace "body" in subtractInteger anf#3 y#2 in
 let anf#5 : int = trace "second" in 2 in
 anf#4 anf#5
 --- baseline
@@ -33,6 +57,11 @@ anf#4 anf#5
 (con integer 42)
 --- logs
 ["first", "second", "body"]
+--- core after
+let anf#3 : int = trace "first" in 44 in
+let anf#4 : int -> int = \y#2 : int -> trace "body" in subtractInteger anf#3 y#2 in
+let anf#5 : int = trace "second" in 2 in
+anf#4 anf#5
 --- candidate
 --- uplc
 (program 1.1.0

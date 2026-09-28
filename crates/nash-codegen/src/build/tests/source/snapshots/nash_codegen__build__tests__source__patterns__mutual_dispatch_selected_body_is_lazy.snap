@@ -1,22 +1,21 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 795
+assertion_line: 760
 description: "module Main exposing (..)\nimport Builtin exposing (..)\nfirst n = if equalsInteger n 0 then 42 else second (subtractInteger n 1)\nsecond n = if equalsInteger n 0 then fail else first (subtractInteger n 1)\nmain : int\nmain = first 2\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#6 : int -> value#6 in
-let dispatch#8 : @dispatch[(int) -> 'erased, (int) -> 'erased] = \request#9 : @request[(int) -> 'erased, (int) -> 'erased] -> case@Tag request#9 of
-  0 self#10 n#4 -> case@Bool equalsInteger n#4 (fromInt#3 0) of
+letrec
+  first#2 : int -> 'erased [static []] = \n#4 : int -> case@Bool equalsInteger n#4 (fromInt#3 0) of
     True -> fromInt#3 42
-    False -> self#10 (constr 1 self#10 (subtractInteger n#4 (fromInt#3 1)))
-  1 self#13 n#7 -> case@Bool equalsInteger n#7 (fromInt#3 0) of
+    False -> second#5 (subtractInteger n#4 (fromInt#3 1))
+  second#5 : int -> 'erased [static []] = \n#7 : int -> case@Bool equalsInteger n#7 (fromInt#3 0) of
     True -> error
-    False -> self#13 (constr 0 self#13 (subtractInteger n#7 (fromInt#3 1))) in
-let first#2 : int -> 'erased = \n#17 : int -> dispatch#8 (constr 0 dispatch#8 n#17) in
-let second#5 : int -> 'erased = \n#16 : int -> dispatch#8 (constr 1 dispatch#8 n#16) in
+    False -> first#2 (subtractInteger n#7 (fromInt#3 1))
+in
 let main#1 : int = first#2 (fromInt#3 2) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam dispatch_8
@@ -42,6 +41,48 @@ main#1
                   (constr 0 self_13 [[(builtin subtractInteger) n_7] [fromInt_3 (con integer 1)]])]
                 (error))))))])
     (lam value_6 value_6)])
+--- optimized Core
+letrec
+  first#10 : int -> 'erased [static []] = \n#12 : int -> let anf#16 : bool = equalsInteger n#12 0 in
+  case@Bool anf#16 of
+    True -> 42
+    False -> let anf#18 : int = subtractInteger n#12 1 in
+    second#11 anf#18
+  second#11 : int -> 'erased [static []] = \n#13 : int -> let anf#20 : bool = equalsInteger n#13 0 in
+  case@Bool anf#20 of
+    True -> error
+    False -> let anf#22 : int = subtractInteger n#13 1 in
+    first#10 anf#22
+in
+first#10 2
+--- optimized UPLC
+(program 1.1.0
+  [(lam dispatch_28
+    [(lam first_30
+      [(lam second_32 [first_30 (con integer 2)])
+        (lam n_31 [dispatch_28 (constr 1 dispatch_28 n_31)])])
+      (lam n_29 [dispatch_28 (constr 0 dispatch_28 n_29)])])
+    (lam request_15
+      (case
+        request_15
+        (lam self_17
+          (lam n_19
+            [(lam anf_21
+              (case
+                anf_21
+                [(lam anf_23 [self_17 (constr 1 self_17 anf_23)])
+                  [[(builtin subtractInteger) n_19] (con integer 1)]]
+                (con integer 42)))
+              [[(builtin equalsInteger) n_19] (con integer 0)]]))
+        (lam self_24
+          (lam n_25
+            [(lam anf_26
+              (case
+                anf_26
+                [(lam anf_27 [self_24 (constr 0 self_24 anf_27)])
+                  [[(builtin subtractInteger) n_25] (con integer 1)]]
+                (error)))
+              [[(builtin equalsInteger) n_25] (con integer 0)]]))))])
 --- result
 (con integer 42)
 --- logs

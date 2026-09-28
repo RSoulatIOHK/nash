@@ -44,12 +44,7 @@ fn evaluate(name: &str, source: &str) -> crate::harness::Evaluated {
 }
 
 fn compiled_output<'a>(arena: &'a Arena, core: &'a nash_ir::core::Core<'a>) -> String {
-    let assembled = crate::program::assemble_core(arena, core).unwrap();
-    format!(
-        "--- core\n{}\n--- uplc\n{}",
-        nash_ir::pretty::pretty(core),
-        nash_plutus::pretty::program(assembled.program)
-    )
+    crate::snapshot_optimizer::code_snapshot(arena, core)
 }
 
 #[test]
@@ -239,11 +234,11 @@ fn core_eval(name: &str, source: &str) -> crate::harness::Evaluated {
             .unwrap();
         let core =
             crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core).unwrap();
-        let result = crate::harness::eval_core(arena, core);
+        let result = crate::harness::eval_core_raw(arena, core);
 
         insta::assert_snapshot!(
             name,
-            format!("--- core\n{}\n{result}", nash_ir::pretty::pretty(core))
+            crate::harness::source_snapshot(arena, compiled.core, &result)
         );
         crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
         evaluated = Some(result);
@@ -602,11 +597,11 @@ fn all_trace_configs_keep_compiler_and_user_messages_independent() {
                         compiled.core,
                     )
                     .unwrap();
-                    let result = crate::harness::eval_core(arena, core);
+                    let result = crate::harness::eval_core_raw(arena, core);
 
                     insta::assert_snapshot!(
                         format!("trace_config_{user:?}_{compiler}"),
-                        format!("--- core\n{}\n{result}", nash_ir::pretty::pretty(core))
+                        crate::harness::source_snapshot(arena, compiled.core, &result)
                     );
                     crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
                     assert!(result.result.starts_with("error:"));
@@ -768,7 +763,7 @@ fn empty_lists_key_the_native_element_layout_and_erase_big_nominal_names() {
             let core =
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
-            let result = crate::harness::eval_core(arena, core);
+            let result = crate::harness::eval_core_raw(arena, core);
             crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
 
             assert!(result.result.contains("list integer"), "{}", result.result);
@@ -1203,7 +1198,7 @@ macro_rules! source_codegen_snapshot {
                 let rewritten =
                     crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                         .unwrap();
-                let evaluated = crate::harness::eval_core(arena, rewritten);
+                let evaluated = crate::harness::eval_core_raw(arena, rewritten);
                 assert_eq!(
                     evaluated.result.starts_with("error:"),
                     $fails,
@@ -1212,11 +1207,9 @@ macro_rules! source_codegen_snapshot {
                 );
                 insta::assert_snapshot!(
                     stringify!($name),
-                    format!(
-                        "--- core\n{}\n{evaluated}",
-                        nash_ir::pretty::pretty(rewritten)
-                    )
+                    crate::harness::source_snapshot(arena, compiled.core, &evaluated)
                 );
+                crate::harness::assert_candidate_equivalent(arena, compiled.core, &evaluated);
             });
         }
     };
@@ -1316,9 +1309,10 @@ fn source_trace_precedes_failure() {
             let evaluated = crate::harness::eval_core(arena, compiled.core);
             assert!(evaluated.result.starts_with("error:"));
 
-            insta::assert_snapshot!(format!(
-                "--- core\n{}\n{evaluated}",
-                nash_ir::pretty::pretty(compiled.core)
+            insta::assert_snapshot!(crate::harness::source_snapshot(
+                arena,
+                compiled.core,
+                &evaluated
             ));
         },
     );
@@ -1346,11 +1340,12 @@ fn native_case_branches_evaluate_scrutinee_once_and_remain_lazy() {
             let core =
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
-            let result = crate::harness::eval_core(arena, core);
+            let result = crate::harness::eval_core_raw(arena, core);
 
-            insta::assert_snapshot!(format!(
-                "--- core\n{}\n{result}",
-                nash_ir::pretty::pretty(core)
+            insta::assert_snapshot!(crate::harness::source_snapshot(
+                arena,
+                compiled.core,
+                &result
             ));
             crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
         },
@@ -1391,13 +1386,14 @@ fn native_case_dispatches_lists_data_and_sparse_literals() {
             let core =
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
-            let result = crate::harness::eval_core(arena, core);
+            let result = crate::harness::eval_core_raw(arena, core);
 
             assert!(!result.result.starts_with("error:"), "{}", result.result);
 
-            insta::assert_snapshot!(format!(
-                "--- core\n{}\n{result}",
-                nash_ir::pretty::pretty(core)
+            insta::assert_snapshot!(crate::harness::source_snapshot(
+                arena,
+                compiled.core,
+                &result
             ));
             crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
         },
@@ -1442,9 +1438,10 @@ fn consecutive_big_fields_reuse_previous_tails() {
                 .unwrap();
             let result = crate::harness::eval_core(arena, compiled.core);
             assert!(!result.result.starts_with("error:"), "{}", result.result);
-            insta::assert_snapshot!(format!(
-                "--- core\n{}\n{result}",
-                nash_ir::pretty::pretty(compiled.core)
+            insta::assert_snapshot!(crate::harness::source_snapshot(
+                arena,
+                compiled.core,
+                &result
             ));
         },
     );
@@ -1850,13 +1847,14 @@ fn list_eq_little_preserves_custom_eq_and_short_circuit() {
             let core =
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
-            let result = crate::harness::eval_core(arena, core);
+            let result = crate::harness::eval_core_raw(arena, core);
 
             assert!(!result.result.starts_with("error:"), "{}", result.result);
 
-            insta::assert_snapshot!(format!(
-                "--- core\n{}\n{result}",
-                nash_ir::pretty::pretty(core)
+            insta::assert_snapshot!(crate::harness::source_snapshot(
+                arena,
+                compiled.core,
+                &result
             ));
             crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
         },
@@ -2002,13 +2000,14 @@ fn map_eq_little_preserves_custom_eq_and_short_circuit() {
             let core =
                 crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
                     .unwrap();
-            let result = crate::harness::eval_core(arena, core);
+            let result = crate::harness::eval_core_raw(arena, core);
 
             assert!(!result.result.starts_with("error:"), "{}", result.result);
 
-            insta::assert_snapshot!(format!(
-                "--- core\n{}\n{result}",
-                nash_ir::pretty::pretty(core)
+            insta::assert_snapshot!(crate::harness::source_snapshot(
+                arena,
+                compiled.core,
+                &result
             ));
             crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
         },

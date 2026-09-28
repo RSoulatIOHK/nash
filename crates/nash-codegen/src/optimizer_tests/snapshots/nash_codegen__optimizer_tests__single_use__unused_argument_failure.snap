@@ -1,15 +1,33 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+let f#2 : int -> int = \unused#1 : int -> trace "unreachable" in 42 in
+f#2 (trace "failure" in error)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam f_2
+    [f_2 (force [[(force (builtin trace)) (con string "failure")] (delay (error))])])
+    (lam unused_1
+      (force
+        [[(force (builtin trace)) (con string "unreachable")] (delay (con integer 42))]))])
+--- optimized Core
+let arg#5 : int = trace "failure" in error in
+trace "unreachable" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam arg_1
+      (force [[builtin_2 (con string "unreachable")] (delay (con integer 42))]))
+      (force [[builtin_2 (con string "failure")] (delay (error))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let f#2 : int -> int = \unused#1 : int -> trace "unreachable" in 42 in
 let anf#3 : int = trace "failure" in error in
 f#2 anf#3
---- core after
-let anf#3 : int = trace "failure" in error in
-trace "unreachable" in 42
 --- baseline
 --- uplc
 (program 1.1.0
@@ -23,6 +41,9 @@ trace "unreachable" in 42
 error: ExplicitErrorTerm
 --- logs
 ["failure"]
+--- core after
+let anf#3 : int = trace "failure" in error in
+trace "unreachable" in 42
 --- candidate
 --- uplc
 (program 1.1.0

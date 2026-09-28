@@ -1,7 +1,33 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/constant_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 34
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+case@Bool (trace "same" in true) of
+  True -> trace "same" in 42
+  False -> 0
+--- unoptimized UPLC
+(program 1.1.0
+  (case
+    (force [[(force (builtin trace)) (con string "same")] (delay (con bool True))])
+    (con integer 0)
+    (force [[(force (builtin trace)) (con string "same")] (delay (con integer 42))])))
+--- optimized Core
+let anf#1 : bool = trace "same" in true in
+case@Bool anf#1 of
+  True -> trace "same" in 42
+  False -> 0
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam partial_4
+      [(lam anf_2
+        (case anf_2 (con integer 0) (force [partial_4 (delay (con integer 42))])))
+        (force [partial_4 (delay (con bool True))])])
+      [builtin_3 (con string "same")]])
+    (force (builtin trace))])
+--- isolated pass
 --- uplc before
 [(lam builtin_1
   (case

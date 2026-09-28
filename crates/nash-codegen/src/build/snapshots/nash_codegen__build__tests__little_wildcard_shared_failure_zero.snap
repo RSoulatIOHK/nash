@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        _ -> trace \"fallback\" fail\nmain = choose Zero\n"
 ---
---- core
+--- unoptimized Core
 let message#16 : string = "subject" in
 let message#17 : string = "fallback" in
 let fromString#4 : string -> string = \value#14 : string -> value#14 in
@@ -17,7 +17,7 @@ case@Tag match#6 of
   3 field#12 field#13 -> force leaf#10 in
 let main#1 : int = choose#2 (constr 1) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_16
     [(lam message_17
@@ -40,6 +40,31 @@ main#1
         (lam value_14 value_14)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let anf#31 : Main.choice = constr 1 in
+let match#22 : Main.choice = trace "subject" in anf#31 in
+let leaf#23 : @delay int = delay (trace "fallback" in error) in
+case@Tag match#22 of
+  0 -> 1
+  1 -> force leaf#23
+  2 field#24 -> force leaf#23
+  3 field#25 field#26 -> force leaf#23
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam anf_1
+      [(lam match_2
+        [(lam leaf_3
+          (case
+            match_2
+            (con integer 1)
+            (force leaf_3)
+            (lam field_4 (force leaf_3))
+            (lam field_5 (lam field_6 (force leaf_3)))))
+          (delay (force [[builtin_7 (con string "fallback")] (delay (error))]))])
+        (force [[builtin_7 (con string "subject")] (delay anf_1)])])
+      (constr 1)])
+    (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm
 --- logs

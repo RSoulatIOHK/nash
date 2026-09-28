@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 204
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : bool\nmain =\n    let\n        bytes : bytes\n        bytes = \"foo\"\n    in\n    case bytes of\n        \"bar\" -> False\n        #\"666f6f\" -> True\n        _ -> False\n"
 ---
---- core
+--- unoptimized Core
 let message#12 : string = "foo" in
 let message#13 : string = "bar" in
 let fromString#3 : string -> bytes = encodeUtf8 in
@@ -17,7 +18,7 @@ let main#1 : bool = case@Bool (\literal#5 : bytes -> eq#4 literal#5 (fromString#
     True -> fromBool#6 true
     False -> fromBool#6 false in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_12
     [(lam message_13
@@ -44,6 +45,41 @@ main#1
         (builtin encodeUtf8)])
       (con string "bar")])
     (con string "foo")])
+--- optimized Core
+let fromString#16 : string -> bytes = encodeUtf8 in
+let eq#17 : bytes -> bytes -> bool = equalsByteString in
+let bytes#22 : bytes = fromString#16 "foo" in
+let anf#27 : bytes -> bool = eq#17 bytes#22 in
+let anf#28 : bytes = fromString#16 "bar" in
+let anf#29 : bool = anf#27 anf#28 in
+case@Bool anf#29 of
+  True -> false
+  False -> let anf#30 : bytes -> bool = eq#17 bytes#22 in
+  let anf#32 : bool = anf#30 (con bytestring #666f6f) in
+  case@Bool anf#32 of
+    True -> true
+    False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam fromString_1
+    [(lam eq_2
+      [(lam bytes_3
+        [(lam anf_4
+          [(lam anf_5
+            [(lam anf_6
+              (case
+                anf_6
+                [(lam anf_7
+                  [(lam anf_8 (case anf_8 (con bool False) (con bool True)))
+                    [anf_7 (con bytestring #666f6f)]])
+                  [eq_2 bytes_3]]
+                (con bool False)))
+              [anf_4 anf_5]])
+            [fromString_1 (con string "bar")]])
+          [eq_2 bytes_3]])
+        [fromString_1 (con string "foo")]])
+      (builtin equalsByteString)])
+    (builtin encodeUtf8)])
 --- result
 (con bool True)
 --- logs

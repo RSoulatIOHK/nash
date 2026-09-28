@@ -1,7 +1,37 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/constant_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 34
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+addInteger (subtractInteger 100 (trace "left" in 1)) (subtractInteger 100 (trace "right" in 2))
+--- unoptimized UPLC
+(program 1.1.0
+  [[(builtin addInteger)
+    [[(builtin subtractInteger) (con integer 100)]
+      (force [[(force (builtin trace)) (con string "left")] (delay (con integer 1))])]]
+    [[(builtin subtractInteger) (con integer 100)]
+      (force [[(force (builtin trace)) (con string "right")] (delay (con integer 2))])]])
+--- optimized Core
+let anf#1 : int = trace "left" in 1 in
+let anf#2 : int = subtractInteger 100 anf#1 in
+let anf#3 : int = trace "right" in 2 in
+let anf#4 : int = subtractInteger 100 anf#3 in
+addInteger anf#2 anf#4
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_9
+    [(lam partial_10
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7
+            [(lam anf_8 [[(builtin addInteger) anf_6] anf_8]) [partial_10 anf_7]])
+            (force [[builtin_9 (con string "right")] (delay (con integer 2))])])
+          [partial_10 anf_5]])
+        (force [[builtin_9 (con string "left")] (delay (con integer 1))])])
+      [(builtin subtractInteger) (con integer 100)]])
+    (force (builtin trace))])
+--- isolated pass
 --- uplc before
 [(lam builtin_1
   [[(builtin addInteger)

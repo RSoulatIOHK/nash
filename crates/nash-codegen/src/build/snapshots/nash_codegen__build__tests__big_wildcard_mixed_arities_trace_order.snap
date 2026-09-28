@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" 1\n        _ -> trace \"fallback\" 9\nmain = (choose Stop, choose Zero, choose (One 2), choose (Two 3 4))\n"
 ---
---- core
+--- unoptimized Core
 let message#25 : string = "subject" in
 let message#26 : string = "fallback" in
 let message#27 : string = "explicit" in
@@ -21,7 +21,7 @@ case@Pair projection#24 of
 let fromInt#4 : int -> Int = iData in
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (constrData 0 (con (list data) []))) (choose#2 (constrData 1 (con (list data) []))) (choose#2 ((\field#3 : Int -> constrData 2 (mkCons field#3 (con (list data) []))) (fromInt#4 2))) (choose#2 ((\field#5 : Int field#6 : Int -> constrData 3 (mkCons field#5 (mkCons field#6 (con (list data) [])))) (fromInt#4 3) (fromInt#4 4))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_25
     [(lam message_26
@@ -75,6 +75,85 @@ main#1
         (con string "explicit")])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let choose#33 : Main.Choice -> int = \subject#19 : Main.Choice -> let match#28 : Main.Choice = trace "subject" in subject#19 in
+let leaf#29 : @delay int = delay (trace "fallback" in 9) in
+let projection#30 : pair int (list Data) = unConstrData match#28 in
+case@Pair projection#30 of
+  Pair tag#31 fields#32 -> case@Tag tag#31 of
+    0 -> trace "explicit" in 1
+    1 -> force leaf#29
+    2 -> force leaf#29
+    3 -> force leaf#29 in
+let fromInt#34 : int -> Int = iData in
+let anf#42 : Main.Choice = constrData 0 (con (list data) []) in
+let anf#43 : int = choose#33 anf#42 in
+let anf#44 : Main.Choice = constrData 1 (con (list data) []) in
+let anf#45 : int = choose#33 anf#44 in
+let anf#47 : Int = fromInt#34 2 in
+let anf#46 : list Data = mkCons anf#47 (con (list data) []) in
+let anf#48 : Main.Choice = constrData 2 anf#46 in
+let anf#49 : int = choose#33 anf#48 in
+let anf#52 : Int = fromInt#34 3 in
+let anf#54 : Int = fromInt#34 4 in
+let anf#50 : list Data = mkCons anf#54 (con (list data) []) in
+let anf#51 : list Data = mkCons anf#52 anf#50 in
+let anf#55 : Main.Choice = constrData 3 anf#51 in
+let anf#56 : int = choose#33 anf#55 in
+constr 0 anf#43 anf#45 anf#49 anf#56
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_24
+    [(lam builtin_25
+      [(lam choose_7
+        [(lam fromInt_8
+          [(lam anf_9
+            [(lam anf_10
+              [(lam anf_11
+                [(lam anf_12
+                  [(lam anf_13
+                    [(lam anf_14
+                      [(lam anf_15
+                        [(lam anf_16
+                          [(lam anf_17
+                            [(lam anf_18
+                              [(lam anf_20
+                                [(lam anf_21
+                                  [(lam anf_22
+                                    [(lam anf_23 (constr 0 anf_10 anf_12 anf_16 anf_23)) [choose_7 anf_22]])
+                                    [[(builtin constrData) (con integer 3)] anf_21]])
+                                  [[builtin_24 anf_17] anf_20]])
+                                [[builtin_24 anf_18] (con (list data) [])]])
+                              [fromInt_8 (con integer 4)]])
+                            [fromInt_8 (con integer 3)]])
+                          [choose_7 anf_15]])
+                        [[(builtin constrData) (con integer 2)] anf_14]])
+                      [[builtin_24 anf_13] (con (list data) [])]])
+                    [fromInt_8 (con integer 2)]])
+                  [choose_7 anf_11]])
+                [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+              [choose_7 anf_9]])
+            [[(builtin constrData) (con integer 0)] (con (list data) [])]])
+          (builtin iData)])
+        (lam subject_1
+          [(lam match_2
+            [(lam leaf_3
+              [(lam projection_4
+                (case
+                  projection_4
+                  (lam tag_5
+                    (lam fields_6
+                      (case
+                        tag_5
+                        (force [[builtin_25 (con string "explicit")] (delay (con integer 1))])
+                        (force leaf_3)
+                        (force leaf_3)
+                        (force leaf_3))))))
+                [(builtin unConstrData) match_2]])
+              (delay (force [[builtin_25 (con string "fallback")] (delay (con integer 9))]))])
+            (force [[builtin_25 (con string "subject")] (delay subject_1)])])])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con integer 1) (con integer 9) (con integer 9) (con integer 9))
 --- logs

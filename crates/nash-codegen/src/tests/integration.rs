@@ -159,6 +159,31 @@ fn compile_selected(
     let mut output = String::new();
     for program in &programs {
         output.push_str(&format!("--- {}\n", program.name));
+        let input = build.inputs.len() - 1;
+        let test = build.inputs[input]
+            .module
+            .tests
+            .iter()
+            .find(|test| test.name.value == program.name)
+            .unwrap();
+        let mut engine = Engine::new(
+            &build,
+            &arena,
+            TraceConfig {
+                user: trace,
+                compiler: false,
+            },
+        );
+        let ctx = engine.test_context(input);
+        let root = if test.binders.is_empty() {
+            engine.expr(test.body, &ctx)
+        } else {
+            engine.property(test, &ctx)
+        }
+        .unwrap();
+        let core = engine.finish_root(root).unwrap();
+        output.push_str(&crate::snapshot_optimizer::code_snapshot(&arena, core));
+        output.push_str("\n--- encoded target UPLC\n");
         match &program.programs {
             Programs::Unit { run } => output.push_str(&render(run)),
             Programs::Prop { prepare } => {

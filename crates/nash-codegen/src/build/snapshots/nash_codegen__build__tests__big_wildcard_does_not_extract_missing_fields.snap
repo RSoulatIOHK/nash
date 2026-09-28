@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case subject of\n        Stop -> 1\n        _ -> trace \"fallback\" 9\nmain = (choose (coerce (constrData 1 [])), choose (coerce (constrData 2 [])))\n"
 ---
---- core
+--- unoptimized Core
 let message#23 : string = "fallback" in
 let fromInt#4 : int -> int = \value#20 : int -> value#20 in
 let fromString#7 : string -> string = \value#21 : string -> value#21 in
@@ -17,7 +17,7 @@ case@Pair projection#22 of
     2 -> force leaf#14 in
 let main#1 : (int, int) = constr 0 (choose#2 ((\coerce#3 : Data -> coerce#3) (constrData (fromInt#4 1) (con (list data) [])))) (choose#2 ((\coerce#5 : Data -> coerce#5) (constrData (fromInt#4 2) (con (list data) [])))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_23
     [(lam fromInt_4
@@ -49,6 +49,39 @@ main#1
         (lam value_21 value_21)])
       (lam value_20 value_20)])
     (con string "fallback")])
+--- optimized Core
+let choose#27 : Main.Choice -> int = \subject#15 : Main.Choice -> let leaf#17 : @delay int = delay (trace "fallback" in 9) in
+let projection#24 : pair int (list Data) = unConstrData subject#15 in
+case@Pair projection#24 of
+  Pair tag#25 fields#26 -> case@Tag tag#25 of
+    0 -> 1
+    1 -> force leaf#17
+    2 -> force leaf#17 in
+let anf#33 : Data = constrData 1 (con (list data) []) in
+let anf#35 : int = choose#27 anf#33 in
+let anf#37 : Data = constrData 2 (con (list data) []) in
+let anf#39 : int = choose#27 anf#37 in
+constr 0 anf#35 anf#39
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_11
+    [(lam choose_6
+      [(lam anf_7
+        [(lam anf_8
+          [(lam anf_9 [(lam anf_10 (constr 0 anf_8 anf_10)) [choose_6 anf_9]])
+            [[(builtin constrData) (con integer 2)] (con (list data) [])]])
+          [choose_6 anf_7]])
+        [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+      (lam subject_1
+        [(lam leaf_2
+          [(lam projection_3
+            (case
+              projection_3
+              (lam tag_4
+                (lam fields_5 (case tag_4 (con integer 1) (force leaf_2) (force leaf_2))))))
+            [(builtin unConstrData) subject_1]])
+          (delay (force [[builtin_11 (con string "fallback")] (delay (con integer 9))]))])])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 9) (con integer 9))
 --- logs

@@ -1,7 +1,21 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/builtin_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 45
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+\x#1 : int -> trace "called" in x#1
+--- unoptimized UPLC
+(program 1.1.0
+  (lam x_1 (force [[(force (builtin trace)) (con string "called")] (delay x_1)])))
+--- optimized Core
+\x#2 : int -> trace "called" in x#2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    (lam x_1 (force [[builtin_2 (con string "called")] (delay x_1)])))
+    (force (builtin trace))])
+--- isolated pass
 --- uplc before
 (lam x_1 (force [[(force (builtin trace)) (con string "called")] (delay x_1)]))
 --- uplc after

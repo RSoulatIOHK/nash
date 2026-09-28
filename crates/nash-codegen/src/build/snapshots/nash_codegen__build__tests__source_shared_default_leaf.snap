@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 1297
+assertion_line: 1281
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : bool\nmain =\n    case (False, False) of\n        (True, True) -> True\n        _ -> trace \"default\" False\n"
 ---
---- core
+--- unoptimized Core
 let message#12 : string = "default" in
 let fromBool#2 : bool -> bool = \value#10 : bool -> value#10 in
 let fromString#3 : string -> string = \value#11 : string -> value#11 in
@@ -16,7 +16,7 @@ let main#1 : bool = case@Tag match#4 of
       False -> force leaf#7
       True -> fromBool#2 true in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_12
     [(lam fromBool_2
@@ -40,6 +40,28 @@ main#1
         (lam value_11 value_11)])
       (lam value_10 value_10)])
     (con string "default")])
+--- optimized Core
+let match#16 : (bool, bool) = constr 0 false false in
+let leaf#17 : @delay bool = delay (trace "default" in false) in
+case@Tag match#16 of
+  0 field#18 field#19 -> case@Bool field#18 of
+    False -> force leaf#17
+    True -> case@Bool field#19 of
+      False -> force leaf#17
+      True -> true
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam match_1
+      [(lam leaf_2
+        (case
+          match_1
+          (lam field_3
+            (lam field_4
+              (case field_3 (force leaf_2) (case field_4 (force leaf_2) (con bool True)))))))
+        (delay (force [[builtin_5 (con string "default")] (delay (con bool False))]))])
+      (constr 0 (con bool False) (con bool False))])
+    (force (builtin trace))])
 --- result
 (con bool False)
 --- logs

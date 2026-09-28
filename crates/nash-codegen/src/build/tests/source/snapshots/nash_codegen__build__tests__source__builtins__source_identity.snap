@@ -1,15 +1,16 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 107
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nidentity value = value\nmain : bool\nmain = if identity True then identity True else False\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#2 : bool -> bool = \value#4 : bool -> value#4 in
 let identity#3 : 'erased -> 'erased = \value#5 : 'erased -> value#5 in
 let main#1 : bool = case@Bool identity#3 (fromBool#2 true) of
   True -> identity#3 (fromBool#2 true)
   False -> fromBool#2 false in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_2
     [(lam identity_3
@@ -20,6 +21,12 @@ main#1
           [identity_3 [fromBool_2 (con bool True)]])])
       (lam value_5 value_5)])
     (lam value_4 value_4)])
+--- optimized Core
+case@Bool true of
+  True -> true
+  False -> false
+--- optimized UPLC
+(program 1.1.0 (case (con bool True) (con bool False) (con bool True)))
 --- result
 (con bool True)
 --- logs

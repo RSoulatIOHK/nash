@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 499
+assertion_line: 470
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (FromData)\ntype Datum = Datum Int\ndecoded : Datum\ndecoded = fromData (Builtin.constrData 0 [I 42])\nmain =\n    case decoded of\n        Datum number -> unIData number\n"
 ---
---- core
+--- unoptimized Core
 let fromData#9 : Data -> 'erased = \coerce#12 : Data -> coerce#12 in
 let fromInt#10 : int -> int = \value#13 : int -> value#13 in
 let decoded#2 : Main.Datum = fromData#9 (constrData (fromInt#10 0) (mkCons ((\field#11 : int -> iData field#11) (fromInt#10 42)) (con (list data) []))) in
@@ -14,7 +14,7 @@ case@Pair projection#14 of
     Cons field#5 fieldTail#8 -> let number#3 : Int = field#5 in
     let main#1 : int = unIData number#3 in
     main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromData_9
     [(lam fromInt_10
@@ -40,6 +40,34 @@ case@Pair projection#14 of
               (con (list data) [])]]]])
       (lam value_13 value_13)])
     (lam coerce_12 coerce_12)])
+--- optimized Core
+let anf#31 : Data = iData 42 in
+let anf#32 : list Data = mkCons anf#31 (con (list data) []) in
+let anf#33 : Data = constrData 0 anf#32 in
+let projection#22 : pair int (list Data) = unConstrData anf#33 in
+case@Pair projection#22 of
+  Pair tag#23 fields#24 -> case@List fields#24 of
+    Cons field#25 fieldTail#26 -> unIData field#25
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_9
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam projection_4
+            (case
+              projection_4
+              (lam tag_5
+                (lam fields_6
+                  (case
+                    fields_6
+                    (lam field_7 (lam fieldTail_8 [(builtin unIData) field_7]))
+                    (error))))))
+            [(builtin unConstrData) anf_3]])
+          [[(builtin constrData) (con integer 0)] anf_2]])
+        [[builtin_9 anf_1] (con (list data) [])]])
+      [(builtin iData) (con integer 42)]])
+    (force (builtin mkCons))])
 --- result
 (con integer 42)
 --- logs

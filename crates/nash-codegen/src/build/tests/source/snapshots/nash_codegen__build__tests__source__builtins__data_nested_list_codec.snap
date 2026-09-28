@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 336
+assertion_line: 318
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData, fromData)\ninput = List [List [I 1, I 2], List []]\ndecoded : List (List Int)\ndecoded = fromData input\nmain = equalsData (toData decoded) input\n"
 ---
---- core
+--- unoptimized Core
 let toData#2 : 'erased -> Data = \coerce#5 : 'erased -> coerce#5 in
 let fromInt#10 : int -> int = \value#14 : int -> value#14 in
 let input#4 : Data = (\field#7 : list Data -> listData field#7) (mkCons ((\field#8 : list Data -> listData field#8) (mkCons ((\field#9 : int -> iData field#9) (fromInt#10 1)) (mkCons ((\field#11 : int -> iData field#11) (fromInt#10 2)) (con (list data) [])))) (mkCons ((\field#12 : list Data -> listData field#12) (con (list data) [])) (con (list data) []))) in
@@ -11,7 +11,7 @@ let fromData#6 : Data -> 'erased = \coerce#13 : Data -> coerce#13 in
 let decoded#3 : List (List Int) = fromData#6 input#4 in
 let main#1 : bool = equalsData (toData#2 decoded#3) input#4 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam toData_2
     [(lam fromInt_10
@@ -34,6 +34,39 @@ main#1
               (con (list data) [])]]]])
       (lam value_14 value_14)])
     (lam coerce_5 coerce_5)])
+--- optimized Core
+let anf#30 : Data = iData 1 in
+let anf#32 : Data = iData 2 in
+let anf#33 : list Data = mkCons anf#32 (con (list data) []) in
+let anf#34 : list Data = mkCons anf#30 anf#33 in
+let anf#35 : Data = listData anf#34 in
+let anf#36 : Data = listData (con (list data) []) in
+let anf#37 : list Data = mkCons anf#36 (con (list data) []) in
+let anf#38 : list Data = mkCons anf#35 anf#37 in
+let input#24 : Data = listData anf#38 in
+equalsData input#24 input#24
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_10
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4
+            [(lam anf_5
+              [(lam anf_6
+                [(lam anf_7
+                  [(lam anf_8
+                    [(lam input_9 [[(builtin equalsData) input_9] input_9])
+                      [(builtin listData) anf_8]])
+                    [[builtin_10 anf_5] anf_7]])
+                  [[builtin_10 anf_6] (con (list data) [])]])
+                [(builtin listData) (con (list data) [])]])
+              [(builtin listData) anf_4]])
+            [[builtin_10 anf_1] anf_3]])
+          [[builtin_10 anf_2] (con (list data) [])]])
+        [(builtin iData) (con integer 2)]])
+      [(builtin iData) (con integer 1)]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

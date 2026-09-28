@@ -1,8 +1,63 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+letrec
+  countdown#1 : int -> int -> int [static []] = \x#2 : int n#3 : int -> case@Bool equalsInteger n#3 0 of
+    True -> x#2
+    False -> let partial#4 : int -> int = countdown#1 x#2 in
+    partial#4 (trace "next" in subtractInteger n#3 1)
+in
+countdown#1 42 2
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam countdown_1 [[countdown_1 (con integer 42)] (con integer 2)])
+    [(lam self_5 [self_5 self_5])
+      (lam self_5
+        (lam x_2
+          (lam n_3
+            (case
+              [[(builtin equalsInteger) n_3] (con integer 0)]
+              [(lam partial_4
+                [partial_4
+                  (force
+                    [[(force (builtin trace)) (con string "next")]
+                      (delay [[(builtin subtractInteger) n_3] (con integer 1)])])])
+                [[self_5 self_5] x_2]]
+              x_2))))]])
+--- optimized Core
+letrec
+  countdown#5 : int -> int -> int [static []] = \x#6 : int n#7 : int -> let anf#9 : bool = equalsInteger n#7 0 in
+  case@Bool anf#9 of
+    True -> x#6
+    False -> let partial#8 : int -> int = countdown#5 x#6 in
+    let anf#10 : int = trace "next" in subtractInteger n#7 1 in
+    partial#8 anf#10
+in
+countdown#5 42 2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_18
+    [(lam countdown_17 [[countdown_17 (con integer 42)] (con integer 2)])
+      [(lam self_4 [self_4 self_4])
+        (lam self_11
+          (lam x_12
+            (lam n_13
+              [(lam anf_14
+                (case
+                  anf_14
+                  [(lam partial_15
+                    [(lam anf_16 [partial_15 anf_16])
+                      (force
+                        [[builtin_18 (con string "next")]
+                          (delay [[(builtin subtractInteger) n_13] (con integer 1)])])])
+                    [[self_11 self_11] x_12]]
+                  x_12))
+                [[(builtin equalsInteger) n_13] (con integer 0)]])))]])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 letrec
   countdown#12 : int -> int -> int [static []] = \x#13 : int n#14 : int -> case@Bool equalsInteger n#14 0 of

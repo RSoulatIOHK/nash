@@ -1,17 +1,33 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/dead_bindings.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 34
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
---- core before
+--- unoptimized Core
 let unused#4 : int = divideInteger 1 0 in
 42
---- core after
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam unused_4 (con integer 42))
+    [[(builtin divideInteger) (con integer 1)] (con integer 0)]])
+--- optimized Core
+let unused#1 : int = divideInteger 1 0 in
+42
+--- optimized UPLC
+(program 1.1.0
+  [(lam unused_2 (con integer 42))
+    [[(builtin divideInteger) (con integer 1)] (con integer 0)]])
+--- isolated pass
+--- core before
 let unused#4 : int = divideInteger 1 0 in
 42
 --- uplc before
 (program 1.1.0
   [(lam unused_4 (con integer 42))
     [[(builtin divideInteger) (con integer 1)] (con integer 0)]])
+--- core after
+let unused#4 : int = divideInteger 1 0 in
+42
 --- uplc after
 (program 1.1.0
   [(lam unused_4 (con integer 42))

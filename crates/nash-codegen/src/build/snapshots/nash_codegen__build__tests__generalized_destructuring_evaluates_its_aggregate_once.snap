@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : (unit, bool)\nmain =\n    let\n        (first, second) = trace \"aggregate\" (\\x -> x, \\x -> x)\n    in\n    (first (), second True)\n"
 ---
---- core
+--- unoptimized Core
 let message#22 : string = "aggregate" in
 let fromUnit#8 : unit -> unit = \value#18 : unit -> value#18 in
 let fromBool#14 : bool -> bool = \value#19 : bool -> value#19 in
@@ -20,7 +20,7 @@ let main#1 : (unit, bool) = constr 0 evaluated#21 ((case@Tag match#11 of
   let second#10 : 'erased -> 'erased = field#13 in
   second#10) (fromBool#14 true)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_22
     [(lam fromUnit_8
@@ -52,6 +52,30 @@ main#1
         (lam value_19 value_19)])
       (lam value_18 value_18)])
     (con string "aggregate")])
+--- optimized Core
+let destruct#32 : ('erased -> 'erased, 'erased -> 'erased) = trace "aggregate" in constr 0 (\x#30 : 'erased -> x#30) (\x#31 : 'erased -> x#31) in
+let anf#46 : unit -> unit = case@Tag destruct#32 of
+  0 field#34 field#35 -> field#34 in
+let evaluated#38 : unit = anf#46 () in
+let anf#48 : bool -> bool = case@Tag destruct#32 of
+  0 field#40 field#41 -> field#41 in
+let anf#50 : bool = anf#48 true in
+constr 0 evaluated#38 anf#50
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_12
+    [(lam destruct_3
+      [(lam anf_6
+        [(lam evaluated_7
+          [(lam anf_10
+            [(lam anf_11 (constr 0 evaluated_7 anf_11)) [anf_10 (con bool True)]])
+            (case destruct_3 (lam field_8 (lam field_9 field_9)))])
+          [anf_6 (con unit ())]])
+        (case destruct_3 (lam field_4 (lam field_5 field_4)))])
+      (force
+        [[builtin_12 (con string "aggregate")]
+          (delay (constr 0 (lam x_1 x_1) (lam x_2 x_2)))])])
+    (force (builtin trace))])
 --- result
 (constr 0 (con unit ()) (con bool True))
 --- logs

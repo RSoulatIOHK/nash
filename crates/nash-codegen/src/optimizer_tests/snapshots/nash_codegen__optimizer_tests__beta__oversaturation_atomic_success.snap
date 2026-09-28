@@ -1,13 +1,40 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/beta.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+(\x#1 : int -> trace "intermediate" in \y#2 : int -> trace "returned body" in addInteger x#1 y#2) 40 2
+--- unoptimized UPLC
+(program 1.1.0
+  [[(lam x_1
+    (force
+      [[(force (builtin trace)) (con string "intermediate")]
+        (delay
+          (lam y_2
+            (force
+              [[(force (builtin trace)) (con string "returned body")]
+                (delay [[(builtin addInteger) x_1] y_2])])))]))
+    (con integer 40)]
+    (con integer 2)])
+--- optimized Core
+let beta#5 : int -> int = trace "intermediate" in \y#4 : int -> trace "returned body" in addInteger 40 y#4 in
+beta#5 2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam beta_2 [beta_2 (con integer 2)])
+      (force
+        [[builtin_3 (con string "intermediate")]
+          (delay
+            (lam y_1
+              (force
+                [[builtin_3 (con string "returned body")]
+                  (delay [[(builtin addInteger) (con integer 40)] y_1])])))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 (\x#1 : int -> trace "intermediate" in \y#2 : int -> trace "returned body" in addInteger x#1 y#2) 40 2
---- core after
-let beta#3 : int -> int = trace "intermediate" in \y#2 : int -> trace "returned body" in addInteger 40 y#2 in
-beta#3 2
 --- baseline
 --- uplc
 (program 1.1.0
@@ -25,6 +52,9 @@ beta#3 2
 (con integer 42)
 --- logs
 ["intermediate", "returned body"]
+--- core after
+let beta#3 : int -> int = trace "intermediate" in \y#2 : int -> trace "returned body" in addInteger 40 y#2 in
+beta#3 2
 --- candidate
 --- uplc
 (program 1.1.0

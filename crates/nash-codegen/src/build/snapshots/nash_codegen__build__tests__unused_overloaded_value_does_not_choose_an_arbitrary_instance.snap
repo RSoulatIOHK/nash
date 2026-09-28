@@ -1,15 +1,20 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nmain : unit\nmain =\n    let\n        unused = trace \"no instance\" 42\n    in\n    ()\n"
 ---
---- core
+--- unoptimized Core
 let fromUnit#2 : unit -> unit = \value#3 : unit -> value#3 in
 let main#1 : unit = fromUnit#2 () in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromUnit_2 [(lam main_1 main_1) [fromUnit_2 (con unit ())]])
     (lam value_3 value_3)])
+--- optimized Core
+()
+--- optimized UPLC
+(program 1.1.0 (con unit ()))
 --- result
 (con unit ())
 --- logs

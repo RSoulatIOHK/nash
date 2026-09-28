@@ -3,16 +3,18 @@ source: crates/nash-codegen/src/build/tests/source/lists.rs
 assertion_line: 1
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nlength xs =\n    case xs of\n        [] -> 0\n        _ :: rest -> addInteger 1 (length rest)\nmain = equalsInteger (length [1, 2, 3]) 3\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#9 : int -> value#9 in
-let length#2 : list 'erased -> int = (\self#10 : @self (list 'erased -> int) -> self#10 self#10) (\self#10 : @self (list 'erased -> int) xs#4 : list 'erased -> let match#6 : list 'erased = xs#4 in
-case@List match#6 of
-  Nil -> fromInt#3 0
-  Cons field#7 field#8 -> let rest#5 : list 'erased = field#8 in
-  addInteger (fromInt#3 1) (self#10 self#10 rest#5)) in
+letrec
+  length#2 : list 'erased -> int [static []] = \xs#4 : list 'erased -> let match#6 : list 'erased = xs#4 in
+  case@List match#6 of
+    Nil -> fromInt#3 0
+    Cons field#7 field#8 -> let rest#5 : list 'erased = field#8 in
+    addInteger (fromInt#3 1) (length#2 rest#5)
+in
 let main#1 : bool = equalsInteger (length#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (mkCons (fromInt#3 3) (con (list integer) []))))) (fromInt#3 3) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam length_2
@@ -37,6 +39,41 @@ main#1
                 [fromInt_3 (con integer 0)]))
               xs_4]))]])
     (lam value_9 value_9)])
+--- optimized Core
+letrec
+  length#12 : list 'erased -> int [static []] = \xs#13 : list 'erased -> case@List xs#13 of
+    Nil -> 0
+    Cons field#15 field#16 -> let anf#20 : int = length#12 field#16 in
+    addInteger 1 anf#20
+in
+let anf#24 : list int = mkCons 3 (con (list integer) []) in
+let anf#25 : list int = mkCons 2 anf#24 in
+let anf#26 : list int = mkCons 1 anf#25 in
+let anf#27 : int = length#12 anf#26 in
+equalsInteger anf#27 3
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_18
+    [(lam length_9
+      [(lam anf_10
+        [(lam anf_11
+          [(lam anf_14
+            [(lam anf_17 [[(builtin equalsInteger) anf_17] (con integer 3)])
+              [length_9 anf_14]])
+            [[builtin_18 (con integer 1)] anf_11]])
+          [[builtin_18 (con integer 2)] anf_10]])
+        [[builtin_18 (con integer 3)] (con (list integer) [])]])
+      [(lam self_3 [self_3 self_3])
+        (lam self_4
+          (lam xs_5
+            (case
+              xs_5
+              (lam field_6
+                (lam field_7
+                  [(lam anf_8 [[(builtin addInteger) (con integer 1)] anf_8])
+                    [[self_4 self_4] field_7]]))
+              (con integer 0))))]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

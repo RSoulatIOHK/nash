@@ -1,7 +1,27 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/constant_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 34
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+addInteger ((\x#1 : int -> subtractInteger 100 x#1) 1) ((\y#2 : int -> subtractInteger 100 y#2) 2)
+--- unoptimized UPLC
+(program 1.1.0
+  [[(builtin addInteger)
+    [(lam x_1 [[(builtin subtractInteger) (con integer 100)] x_1]) (con integer 1)]]
+    [(lam y_2 [[(builtin subtractInteger) (con integer 100)] y_2]) (con integer 2)]])
+--- optimized Core
+let anf#5 : int = subtractInteger 100 1 in
+let anf#6 : int = subtractInteger 100 2 in
+addInteger anf#5 anf#6
+--- optimized UPLC
+(program 1.1.0
+  [(lam partial_3
+    [(lam anf_1
+      [(lam anf_2 [[(builtin addInteger) anf_1] anf_2]) [partial_3 (con integer 2)]])
+      [partial_3 (con integer 1)]])
+    [(builtin subtractInteger) (con integer 100)]])
+--- isolated pass
 --- uplc before
 [[(builtin addInteger)
   [(lam x_1 [[(builtin subtractInteger) (con integer 100)] x_1]) (con integer 1)]]

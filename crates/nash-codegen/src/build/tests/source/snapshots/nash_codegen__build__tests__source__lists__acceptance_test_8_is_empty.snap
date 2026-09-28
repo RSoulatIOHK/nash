@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
-assertion_line: 273
+assertion_line: 260
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nisEmpty bytes = equalsInteger (Builtin.lengthOfByteString bytes) 0\nmain = eq (isEmpty #\"\") True\n"
 ---
---- core
+--- unoptimized Core
 let not#8 : 'erased -> bool = \value#14 : 'erased -> case@Bool (\identity#15 : bool -> identity#15) value#14 of
   True -> false
   False -> true in
@@ -17,7 +17,7 @@ let fromBytes#4 : bytes -> bytes = \value#12 : bytes -> value#12 in
 let fromBool#5 : bool -> bool = \value#13 : bool -> value#13 in
 let main#1 : bool = eq#2 (isEmpty#3 (fromBytes#4 (con bytestring #))) (fromBool#5 true) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam not_8
     [(lam xor_9
@@ -44,6 +44,27 @@ main#1
             [not_8 b_17])))])
     (lam value_14
       (case [(lam identity_15 identity_15) value_14] (con bool True) (con bool False)))])
+--- optimized Core
+let not#23 : 'erased -> bool = \value#21 : 'erased -> case@Bool value#21 of
+  True -> false
+  False -> true in
+let anf#44 : int = lengthOfByteString (con bytestring #) in
+let anf#47 : bool = equalsInteger anf#44 0 in
+let b#30 : bool = true in
+let anf#43 : bool = case@Bool anf#47 of
+  True -> not#23 b#30
+  False -> b#30 in
+not#23 anf#43
+--- optimized UPLC
+(program 1.1.0
+  [(lam not_2
+    [(lam anf_3
+      [(lam anf_4
+        [(lam b_5 [(lam anf_6 [not_2 anf_6]) (case anf_4 b_5 [not_2 b_5])])
+          (con bool True)])
+        [[(builtin equalsInteger) anf_3] (con integer 0)]])
+      [(builtin lengthOfByteString) (con bytestring #)]])
+    (lam value_1 (case value_1 (con bool True) (con bool False)))])
 --- result
 (con bool True)
 --- logs

@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : (Choice, int) -> int\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _) -> 0\n        (_, value) -> trace \"shared\" value\nmain = (choose (Stop, 1), choose (Zero, 11), choose (One 2, 22), choose (Two 3 4, 33))\n"
 ---
---- core
+--- unoptimized Core
 let message#30 : string = "subject" in
 let message#31 : string = "shared" in
 let fromInt#3 : int -> int = \value#27 : int -> value#27 in
@@ -24,7 +24,7 @@ case@Tag match#11 of
 let fromInt#5 : int -> Int = iData in
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (constr 0 (constrData 0 (con (list data) [])) (fromInt#3 1))) (choose#2 (constr 0 (constrData 1 (con (list data) [])) (fromInt#3 11))) (choose#2 (constr 0 ((\field#4 : Int -> constrData 2 (mkCons field#4 (con (list data) []))) (fromInt#5 2)) (fromInt#3 22))) (choose#2 (constr 0 ((\field#6 : Int field#7 : Int -> constrData 3 (mkCons field#6 (mkCons field#7 (con (list data) [])))) (fromInt#5 3) (fromInt#5 4)) (fromInt#3 33))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_30
     [(lam message_31
@@ -86,6 +86,97 @@ main#1
         (lam value_27 value_27)])
       (con string "shared")])
     (con string "subject")])
+--- optimized Core
+let choose#40 : (Main.Choice, int) -> int = \subject#18 : (Main.Choice, int) -> let match#22 : (Main.Choice, int) = trace "subject" in subject#18 in
+let leaf#24 : int -> int = \value#23 : int -> trace "shared" in value#23 in
+case@Tag match#22 of
+  0 field#32 field#33 -> let projection#34 : pair int (list Data) = unConstrData field#32 in
+  case@Pair projection#34 of
+    Pair tag#35 fields#36 -> case@Tag tag#35 of
+      0 -> 0
+      1 -> leaf#24 field#33
+      2 -> leaf#24 field#33
+      3 -> leaf#24 field#33 in
+let fromInt#41 : int -> Int = iData in
+let anf#48 : Main.Choice = constrData 0 (con (list data) []) in
+let anf#50 : (Main.Choice, int) = constr 0 anf#48 1 in
+let anf#51 : int = choose#40 anf#50 in
+let anf#52 : Main.Choice = constrData 1 (con (list data) []) in
+let anf#54 : (Main.Choice, int) = constr 0 anf#52 11 in
+let anf#55 : int = choose#40 anf#54 in
+let anf#57 : Int = fromInt#41 2 in
+let anf#56 : list Data = mkCons anf#57 (con (list data) []) in
+let anf#58 : Main.Choice = constrData 2 anf#56 in
+let anf#60 : (Main.Choice, int) = constr 0 anf#58 22 in
+let anf#61 : int = choose#40 anf#60 in
+let anf#64 : Int = fromInt#41 3 in
+let anf#66 : Int = fromInt#41 4 in
+let anf#62 : list Data = mkCons anf#66 (con (list data) []) in
+let anf#63 : list Data = mkCons anf#64 anf#62 in
+let anf#67 : Main.Choice = constrData 3 anf#63 in
+let anf#69 : (Main.Choice, int) = constr 0 anf#67 33 in
+let anf#70 : int = choose#40 anf#69 in
+constr 0 anf#51 anf#55 anf#61 anf#70
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_39
+    [(lam builtin_40
+      [(lam choose_10
+        [(lam fromInt_11
+          [(lam anf_12
+            [(lam anf_13
+              [(lam anf_14
+                [(lam anf_15
+                  [(lam anf_16
+                    [(lam anf_17
+                      [(lam anf_19
+                        [(lam anf_20
+                          [(lam anf_21
+                            [(lam anf_25
+                              [(lam anf_26
+                                [(lam anf_27
+                                  [(lam anf_28
+                                    [(lam anf_29
+                                      [(lam anf_30
+                                        [(lam anf_31
+                                          [(lam anf_37
+                                            [(lam anf_38 (constr 0 anf_14 anf_17 anf_26 anf_38)) [choose_10 anf_37]])
+                                            (constr 0 anf_31 (con integer 33))])
+                                          [[(builtin constrData) (con integer 3)] anf_30]])
+                                        [[builtin_39 anf_27] anf_29]])
+                                      [[builtin_39 anf_28] (con (list data) [])]])
+                                    [fromInt_11 (con integer 4)]])
+                                  [fromInt_11 (con integer 3)]])
+                                [choose_10 anf_25]])
+                              (constr 0 anf_21 (con integer 22))])
+                            [[(builtin constrData) (con integer 2)] anf_20]])
+                          [[builtin_39 anf_19] (con (list data) [])]])
+                        [fromInt_11 (con integer 2)]])
+                      [choose_10 anf_16]])
+                    (constr 0 anf_15 (con integer 11))])
+                  [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+                [choose_10 anf_13]])
+              (constr 0 anf_12 (con integer 1))])
+            [[(builtin constrData) (con integer 0)] (con (list data) [])]])
+          (builtin iData)])
+        (lam subject_1
+          [(lam match_2
+            [(lam leaf_4
+              (case
+                match_2
+                (lam field_5
+                  (lam field_6
+                    [(lam projection_7
+                      (case
+                        projection_7
+                        (lam tag_8
+                          (lam fields_9
+                            (case tag_8 (con integer 0) [leaf_4 field_6] [leaf_4 field_6] [leaf_4 field_6])))))
+                      [(builtin unConstrData) field_5]]))))
+              (lam value_3 (force [[builtin_40 (con string "shared")] (delay value_3)]))])
+            (force [[builtin_40 (con string "subject")] (delay subject_1)])])])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con integer 0) (con integer 11) (con integer 22) (con integer 33))
 --- logs

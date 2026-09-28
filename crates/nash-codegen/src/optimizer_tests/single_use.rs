@@ -39,12 +39,16 @@ fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) {
     }
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core after\n{}\n--- baseline\n{}\n--- candidate\n{}",
-            pretty(before),
-            pretty(after),
-            output(&baseline),
-            output(&candidate)
+        crate::harness::pass_snapshot(
+            b.arena,
+            core,
+            format!(
+                "--- core before\n{}\n--- baseline\n{}\n--- core after\n{}\n--- candidate\n{}",
+                pretty(before),
+                output(&baseline),
+                pretty(after),
+                output(&candidate)
+            )
         )
     );
     // Properties independent of the expected snapshot.

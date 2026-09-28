@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : (choice, int, int) -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _, _) -> \\n -> n\n        (_, z, a) -> trace \"shared\" (\\n -> subtractInteger (addInteger z n) a)\nmain = (choose (Stop, 90, 80) 1, choose (Zero, 21, 3) 1, choose (One 2, 31, 4) 1, choose (Two 3 4, 41, 5) 1)\n"
 ---
---- core
+--- unoptimized Core
 let message#29 : string = "subject" in
 let message#30 : string = "shared" in
 let fromString#8 : string -> string = \value#28 : string -> value#28 in
@@ -24,7 +24,7 @@ case@Tag match#13 of
 let fromInt#3 : int -> int = \value#27 : int -> value#27 in
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (constr 0 (constr 0) (fromInt#3 90) (fromInt#3 80)) (fromInt#3 1)) (choose#2 (constr 0 (constr 1) (fromInt#3 21) (fromInt#3 3)) (fromInt#3 1)) (choose#2 (constr 0 ((\field#4 : int -> constr 2 field#4) (fromInt#3 2)) (fromInt#3 31) (fromInt#3 4)) (fromInt#3 1)) (choose#2 (constr 0 ((\field#5 : int field#6 : int -> constr 3 field#5 field#6) (fromInt#3 3) (fromInt#3 4)) (fromInt#3 41) (fromInt#3 5)) (fromInt#3 1)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_29
     [(lam message_30
@@ -79,6 +79,92 @@ main#1
         (lam value_28 value_28)])
       (con string "shared")])
     (con string "subject")])
+--- optimized Core
+let choose#48 : (Main.choice, int, int) -> int -> int = \subject#18 : (Main.choice, int, int) -> let match#19 : (Main.choice, int, int) = trace "subject" in subject#18 in
+let leaf#34 : int -> int -> int -> int = \a#31 : int z#32 : int -> trace "shared" in \n#33 : int -> let anf#57 : int = addInteger z#32 n#33 in
+subtractInteger anf#57 a#31 in
+case@Tag match#19 of
+  0 field#35 field#36 field#37 -> case@Tag field#35 of
+    0 -> \n#38 : int -> n#38
+    1 -> leaf#34 field#37 field#36
+    2 field#41 -> leaf#34 field#37 field#36
+    3 field#44 field#45 -> leaf#34 field#37 field#36 in
+let anf#58 : Main.choice = constr 0 in
+let anf#61 : (Main.choice, int, int) = constr 0 anf#58 90 80 in
+let anf#62 : int -> int = choose#48 anf#61 in
+let anf#64 : int = anf#62 1 in
+let anf#65 : Main.choice = constr 1 in
+let anf#68 : (Main.choice, int, int) = constr 0 anf#65 21 3 in
+let anf#69 : int -> int = choose#48 anf#68 in
+let anf#71 : int = anf#69 1 in
+let anf#73 : Main.choice = constr 2 2 in
+let anf#76 : (Main.choice, int, int) = constr 0 anf#73 31 4 in
+let anf#77 : int -> int = choose#48 anf#76 in
+let anf#79 : int = anf#77 1 in
+let anf#83 : Main.choice = constr 3 3 4 in
+let anf#86 : (Main.choice, int, int) = constr 0 anf#83 41 5 in
+let anf#87 : int -> int = choose#48 anf#86 in
+let anf#89 : int = anf#87 1 in
+constr 0 anf#64 anf#71 anf#79 anf#89
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_43
+    [(lam choose_15
+      [(lam anf_16
+        [(lam anf_17
+          [(lam anf_20
+            [(lam anf_21
+              [(lam anf_22
+                [(lam anf_23
+                  [(lam anf_24
+                    [(lam anf_25
+                      [(lam anf_26
+                        [(lam anf_27
+                          [(lam anf_28
+                            [(lam anf_29
+                              [(lam anf_30
+                                [(lam anf_39
+                                  [(lam anf_40
+                                    [(lam anf_42 (constr 0 anf_21 anf_25 anf_29 anf_42)) [anf_40 (con integer 1)]])
+                                    [choose_15 anf_39]])
+                                  (constr 0 anf_30 (con integer 41) (con integer 5))])
+                                (constr 3 (con integer 3) (con integer 4))])
+                              [anf_28 (con integer 1)]])
+                            [choose_15 anf_27]])
+                          (constr 0 anf_26 (con integer 31) (con integer 4))])
+                        (constr 2 (con integer 2))])
+                      [anf_24 (con integer 1)]])
+                    [choose_15 anf_23]])
+                  (constr 0 anf_22 (con integer 21) (con integer 3))])
+                (constr 1)])
+              [anf_20 (con integer 1)]])
+            [choose_15 anf_17]])
+          (constr 0 anf_16 (con integer 90) (con integer 80))])
+        (constr 0)])
+      (lam subject_1
+        [(lam match_2
+          [(lam leaf_7
+            (case
+              match_2
+              (lam field_8
+                (lam field_9
+                  (lam field_10
+                    (case
+                      field_8
+                      (lam n_11 n_11)
+                      [[leaf_7 field_10] field_9]
+                      (lam field_12 [[leaf_7 field_10] field_9])
+                      (lam field_13 (lam field_14 [[leaf_7 field_10] field_9]))))))))
+            (lam a_3
+              (lam z_4
+                (force
+                  [[builtin_43 (con string "shared")]
+                    (delay
+                      (lam n_5
+                        [(lam anf_6 [[(builtin subtractInteger) anf_6] a_3])
+                          [[(builtin addInteger) z_4] n_5]]))])))])
+          (force [[builtin_43 (con string "subject")] (delay subject_1)])])])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 1) (con integer 19) (con integer 28) (con integer 37))
 --- logs

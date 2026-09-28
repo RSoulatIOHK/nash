@@ -1,10 +1,40 @@
 ---
 source: crates/nash-codegen/src/program/tests.rs
-expression: "(nash_ir::pretty::pretty(reference), nash_ir::pretty::pretty(candidate),\npretty::term(original_program.named), pretty::term(changed_program.named),)"
+assertion_line: 32
+expression: "crate::harness::pass_snapshot(&arena, reference,\nformat!(\"--- Core before substitution\\n{}\\n--- UPLC before substitution\\n{}\\n--- Core after substitution\\n{}\\n--- UPLC after substitution\\n{}\",\nnash_ir::pretty::pretty(reference), pretty::term(original_program.named),\nnash_ir::pretty::pretty(candidate), pretty::term(changed_program.named),))"
 ---
-(
-    "let y#1 : int = 20 in\nlet target#2 : int = y#1 in\nlet y#1 : int = 10 in\naddInteger target#2 y#1",
-    "let y#1 : int = 20 in\nlet y#3 : int = 10 in\naddInteger y#1 y#3",
-    "[(lam y_1\n  [(lam target_2\n    [(lam y_1 [[(builtin addInteger) target_2] y_1]) (con integer 10)])\n    y_1])\n  (con integer 20)]",
-    "[(lam y_1 [(lam y_3 [[(builtin addInteger) y_1] y_3]) (con integer 10)])\n  (con integer 20)]",
-)
+--- unoptimized Core
+let y#1 : int = 20 in
+let target#2 : int = y#1 in
+let y#1 : int = 10 in
+addInteger target#2 y#1
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam y_1
+    [(lam target_2
+      [(lam y_1 [[(builtin addInteger) target_2] y_1]) (con integer 10)])
+      y_1])
+    (con integer 20)])
+--- optimized Core
+addInteger 20 10
+--- optimized UPLC
+(program 1.1.0 [[(builtin addInteger) (con integer 20)] (con integer 10)])
+--- isolated pass
+--- Core before substitution
+let y#1 : int = 20 in
+let target#2 : int = y#1 in
+let y#1 : int = 10 in
+addInteger target#2 y#1
+--- UPLC before substitution
+[(lam y_1
+  [(lam target_2
+    [(lam y_1 [[(builtin addInteger) target_2] y_1]) (con integer 10)])
+    y_1])
+  (con integer 20)]
+--- Core after substitution
+let y#1 : int = 20 in
+let y#3 : int = 10 in
+addInteger y#1 y#3
+--- UPLC after substitution
+[(lam y_1 [(lam y_3 [[(builtin addInteger) y_1] y_3]) (con integer 10)])
+  (con integer 20)]

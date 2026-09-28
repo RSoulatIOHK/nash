@@ -1,58 +1,128 @@
 ---
 source: crates/nash-codegen/src/program/tests.rs
-expression: results
+assertion_line: 203
+expression: "results.join(\"\\n\")"
 ---
-[
-    (
-        "partial builtin",
-        true,
-        Ok(
-            "(con integer 42)",
-        ),
-        [],
-    ),
-    (
-        "strict partial argument",
-        false,
-        Ok(
-            "(con integer 42)",
-        ),
-        [
-            "strict",
-        ],
-    ),
-    (
-        "delayed failure",
-        true,
-        Ok(
-            "(con integer 42)",
-        ),
-        [],
-    ),
-    (
-        "empty lambda",
-        false,
-        Err(
-            "ExplicitErrorTerm",
-        ),
-        [],
-    ),
-    (
-        "strict constructor field",
-        false,
-        Ok(
-            "(con integer 42)",
-        ),
-        [
-            "strict",
-        ],
-    ),
-    (
-        "failing constructor field",
-        false,
-        Err(
-            "ExplicitErrorTerm",
-        ),
-        [],
-    ),
-]
+--- fixture
+partial builtin
+--- unoptimized Core
+let unused#1 : int -> int = addInteger 1 in
+42
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam unused_1 (con integer 42)) [(builtin addInteger) (con integer 1)]])
+--- optimized Core
+42
+--- optimized UPLC
+(program 1.1.0 (con integer 42))
+--- safe to discard
+true
+--- result
+Ok("(con integer 42)")
+--- logs
+[]
+--- fixture
+strict partial argument
+--- unoptimized Core
+let unused#1 : int -> int = addInteger (trace "strict" in 1) in
+42
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam unused_1 (con integer 42))
+    [(builtin addInteger)
+      (force
+        [[(force (builtin trace)) (con string "strict")] (delay (con integer 1))])]])
+--- optimized Core
+let anf#3 : int = trace "strict" in 1 in
+42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam anf_1 (con integer 42))
+      (force [[builtin_2 (con string "strict")] (delay (con integer 1))])])
+    (force (builtin trace))])
+--- safe to discard
+false
+--- result
+Ok("(con integer 42)")
+--- logs
+["strict"]
+--- fixture
+delayed failure
+--- unoptimized Core
+let unused#1 : @delay int = delay error in
+42
+--- unoptimized UPLC
+(program 1.1.0 [(lam unused_1 (con integer 42)) (delay (error))])
+--- optimized Core
+42
+--- optimized UPLC
+(program 1.1.0 (con integer 42))
+--- safe to discard
+true
+--- result
+Ok("(con integer 42)")
+--- logs
+[]
+--- fixture
+empty lambda
+--- unoptimized Core
+let unused#1 : int = \ -> error in
+42
+--- unoptimized UPLC
+(program 1.1.0 [(lam unused_1 (con integer 42)) (error)])
+--- optimized Core
+let unused#2 : int = error in
+42
+--- optimized UPLC
+(program 1.1.0 [(lam unused_1 (con integer 42)) (error)])
+--- safe to discard
+false
+--- result
+Err("ExplicitErrorTerm")
+--- logs
+[]
+--- fixture
+strict constructor field
+--- unoptimized Core
+let unused#1 : @constr[0](int) = constr 0 (trace "strict" in 1) in
+42
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam unused_1 (con integer 42))
+    (constr 0
+      (force
+        [[(force (builtin trace)) (con string "strict")] (delay (con integer 1))]))])
+--- optimized Core
+let anf#3 : int = trace "strict" in 1 in
+42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam anf_1 (con integer 42))
+      (force [[builtin_2 (con string "strict")] (delay (con integer 1))])])
+    (force (builtin trace))])
+--- safe to discard
+false
+--- result
+Ok("(con integer 42)")
+--- logs
+["strict"]
+--- fixture
+failing constructor field
+--- unoptimized Core
+let unused#1 : @constr[0](int) = constr 0 error in
+42
+--- unoptimized UPLC
+(program 1.1.0 [(lam unused_1 (con integer 42)) (constr 0 (error))])
+--- optimized Core
+let anf#3 : int = error in
+42
+--- optimized UPLC
+(program 1.1.0 [(lam anf_1 (con integer 42)) (error)])
+--- safe to discard
+false
+--- result
+Err("ExplicitErrorTerm")
+--- logs
+[]

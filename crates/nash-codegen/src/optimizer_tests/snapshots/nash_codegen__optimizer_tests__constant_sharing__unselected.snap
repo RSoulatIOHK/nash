@@ -1,7 +1,37 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/constant_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 34
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+case@Bool true of
+  True -> 42
+  False -> addInteger (divideInteger 10 0) (divideInteger 10 0)
+--- unoptimized UPLC
+(program 1.1.0
+  (case
+    (con bool True)
+    [[(builtin addInteger)
+      [[(builtin divideInteger) (con integer 10)] (con integer 0)]]
+      [[(builtin divideInteger) (con integer 10)] (con integer 0)]]
+    (con integer 42)))
+--- optimized Core
+case@Bool true of
+  True -> 42
+  False -> let anf#1 : int = divideInteger 10 0 in
+  let anf#2 : int = divideInteger 10 0 in
+  addInteger anf#1 anf#2
+--- optimized UPLC
+(program 1.1.0
+  [(lam partial_5
+    (case
+      (con bool True)
+      [(lam anf_3
+        [(lam anf_4 [[(builtin addInteger) anf_3] anf_4]) [partial_5 (con integer 0)]])
+        [partial_5 (con integer 0)]]
+      (con integer 42)))
+    [(builtin divideInteger) (con integer 10)]])
+--- isolated pass
 --- uplc before
 (case
   (con bool True)

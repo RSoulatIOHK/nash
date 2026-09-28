@@ -1,17 +1,23 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nmain : unit\nmain =\n    let\n        unused = fail\n    in\n    ()\n"
 ---
---- core
+--- unoptimized Core
 let fromUnit#3 : unit -> unit = \value#4 : unit -> value#4 in
 let unused#2 : 'erased = error in
 let main#1 : unit = fromUnit#3 () in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromUnit_3
     [(lam unused_2 [(lam main_1 main_1) [fromUnit_3 (con unit ())]]) (error)])
     (lam value_4 value_4)])
+--- optimized Core
+let unused#7 : 'erased = error in
+()
+--- optimized UPLC
+(program 1.1.0 [(lam unused_1 (con unit ())) (error)])
 --- result
 error: ExplicitErrorTerm
 --- logs

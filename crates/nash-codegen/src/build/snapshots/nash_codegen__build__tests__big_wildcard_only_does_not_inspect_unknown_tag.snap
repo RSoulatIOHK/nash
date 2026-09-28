@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        _ -> trace \"fallback\" 9\nmain = choose (coerce (constrData 59 []))\n"
 ---
---- core
+--- unoptimized Core
 let message#10 : string = "subject" in
 let message#11 : string = "fallback" in
 let fromInt#4 : int -> int = \value#8 : int -> value#8 in
@@ -12,7 +12,7 @@ let choose#2 : Main.Choice -> int = \subject#5 : Main.Choice -> let match#7 : Ma
 trace (fromString#6 message#11) in fromInt#4 9 in
 let main#1 : int = choose#2 ((\coerce#3 : Data -> coerce#3) (constrData (fromInt#4 59) (con (list data) []))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_10
     [(lam message_11
@@ -33,6 +33,19 @@ main#1
         (lam value_8 value_8)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let anf#26 : Data = constrData 59 (con (list data) []) in
+let match#19 : Main.Choice = trace "subject" in anf#26 in
+trace "fallback" in 9
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam anf_1
+      [(lam match_2
+        (force [[builtin_3 (con string "fallback")] (delay (con integer 9))]))
+        (force [[builtin_3 (con string "subject")] (delay anf_1)])])
+      [[(builtin constrData) (con integer 59)] (con (list data) [])]])
+    (force (builtin trace))])
 --- result
 (con integer 9)
 --- logs

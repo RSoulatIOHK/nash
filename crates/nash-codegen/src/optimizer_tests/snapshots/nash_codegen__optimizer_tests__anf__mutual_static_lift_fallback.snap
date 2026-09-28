@@ -1,8 +1,94 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+letrec
+  even#1 : int -> int -> int [static []] = \x#3 : int n#4 : int -> case@Bool equalsInteger n#4 0 of
+    True -> x#3
+    False -> odd#2 x#3 (subtractInteger n#4 1)
+  odd#2 : int -> int -> int [static []] = \y#5 : int m#6 : int -> case@Bool equalsInteger m#6 0 of
+    True -> y#5
+    False -> even#1 y#5 (subtractInteger m#6 1)
+in
+even#1 42 3
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam dispatch_7
+    [(lam even_1
+      [(lam odd_2 [[even_1 (con integer 42)] (con integer 3)])
+        (lam y_19 (lam m_20 [dispatch_7 (constr 1 dispatch_7 y_19 m_20)]))])
+      (lam x_21 (lam n_22 [dispatch_7 (constr 0 dispatch_7 x_21 n_22)]))])
+    (lam request_8
+      (case
+        request_8
+        (lam self_9
+          (lam x_3
+            (lam n_4
+              (case
+                [[(builtin equalsInteger) n_4] (con integer 0)]
+                [self_9 (constr 1 self_9 x_3 [[(builtin subtractInteger) n_4] (con integer 1)])]
+                x_3))))
+        (lam self_14
+          (lam y_5
+            (lam m_6
+              (case
+                [[(builtin equalsInteger) m_6] (con integer 0)]
+                [self_14
+                  (constr 0 self_14 y_5 [[(builtin subtractInteger) m_6] (con integer 1)])]
+                y_5))))))])
+--- optimized Core
+letrec
+  even#7 : int -> int -> int [static []] = \x#9 : int n#10 : int -> let anf#13 : bool = equalsInteger n#10 0 in
+  case@Bool anf#13 of
+    True -> x#9
+    False -> let anf#14 : int -> int = odd#8 x#9 in
+    let anf#15 : int = subtractInteger n#10 1 in
+    anf#14 anf#15
+  odd#8 : int -> int -> int [static []] = \y#11 : int m#12 : int -> let anf#16 : bool = equalsInteger m#12 0 in
+  case@Bool anf#16 of
+    True -> y#11
+    False -> let anf#17 : int -> int = even#7 y#11 in
+    let anf#18 : int = subtractInteger m#12 1 in
+    anf#17 anf#18
+in
+even#7 42 3
+--- optimized UPLC
+(program 1.1.0
+  [(lam dispatch_46
+    [(lam even_49
+      [(lam odd_52 [[even_49 (con integer 42)] (con integer 3)])
+        (lam y_50 (lam m_51 [dispatch_46 (constr 1 dispatch_46 y_50 m_51)]))])
+      (lam x_47 (lam n_48 [dispatch_46 (constr 0 dispatch_46 x_47 n_48)]))])
+    (lam request_29
+      (case
+        request_29
+        (lam self_30
+          (lam x_31
+            (lam n_32
+              [(lam anf_33
+                (case
+                  anf_33
+                  [(lam anf_36
+                    [(lam anf_37 [anf_36 anf_37])
+                      [[(builtin subtractInteger) n_32] (con integer 1)]])
+                    [(lam y_34 (lam m_35 [self_30 (constr 1 self_30 y_34 m_35)])) x_31]]
+                  x_31))
+                [[(builtin equalsInteger) n_32] (con integer 0)]])))
+        (lam self_38
+          (lam y_39
+            (lam m_40
+              [(lam anf_41
+                (case
+                  anf_41
+                  [(lam anf_44
+                    [(lam anf_45 [anf_44 anf_45])
+                      [[(builtin subtractInteger) m_40] (con integer 1)]])
+                    [(lam x_42 (lam n_43 [self_38 (constr 0 self_38 x_42 n_43)])) y_39]]
+                  y_39))
+                [[(builtin equalsInteger) m_40] (con integer 0)]])))))])
+--- isolated pass
 --- core before static lifting
 letrec
   even#29 : int -> int -> int [static []] = \x#31 : int n#32 : int -> case@Bool equalsInteger n#32 0 of

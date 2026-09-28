@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 1087
+assertion_line: 1031
 description: "module Main exposing (..)\nimport Data exposing (ToData)\nimport Primitive exposing (Data(..))\nmain : int\nmain = case trace \"data input\" (toData (Builtin.iData 42)) of\n    I _ -> 7\n    _ -> fail\n"
 ---
---- core
+--- unoptimized Core
 let message#20 : string = "data input" in
 let toData#2 : 'erased -> Data = \coerce#17 : 'erased -> coerce#17 in
 let fromInt#3 : int -> int = \value#18 : int -> value#18 in
@@ -17,7 +17,7 @@ let main#1 : int = case@Data match#5 of
   DataI field#15 -> fromInt#3 7
   DataB field#16 -> force leaf#11 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_20
     [(lam toData_2
@@ -42,6 +42,34 @@ main#1
         (lam value_18 value_18)])
       (lam coerce_17 coerce_17)])
     (con string "data input")])
+--- optimized Core
+let match#23 : Data = trace "data input" in iData 42 in
+let leaf#24 : @delay int = delay error in
+case@Data match#23 of
+  DataConstr field#25 -> force leaf#24
+  DataMap field#26 -> force leaf#24
+  DataList field#27 -> force leaf#24
+  DataI field#28 -> 7
+  DataB field#29 -> force leaf#24
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_9
+    [(lam builtin_10
+      [(lam match_1
+        [(lam leaf_2
+          [(lam generated_8
+            (force
+              [[[[[[builtin_9 generated_8] (delay (force leaf_2))] (delay (force leaf_2))]
+                (delay (force leaf_2))]
+                (delay (con integer 7))]
+                (delay (force leaf_2))]))
+            match_1])
+          (delay (error))])
+        (force
+          [[builtin_10 (con string "data input")]
+            (delay [(builtin iData) (con integer 42)])])])
+      (force (builtin trace))])
+    (force (builtin chooseData))])
 --- result
 (con integer 7)
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1172
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype alias Record = { first : Int, second : Int }\nmain : Record -> unit\nmain d = if False then (\\x -> ()) d.first else ()\n"
 ---
---- core
+--- unoptimized Core
 let fromUnit#3 : unit -> unit = \value#8 : unit -> value#8 in
 let fromBool#4 : bool -> bool = \value#9 : bool -> value#9 in
 let main#1 : { _0 : Int, _1 : Int } -> unit = \d#2 : { _0 : Int, _1 : Int } -> case@Bool fromBool#4 false of
@@ -11,16 +12,35 @@ let main#1 : { _0 : Int, _1 : Int } -> unit = \d#2 : { _0 : Int, _1 : Int } -> c
     Cons head#6 tail#7 -> (\x#5 : Int -> fromUnit#3 ()) head#6
   False -> fromUnit#3 () in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2 i2)
-        (lam i2
+  [(lam fromUnit_3
+    [(lam fromBool_4
+      [(lam main_1 main_1)
+        (lam d_2
           (case
-            [i1 (con bool False)]
-            [i0 (con unit ())]
-            [(lam i3 (case i3 (lam i4 (lam i5 [(lam i6 [i0 (con unit ())]) i4])) (error)))
-              [(builtin unListData) i2]]))])
-      (lam i1 i1)])
-    (lam i0 i0)])
+            [fromBool_4 (con bool False)]
+            [fromUnit_3 (con unit ())]
+            [(lam projection_10
+              (case
+                projection_10
+                (lam head_6 (lam tail_7 [(lam x_5 [fromUnit_3 (con unit ())]) head_6]))
+                (error)))
+              [(builtin unListData) d_2]]))])
+      (lam value_9 value_9)])
+    (lam value_8 value_8)])
+--- optimized Core
+\d#15 : { _0 : Int, _1 : Int } -> case@Bool false of
+  True -> let projection#16 : list Data = unListData d#15 in
+  case@List projection#16 of
+    Cons head#17 tail#18 -> ()
+  False -> ()
+--- optimized UPLC
+(program 1.1.0
+  (lam d_1
+    (case
+      (con bool False)
+      (con unit ())
+      [(lam projection_2
+        (case projection_2 (lam head_3 (lam tail_4 (con unit ()))) (error)))
+        [(builtin unListData) d_1]])))

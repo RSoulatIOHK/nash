@@ -1,8 +1,33 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+(\x#1 : int -> trace "intermediate" in error) (trace "first" in 1) (trace "unreachable" in 2)
+--- unoptimized UPLC
+(program 1.1.0
+  [[(lam x_1
+    (force [[(force (builtin trace)) (con string "intermediate")] (delay (error))]))
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])]
+    (force
+      [[(force (builtin trace)) (con string "unreachable")] (delay (con integer 2))])])
+--- optimized Core
+let anf#3 : int = trace "first" in 1 in
+let anf#4 : int -> int = trace "intermediate" in error in
+let anf#5 : int = trace "unreachable" in 2 in
+anf#4 anf#5
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_6 [anf_2 anf_6])
+          (force [[builtin_7 (con string "unreachable")] (delay (con integer 2))])])
+        (force [[builtin_7 (con string "intermediate")] (delay (error))])])
+      (force [[builtin_7 (con string "first")] (delay (con integer 1))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 (\x#2 : int -> trace "intermediate" in error) (trace "first" in 1) (trace "unreachable" in 2)
 --- core after static lifting / before ANF

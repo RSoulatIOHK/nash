@@ -1,7 +1,36 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 37
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline uplc\\n{}\\n--- core after\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let identity#2 : int -> int = \x#1 : int -> x#1 in
+addInteger ((case@Bool true of
+  True -> identity#2
+  False -> identity#2) 20) (identity#2 22)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam identity_2
+    [[(builtin addInteger)
+      [(case (con bool True) identity_2 identity_2) (con integer 20)]]
+      [identity_2 (con integer 22)]])
+    (lam x_1 x_1)])
+--- optimized Core
+let identity#4 : int -> int = \x#3 : int -> x#3 in
+let anf#5 : int -> int = case@Bool true of
+  True -> identity#4
+  False -> identity#4 in
+let anf#6 : int = anf#5 20 in
+addInteger anf#6 22
+--- optimized UPLC
+(program 1.1.0
+  [(lam identity_2
+    [(lam anf_7
+      [(lam anf_8 [[(builtin addInteger) anf_8] (con integer 22)])
+        [anf_7 (con integer 20)]])
+      (case (con bool True) identity_2 identity_2)])
+    (lam x_1 x_1)])
+--- isolated pass
 --- core before
 let identity#2 : int -> int = \x#1 : int -> x#1 in
 let anf#3 : int -> int = case@Bool true of
@@ -10,13 +39,6 @@ let anf#3 : int -> int = case@Bool true of
 let anf#4 : int = anf#3 20 in
 let anf#5 : int = identity#2 22 in
 addInteger anf#4 anf#5
---- core after
-let identity#2 : int -> int = \x#1 : int -> x#1 in
-let anf#3 : int -> int = case@Bool true of
-  True -> identity#2
-  False -> identity#2 in
-let anf#4 : int = anf#3 20 in
-addInteger anf#4 22
 --- baseline uplc
 (program 1.1.0
   [(lam identity_2
@@ -26,6 +48,13 @@ addInteger anf#4 22
         [anf_3 (con integer 20)]])
       (case (con bool True) identity_2 identity_2)])
     (lam x_1 x_1)])
+--- core after
+let identity#2 : int -> int = \x#1 : int -> x#1 in
+let anf#3 : int -> int = case@Bool true of
+  True -> identity#2
+  False -> identity#2 in
+let anf#4 : int = anf#3 20 in
+addInteger anf#4 22
 --- optimized uplc
 (program 1.1.0
   [(lam identity_2

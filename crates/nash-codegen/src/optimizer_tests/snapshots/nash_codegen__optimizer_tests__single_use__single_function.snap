@@ -1,15 +1,32 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+let f#2 : int -> int = \x#1 : int -> trace "body" in x#1 in
+f#2 (trace "argument" in 42)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam f_2
+    [f_2
+      (force
+        [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])])
+    (lam x_1 (force [[(force (builtin trace)) (con string "body")] (delay x_1)]))])
+--- optimized Core
+let anf#5 : int = trace "argument" in 42 in
+trace "body" in anf#5
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam anf_1 (force [[builtin_2 (con string "body")] (delay anf_1)]))
+      (force [[builtin_2 (con string "argument")] (delay (con integer 42))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let f#2 : int -> int = \x#1 : int -> trace "body" in x#1 in
 let anf#3 : int = trace "argument" in 42 in
 f#2 anf#3
---- core after
-let anf#3 : int = trace "argument" in 42 in
-trace "body" in anf#3
 --- baseline
 --- uplc
 (program 1.1.0
@@ -22,6 +39,9 @@ trace "body" in anf#3
 (con integer 42)
 --- logs
 ["argument", "body"]
+--- core after
+let anf#3 : int = trace "argument" in 42 in
+trace "body" in anf#3
 --- candidate
 --- uplc
 (program 1.1.0

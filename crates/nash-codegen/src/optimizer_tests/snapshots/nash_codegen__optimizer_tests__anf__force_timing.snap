@@ -1,8 +1,30 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+let delay#1 : @delay int = delay (trace "delayed body" in 42) in
+trace "before force" in force delay#1
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam delay_1
+    (force
+      [[(force (builtin trace)) (con string "before force")] (delay (force delay_1))]))
+    (delay
+      (force
+        [[(force (builtin trace)) (con string "delayed body")] (delay (con integer 42))]))])
+--- optimized Core
+trace "before force" in trace "delayed body" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force
+      [[builtin_1 (con string "before force")]
+        (delay
+          (force [[builtin_1 (con string "delayed body")] (delay (con integer 42))]))]))
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 let delay#2 : @delay int = delay (trace "delayed body" in 42) in
 trace "before force" in force delay#2

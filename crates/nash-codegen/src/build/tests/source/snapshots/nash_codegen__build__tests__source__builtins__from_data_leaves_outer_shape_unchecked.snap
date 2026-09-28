@@ -1,15 +1,15 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 456
+assertion_line: 430
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (fromData)\ndecoded : Int\ndecoded = fromData (B #\"aa\")\nmain = equalsData (coerce decoded) (B #\"aa\")\n"
 ---
---- core
+--- unoptimized Core
 let fromBytes#5 : bytes -> bytes = \value#8 : bytes -> value#8 in
 let fromData#6 : Data -> 'erased = \coerce#9 : Data -> coerce#9 in
 let decoded#3 : Int = fromData#6 ((\field#7 : bytes -> bData field#7) (fromBytes#5 (con bytestring #aa))) in
 let main#1 : bool = equalsData ((\coerce#2 : Int -> coerce#2) decoded#3) ((\field#4 : bytes -> bData field#4) (fromBytes#5 (con bytestring #aa))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBytes_5
     [(lam fromData_6
@@ -21,6 +21,16 @@ main#1
           [(lam field_7 [(builtin bData) field_7]) [fromBytes_5 (con bytestring #aa)]]]])
       (lam coerce_9 coerce_9)])
     (lam value_8 value_8)])
+--- optimized Core
+let anf#20 : Data = bData (con bytestring #aa) in
+let anf#23 : Data = bData (con bytestring #aa) in
+equalsData anf#20 anf#23
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam anf_2 [[(builtin equalsData) anf_1] anf_2])
+      [(builtin bData) (con bytestring #aa)]])
+    [(builtin bData) (con bytestring #aa)]])
 --- result
 (con bool True)
 --- logs

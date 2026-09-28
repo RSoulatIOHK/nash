@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 1028
+assertion_line: 977
 description: "module Main exposing (..)\ntype Record = Record { a : Int, b : Int, c : Int }\nchange : Record -> Record\nchange value = { value | c = (trace \"c\" 30), a = (trace \"a\" 10) }\nmain : Record\nmain = change (trace \"base\" (Record 1 2 3))\n"
 ---
---- core
+--- unoptimized Core
 let message#19 : string = "a" in
 let message#20 : string = "c" in
 let message#21 : string = "base" in
@@ -18,7 +18,7 @@ case@Pair projection#17 of
       Cons head#14 tail#15 -> constrData 0 (mkCons evaluated#18 (mkCons head#14 (mkCons (trace (fromString#7 message#20) in fromInt#6 30) (con (list data) [])))) in
 let main#1 : Main.Record = change#2 (trace (fromString#7 message#21) in (\field#3 : Int field#4 : Int field#5 : Int -> constrData 0 (mkCons field#3 (mkCons field#4 (mkCons field#5 (con (list data) []))))) (fromInt#6 1) (fromInt#6 2) (fromInt#6 3)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_19
     [(lam message_20
@@ -77,6 +77,74 @@ main#1
         (con string "base")])
       (con string "c")])
     (con string "a")])
+--- optimized Core
+let fromInt#25 : int -> Int = iData in
+let anf#58 : Main.Record = trace "base" in let anf#53 : Int = fromInt#25 1 in
+let anf#55 : Int = fromInt#25 2 in
+let anf#57 : Int = fromInt#25 3 in
+let anf#50 : list Data = mkCons anf#57 (con (list data) []) in
+let anf#51 : list Data = mkCons anf#55 anf#50 in
+let anf#52 : list Data = mkCons anf#53 anf#51 in
+constrData 0 anf#52 in
+let evaluated#30 : Int = trace "a" in fromInt#25 10 in
+let projection#31 : pair int (list Data) = unConstrData anf#58 in
+case@Pair projection#31 of
+  Pair tag#32 fields#33 -> case@List fields#33 of
+    Cons head#34 tail#35 -> case@List tail#35 of
+      Cons head#36 tail#37 -> let anf#45 : Int = trace "c" in fromInt#25 30 in
+      let anf#46 : list Data = mkCons anf#45 (con (list data) []) in
+      let anf#47 : list Data = mkCons head#36 anf#46 in
+      let anf#48 : list Data = mkCons evaluated#30 anf#47 in
+      constrData 0 anf#48
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_21
+    [(lam builtin_22
+      [(lam partial_23
+        [(lam fromInt_1
+          [(lam anf_8
+            [(lam evaluated_9
+              [(lam projection_10
+                (case
+                  projection_10
+                  (lam tag_11
+                    (lam fields_12
+                      (case
+                        fields_12
+                        (lam head_13
+                          (lam tail_14
+                            (case
+                              tail_14
+                              (lam head_15
+                                (lam tail_16
+                                  [(lam anf_17
+                                    [(lam anf_18
+                                      [(lam anf_19
+                                        [(lam anf_20 [partial_23 anf_20]) [[builtin_21 evaluated_9] anf_19]])
+                                        [[builtin_21 head_15] anf_18]])
+                                      [[builtin_21 anf_17] (con (list data) [])]])
+                                    (force [[builtin_22 (con string "c")] (delay [fromInt_1 (con integer 30)])])]))
+                              (error))))
+                        (error))))))
+                [(builtin unConstrData) anf_8]])
+              (force [[builtin_22 (con string "a")] (delay [fromInt_1 (con integer 10)])])])
+            (force
+              [[builtin_22 (con string "base")]
+                (delay
+                  [(lam anf_2
+                    [(lam anf_3
+                      [(lam anf_4
+                        [(lam anf_5
+                          [(lam anf_6 [(lam anf_7 [partial_23 anf_7]) [[builtin_21 anf_2] anf_6]])
+                            [[builtin_21 anf_3] anf_5]])
+                          [[builtin_21 anf_4] (con (list data) [])]])
+                        [fromInt_1 (con integer 3)]])
+                      [fromInt_1 (con integer 2)]])
+                    [fromInt_1 (con integer 1)]])])])
+          (builtin iData)])
+        [(builtin constrData) (con integer 0)]])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (con data (Constr 0 [I 10, I 2, I 30]))
 --- logs

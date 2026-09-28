@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 1
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nmain : int\nmain =\n    case trace \"subject\" () of\n        () -> trace \"body\" 42\n"
 ---
---- core
+--- unoptimized Core
 let message#9 : string = "subject" in
 let message#10 : string = "body" in
 let fromUnit#2 : unit -> unit = \value#6 : unit -> value#6 in
@@ -11,7 +12,7 @@ let fromInt#4 : int -> int = \value#8 : int -> value#8 in
 let match#5 : unit = trace (fromString#3 message#9) in fromUnit#2 () in
 let main#1 : int = trace (fromString#3 message#10) in fromInt#4 42 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_9
     [(lam message_10
@@ -31,6 +32,16 @@ main#1
         (lam value_6 value_6)])
       (con string "body")])
     (con string "subject")])
+--- optimized Core
+let match#19 : unit = trace "subject" in () in
+trace "body" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    (case
+      (force [[builtin_2 (con string "subject")] (delay (con unit ()))])
+      (force [[builtin_2 (con string "body")] (delay (con integer 42))])))
+    (force (builtin trace))])
 --- result
 (con integer 42)
 --- logs

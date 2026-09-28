@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1120
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Datum = Datum { owner : Bytes, deadline : Int }\nmain : Datum -> (Bytes, Int)\nmain d = case d of Datum { owner } -> (owner, d.deadline)\n"
 ---
---- core
+--- unoptimized Core
 let main#1 : Main.Datum -> (Bytes, Int) = \d#2 : Main.Datum -> let match#10 : Main.Datum = d#2 in
 let projection#16 : pair int (list Data) = unConstrData match#10 in
 case@Pair projection#16 of
@@ -11,20 +12,47 @@ case@Pair projection#16 of
     case@List fieldTail#15 of
       Cons head#8 tail#9 -> constr 0 owner#3 head#8 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0 i0)
-    (lam i0
-      [(lam i1
-        [(lam i2
+  [(lam main_1 main_1)
+    (lam d_2
+      [(lam match_10
+        [(lam projection_16
           (case
-            i2
-            (lam i3
-              (lam i4
+            projection_16
+            (lam tag_13
+              (lam fields_14
                 (case
-                  i4
-                  (lam i5
-                    (lam i6 [(lam i7 (case i6 (lam i8 (lam i9 (constr 0 i7 i8))) (error))) i5]))
+                  fields_14
+                  (lam field_11
+                    (lam fieldTail_15
+                      [(lam owner_3
+                        (case fieldTail_15 (lam head_8 (lam tail_9 (constr 0 owner_3 head_8))) (error)))
+                        field_11]))
                   (error))))))
-          [(builtin unConstrData) i1]])
-        i0])])
+          [(builtin unConstrData) match_10]])
+        d_2])])
+--- optimized Core
+\d#4 : Main.Datum -> let projection#6 : pair int (list Data) = unConstrData d#4 in
+case@Pair projection#6 of
+  Pair tag#7 fields#12 -> case@List fields#12 of
+    Cons field#17 fieldTail#18 -> case@List fieldTail#18 of
+      Cons head#20 tail#21 -> constr 0 field#17 head#20
+--- optimized UPLC
+(program 1.1.0
+  (lam d_1
+    [(lam projection_2
+      (case
+        projection_2
+        (lam tag_3
+          (lam fields_5
+            (case
+              fields_5
+              (lam field_8
+                (lam fieldTail_9
+                  (case
+                    fieldTail_9
+                    (lam head_10 (lam tail_11 (constr 0 field_8 head_10)))
+                    (error))))
+              (error))))))
+      [(builtin unConstrData) d_1]]))

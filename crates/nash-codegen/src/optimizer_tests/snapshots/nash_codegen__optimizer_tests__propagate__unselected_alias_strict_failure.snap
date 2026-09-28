@@ -1,19 +1,38 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/propagate.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+let strict#1 : int = trace "strict failure" in error in
+let alias#2 : int = strict#1 in
+case@Bool true of
+  True -> 42
+  False -> alias#2
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam strict_1
+    [(lam alias_2 (case (con bool True) alias_2 (con integer 42))) strict_1])
+    (force
+      [[(force (builtin trace)) (con string "strict failure")] (delay (error))])])
+--- optimized Core
+let strict#3 : int = trace "strict failure" in error in
+case@Bool true of
+  True -> 42
+  False -> strict#3
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam strict_1 (case (con bool True) strict_1 (con integer 42)))
+      (force [[builtin_2 (con string "strict failure")] (delay (error))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let strict#1 : int = trace "strict failure" in error in
 let alias#2 : int = strict#1 in
 case@Bool true of
   True -> 42
   False -> alias#2
---- core after
-let strict#1 : int = trace "strict failure" in error in
-case@Bool true of
-  True -> 42
-  False -> strict#1
 --- baseline
 --- uplc
 (program 1.1.0
@@ -25,6 +44,11 @@ case@Bool true of
 error: ExplicitErrorTerm
 --- logs
 ["strict failure"]
+--- core after
+let strict#1 : int = trace "strict failure" in error in
+case@Bool true of
+  True -> 42
+  False -> strict#1
 --- candidate
 --- uplc
 (program 1.1.0

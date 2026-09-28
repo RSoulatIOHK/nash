@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : (choice, int) -> int\nchoose subject =\n    case trace \"subject\" subject of\n        (Stop, _) -> 0\n        (_, value) -> trace \"shared\" value\nmain = (choose (Stop, 1), choose (Zero, 11), choose (One 2, 22), choose (Two 3 4, 33))\n"
 ---
---- core
+--- unoptimized Core
 let message#24 : string = "subject" in
 let message#25 : string = "shared" in
 let fromInt#3 : int -> int = \value#22 : int -> value#22 in
@@ -21,7 +21,7 @@ case@Tag match#10 of
     leaf#16 value#9 in
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (constr 0 (constr 0) (fromInt#3 1))) (choose#2 (constr 0 (constr 1) (fromInt#3 11))) (choose#2 (constr 0 ((\field#4 : int -> constr 2 field#4) (fromInt#3 2)) (fromInt#3 22))) (choose#2 (constr 0 ((\field#5 : int field#6 : int -> constr 3 field#5 field#6) (fromInt#3 3) (fromInt#3 4)) (fromInt#3 33))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_24
     [(lam message_25
@@ -62,6 +62,71 @@ main#1
         (lam value_22 value_22)])
       (con string "shared")])
     (con string "subject")])
+--- optimized Core
+let choose#39 : (Main.choice, int) -> int = \subject#27 : (Main.choice, int) -> let match#28 : (Main.choice, int) = trace "subject" in subject#27 in
+let leaf#30 : int -> int = \value#29 : int -> trace "shared" in value#29 in
+case@Tag match#28 of
+  0 field#31 field#32 -> case@Tag field#31 of
+    0 -> 0
+    1 -> leaf#30 field#32
+    2 field#34 -> leaf#30 field#32
+    3 field#36 field#37 -> leaf#30 field#32 in
+let anf#46 : Main.choice = constr 0 in
+let anf#48 : (Main.choice, int) = constr 0 anf#46 1 in
+let anf#49 : int = choose#39 anf#48 in
+let anf#50 : Main.choice = constr 1 in
+let anf#52 : (Main.choice, int) = constr 0 anf#50 11 in
+let anf#53 : int = choose#39 anf#52 in
+let anf#55 : Main.choice = constr 2 2 in
+let anf#57 : (Main.choice, int) = constr 0 anf#55 22 in
+let anf#58 : int = choose#39 anf#57 in
+let anf#62 : Main.choice = constr 3 3 4 in
+let anf#64 : (Main.choice, int) = constr 0 anf#62 33 in
+let anf#65 : int = choose#39 anf#64 in
+constr 0 anf#49 anf#53 anf#58 anf#65
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_23
+    [(lam choose_10
+      [(lam anf_11
+        [(lam anf_12
+          [(lam anf_13
+            [(lam anf_14
+              [(lam anf_15
+                [(lam anf_16
+                  [(lam anf_17
+                    [(lam anf_18
+                      [(lam anf_19
+                        [(lam anf_20
+                          [(lam anf_21
+                            [(lam anf_22 (constr 0 anf_13 anf_16 anf_19 anf_22)) [choose_10 anf_21]])
+                            (constr 0 anf_20 (con integer 33))])
+                          (constr 3 (con integer 3) (con integer 4))])
+                        [choose_10 anf_18]])
+                      (constr 0 anf_17 (con integer 22))])
+                    (constr 2 (con integer 2))])
+                  [choose_10 anf_15]])
+                (constr 0 anf_14 (con integer 11))])
+              (constr 1)])
+            [choose_10 anf_12]])
+          (constr 0 anf_11 (con integer 1))])
+        (constr 0)])
+      (lam subject_1
+        [(lam match_2
+          [(lam leaf_4
+            (case
+              match_2
+              (lam field_5
+                (lam field_6
+                  (case
+                    field_5
+                    (con integer 0)
+                    [leaf_4 field_6]
+                    (lam field_7 [leaf_4 field_6])
+                    (lam field_8 (lam field_9 [leaf_4 field_6])))))))
+            (lam value_3 (force [[builtin_23 (con string "shared")] (delay value_3)]))])
+          (force [[builtin_23 (con string "subject")] (delay subject_1)])])])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 0) (con integer 11) (con integer 22) (con integer 33))
 --- logs

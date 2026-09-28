@@ -65,10 +65,15 @@ the fixture instead of compiling it again for a duplicate test.
 
 Keep test helpers local to their test module and snapshots in its `snapshots/`
 directory. Optimizer snapshots show both before and after Core or UPLC at the
-pass's layer. Source-level optimizer snapshots group unoptimized Core then
+pass's layer. All codegen snapshots that generate executable Core group unoptimized Core then
 unoptimized UPLC, followed by optimized Core then optimized UPLC. The unoptimized
-side uses original compiled Core and ordinary lowering, with only required
+side uses original compiled or hand-built Core and ordinary lowering, with only required
 recursion encoding: no optimization passes or builtin/constant sharing.
+Use the shared test-only accepted pipeline in `crates/nash-codegen/tests/support/optimizer.rs`
+so each accepted optimization updates the whole fixture corpus. Pass tests retain
+isolated-pass evidence after that comparison. Diagnostic/metadata snapshots stay
+focused; invalid Core records lowering errors, open Core is closed explicitly for
+pipeline rendering, and deliberate divergence is rendered without evaluation.
 Optimizer performance experiments and budget regression tests
 belong in the separate `tools/optimizer-perf` workspace, outside normal test runs. Use
 `cargo nextest run --workspace` for the repository test suite.

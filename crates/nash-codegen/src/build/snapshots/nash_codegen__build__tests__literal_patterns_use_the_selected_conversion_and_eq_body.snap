@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype box = Box int\nimpl FromInt box where\n    fromInt n = Box (Builtin.addInteger n 1)\nimpl Eq box where\n    eq (Box a) (Box b) = Builtin.equalsInteger (Builtin.addInteger a 1) b\nboxed : box\nboxed = 40\nmain : bool\nmain =\n    case boxed of\n        41 -> True\n        _ -> False\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#10 : int -> int = \value#20 : int -> value#20 in
 let fromInt#3 : int -> Main.box = \n#8 : int -> (\field#9 : int -> constr 0 field#9) (addInteger n#8 (fromInt#10 1)) in
 let boxed#2 : Main.box = fromInt#3 40 in
@@ -19,7 +20,7 @@ let main#1 : bool = case@Bool (\literal#5 : Main.box -> eq#4 literal#5 (fromInt#
   True -> fromBool#6 true
   False -> fromBool#6 false in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_10
     [(lam fromInt_3
@@ -58,6 +59,36 @@ main#1
         [(lam field_9 (constr 0 field_9))
           [[(builtin addInteger) n_8] [fromInt_10 (con integer 1)]]])])
     (lam value_20 value_20)])
+--- optimized Core
+let fromInt#25 : int -> Main.box = \n#23 : int -> let anf#42 : int = addInteger n#23 1 in
+constr 0 anf#42 in
+let boxed#26 : Main.box = fromInt#25 40 in
+let anf#46 : Main.box = fromInt#25 41 in
+let anf#47 : bool = case@Tag boxed#26 of
+  0 field#30 -> case@Tag anf#46 of
+    0 field#33 -> let anf#44 : int = addInteger field#30 1 in
+    equalsInteger anf#44 field#33 in
+case@Bool anf#47 of
+  True -> true
+  False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam fromInt_3
+    [(lam boxed_4
+      [(lam anf_5
+        [(lam anf_9 (case anf_9 (con bool False) (con bool True)))
+          (case
+            boxed_4
+            (lam field_6
+              (case
+                anf_5
+                (lam field_7
+                  [(lam anf_8 [[(builtin equalsInteger) anf_8] field_7])
+                    [[(builtin addInteger) field_6] (con integer 1)]]))))])
+        [fromInt_3 (con integer 41)]])
+      [fromInt_3 (con integer 40)]])
+    (lam n_1
+      [(lam anf_2 (constr 0 anf_2)) [[(builtin addInteger) n_1] (con integer 1)]])])
 --- result
 (con bool True)
 --- logs

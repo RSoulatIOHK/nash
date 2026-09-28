@@ -67,14 +67,18 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, members: usize, fails: 
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core after\n{}\n--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            pretty(before),
-            pretty(after),
-            baseline.uplc,
-            candidate.uplc,
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            before,
+            format!(
+                "--- core before\n{}\n--- uplc before\n{}\n--- core after\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                baseline.uplc,
+                pretty(after),
+                candidate.uplc,
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     // Properties independent of the expected snapshot.
@@ -448,12 +452,16 @@ fn accepted_cleanup_releases_dead_captures_but_preserves_effects() {
 
         insta::assert_snapshot!(
             name,
-            format!(
-                "--- core before\n{}\n--- core after\n{}\n--- result\n{}\n--- logs\n{:?}",
-                pretty(before),
-                pretty(after),
-                candidate.result,
-                candidate.logs
+            crate::harness::pass_snapshot(
+                b.arena,
+                before,
+                format!(
+                    "--- core before\n{}\n--- core after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                    pretty(before),
+                    pretty(after),
+                    candidate.result,
+                    candidate.logs
+                )
             )
         );
     }

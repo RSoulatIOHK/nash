@@ -1,8 +1,65 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+letrec
+  countdown#1 : int -> int -> int [static [0]] = \x#2 : int n#3 : int -> case@Bool equalsInteger n#3 0 of
+    True -> 42
+    False -> countdown#1 x#2 (subtractInteger n#3 1)
+in
+countdown#1 (trace "static argument" in 1) (trace "dynamic failure" in error)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam countdown_1
+    [[countdown_1
+      (force
+        [[(force (builtin trace)) (con string "static argument")]
+          (delay (con integer 1))])]
+      (force
+        [[(force (builtin trace)) (con string "dynamic failure")] (delay (error))])])
+    (lam x_2
+      (lam n_3
+        [[(lam self_4 [self_4 self_4])
+          (lam self_4
+            (lam n_3
+              (case
+                [[(builtin equalsInteger) n_3] (con integer 0)]
+                [[self_4 self_4] [[(builtin subtractInteger) n_3] (con integer 1)]]
+                (con integer 42))))]
+          n_3]))])
+--- optimized Core
+let arg#9 : int = trace "static argument" in 1 in
+let arg#10 : int = trace "dynamic failure" in error in
+letrec
+  worker#8 : int -> int [static []] = \n#7 : int -> let anf#11 : bool = equalsInteger n#7 0 in
+  case@Bool anf#11 of
+    True -> 42
+    False -> let anf#12 : int = subtractInteger n#7 1 in
+    worker#8 anf#12
+in
+worker#8 arg#10
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_17
+    [(lam arg_3
+      [(lam arg_4
+        [(lam worker_16 [worker_16 arg_4])
+          [(lam self_5 [self_5 self_5])
+            (lam self_6
+              (lam n_13
+                [(lam anf_14
+                  (case
+                    anf_14
+                    [(lam anf_15 [[self_6 self_6] anf_15])
+                      [[(builtin subtractInteger) n_13] (con integer 1)]]
+                    (con integer 42)))
+                  [[(builtin equalsInteger) n_13] (con integer 0)]]))]])
+        (force [[builtin_17 (con string "dynamic failure")] (delay (error))])])
+      (force [[builtin_17 (con string "static argument")] (delay (con integer 1))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 letrec
   countdown#5 : int -> int -> int [static [0]] = \x#6 : int n#7 : int -> case@Bool equalsInteger n#7 0 of

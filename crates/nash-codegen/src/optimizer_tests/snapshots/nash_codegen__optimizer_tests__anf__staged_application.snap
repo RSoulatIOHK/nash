@@ -1,8 +1,44 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+(trace "function" in \x#1 : int -> trace "intermediate" in \y#2 : int -> y#2) (trace "first" in 1) (trace "second" in 42)
+--- unoptimized UPLC
+(program 1.1.0
+  [[(force
+    [[(force (builtin trace)) (con string "function")]
+      (delay
+        (lam x_1
+          (force
+            [[(force (builtin trace)) (con string "intermediate")] (delay (lam y_2 y_2))])))])
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])]
+    (force
+      [[(force (builtin trace)) (con string "second")] (delay (con integer 42))])])
+--- optimized Core
+let anf#5 : int -> int -> int = trace "function" in \x#3 : int -> trace "intermediate" in \y#4 : int -> y#4 in
+let anf#6 : int = trace "first" in 1 in
+let anf#7 : int -> int = anf#5 anf#6 in
+let anf#8 : int = trace "second" in 42 in
+anf#7 anf#8
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_13
+    [(lam anf_9
+      [(lam anf_10
+        [(lam anf_11
+          [(lam anf_12 [anf_11 anf_12])
+            (force [[builtin_13 (con string "second")] (delay (con integer 42))])])
+          [anf_9 anf_10]])
+        (force [[builtin_13 (con string "first")] (delay (con integer 1))])])
+      (force
+        [[builtin_13 (con string "function")]
+          (delay
+            (lam x_1
+              (force [[builtin_13 (con string "intermediate")] (delay (lam y_2 y_2))])))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 (trace "function" in \x#3 : int -> trace "intermediate" in \y#4 : int -> y#4) (trace "first" in 1) (trace "second" in 42)
 --- core after static lifting / before ANF

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 754
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nempty _ = []\nints : unit -> list int\nints = empty\nbigInts : unit -> list Int\nbigInts = empty\nbigBytes : unit -> list Bytes\nbigBytes = empty\nmain = (ints (), bigInts (), bigBytes ())\n"
 ---
---- core
+--- unoptimized Core
 let empty#6 : 'erased -> list int = \arg#9 : 'erased -> let match#10 : 'erased = arg#9 in
 (con (list integer) []) in
 let ints#2 : unit -> list int = empty#6 in
@@ -13,22 +14,35 @@ let bigInts#4 : unit -> list Int = empty#8 in
 let bigBytes#5 : unit -> list Bytes = empty#8 in
 let main#1 : (list int, list Int, list Bytes) = constr 0 (ints#2 (fromUnit#3 ())) (bigInts#4 (fromUnit#3 ())) (bigBytes#5 (fromUnit#3 ())) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2
-        [(lam i3
-          [(lam i4
-            [(lam i5
-              [(lam i6 i6)
+  [(lam empty_6
+    [(lam ints_2
+      [(lam fromUnit_3
+        [(lam empty_8
+          [(lam bigInts_4
+            [(lam bigBytes_5
+              [(lam main_1 main_1)
                 (constr 0
-                  [i1 [i2 (con unit ())]]
-                  [i4 [i2 (con unit ())]]
-                  [i5 [i2 (con unit ())]])])
-              i3])
-            i3])
-          (lam i3 [(lam i4 (con (list data) [])) i3])])
-        (lam i2 i2)])
-      i0])
-    (lam i0 [(lam i1 (con (list integer) [])) i0])])
+                  [ints_2 [fromUnit_3 (con unit ())]]
+                  [bigInts_4 [fromUnit_3 (con unit ())]]
+                  [bigBytes_5 [fromUnit_3 (con unit ())]])])
+              empty_8])
+            empty_8])
+          (lam arg_11 [(lam match_12 (con (list data) [])) arg_11])])
+        (lam value_7 value_7)])
+      empty_6])
+    (lam arg_9 [(lam match_10 (con (list integer) [])) arg_9])])
+--- optimized Core
+let empty#21 : 'erased -> list Data = \arg#19 : 'erased -> (con (list data) []) in
+let anf#28 : list Int = empty#21 () in
+let anf#30 : list Bytes = empty#21 () in
+constr 0 (con (list integer) []) anf#28 anf#30
+--- optimized UPLC
+(program 1.1.0
+  [(lam empty_2
+    [(lam anf_3
+      [(lam anf_4 (constr 0 (con (list integer) []) anf_3 anf_4))
+        [empty_2 (con unit ())]])
+      [empty_2 (con unit ())]])
+    (lam arg_1 (con (list data) []))])

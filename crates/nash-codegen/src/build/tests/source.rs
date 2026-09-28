@@ -25,7 +25,7 @@ macro_rules! case {
                     let core = crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core).expect("recursion rewrites");
                     let evaluated = crate::harness::eval_core_raw(arena, core);
                     assert_eq!(evaluated.result.starts_with("error:"), $fails, "unexpected evaluation category: {}", evaluated.result);
-                    insta::assert_snapshot!(stringify!($name), format!("--- core\n{}\n{evaluated}", nash_ir::pretty::pretty(core)));
+                    insta::assert_snapshot!(stringify!($name), crate::harness::source_snapshot(arena, compiled.core, &evaluated));
                     crate::harness::assert_candidate_equivalent(arena, compiled.core, &evaluated);
                 },
             );
@@ -49,15 +49,9 @@ macro_rules! validator_case {
                     let compiled = build
                         .compile(arena, root, None, crate::build::TraceConfig::default())
                         .expect("validator compiles to Core");
-                    let assembled = crate::program::assemble_core(arena, compiled.core)
-                        .expect("validator lowers to closed UPLC");
                     insta::assert_snapshot!(
                         stringify!($name),
-                        format!(
-                            "--- core\n{}\n--- uplc\n{}",
-                            nash_ir::pretty::pretty(compiled.core),
-                            nash_plutus::pretty::program(assembled.program)
-                        )
+                        crate::build::tests::compiled_output(arena, compiled.core)
                     );
                 },
             );

@@ -1,16 +1,16 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 442
+assertion_line: 417
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (fromData)\ndecoded : List (List Int)\ndecoded = fromData (List [List [B #\"aa\"]])\nmain = nullList (unListData decoded)\n"
 ---
---- core
+--- unoptimized Core
 let fromData#3 : Data -> 'erased = \coerce#8 : Data -> coerce#8 in
 let fromBytes#7 : bytes -> bytes = \value#9 : bytes -> value#9 in
 let decoded#2 : List (List Int) = fromData#3 ((\field#4 : list Data -> listData field#4) (mkCons ((\field#5 : list Data -> listData field#5) (mkCons ((\field#6 : bytes -> bData field#6) (fromBytes#7 (con bytestring #aa))) (con (list data) []))) (con (list data) []))) in
 let projection#10 : list (List Int) = unListData decoded#2 in
 let main#1 : bool = nullList projection#10 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromData_3
     [(lam fromBytes_7
@@ -28,6 +28,31 @@ main#1
               (con (list data) [])]]]])
       (lam value_9 value_9)])
     (lam coerce_8 coerce_8)])
+--- optimized Core
+let anf#22 : Data = bData (con bytestring #aa) in
+let anf#23 : list Data = mkCons anf#22 (con (list data) []) in
+let anf#24 : Data = listData anf#23 in
+let anf#25 : list Data = mkCons anf#24 (con (list data) []) in
+let anf#26 : Data = listData anf#25 in
+let projection#19 : list (List Int) = unListData anf#26 in
+nullList projection#19
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam builtin_8
+      [(lam anf_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam projection_6 [builtin_7 projection_6]) [(builtin unListData) anf_5]])
+                [(builtin listData) anf_4]])
+              [[builtin_8 anf_3] (con (list data) [])]])
+            [(builtin listData) anf_2]])
+          [[builtin_8 anf_1] (con (list data) [])]])
+        [(builtin bData) (con bytestring #aa)]])
+      (force (builtin mkCons))])
+    (force (builtin nullList))])
 --- result
 (con bool False)
 --- logs

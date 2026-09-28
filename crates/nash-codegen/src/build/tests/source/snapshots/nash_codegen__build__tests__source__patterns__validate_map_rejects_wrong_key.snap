@@ -1,16 +1,18 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 1123
+assertion_line: 1064
 description: "module Main exposing (..)\nimport Data exposing (ToData, Validate)\nmain : Map Int Bytes\nmain = validate (toData (Builtin.mapData [Builtin.mkPairData (Builtin.bData #\"aa\") (Builtin.bData #\"bb\")]))\n"
 ---
---- core
+--- unoptimized Core
 let applyForward#7 : 'erased -> ('erased -> 'erased) -> 'erased = \x#13 : 'erased (f#14 : 'erased -> 'erased) -> f#14 x#13 in
-let mapList#8 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) = \(f#15 : 'erased -> pair Data Data) values#16 : list 'erased -> (\self#38 : @self (list 'erased -> list (pair Data Data)) -> self#38 self#38) (\self#38 : @self (list 'erased -> list (pair Data Data)) values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
-case@List match#19 of
-  Nil -> (con (list (pair data data)) [])
-  Cons field#20 field#21 -> let first#17 : 'erased = field#20 in
-  let rest#18 : list 'erased = field#21 in
-  mkCons (f#15 first#17) (self#38 self#38 rest#18)) values#16 in
+letrec
+  mapList#8 : ('erased -> pair Data Data) -> list 'erased -> list (pair Data Data) [static [0]] = \(f#15 : 'erased -> pair Data Data) values#16 : list 'erased -> let match#19 : list 'erased = values#16 in
+  case@List match#19 of
+    Nil -> (con (list (pair data data)) [])
+    Cons field#20 field#21 -> let first#17 : 'erased = field#20 in
+    let rest#18 : list 'erased = field#21 in
+    mkCons (f#15 first#17) (mapList#8 f#15 rest#18)
+in
 let validate#25 : Data -> Int = \value#30 : Data -> let candidate#31 : Int = (\coerce#33 : Data -> coerce#33) value#30 in
 let destruct#32 : int = unIData candidate#31 in
 candidate#31 in
@@ -28,7 +30,7 @@ let toData#3 : 'erased -> Data = \coerce#11 : 'erased -> coerce#11 in
 let fromBytes#4 : bytes -> bytes = \value#12 : bytes -> value#12 in
 let main#1 : Map Int Bytes = validate#2 (toData#3 (mapData (mkCons (mkPairData (bData (fromBytes#4 (con bytestring #aa))) (bData (fromBytes#4 (con bytestring #bb)))) (con (list (pair data data)) [])))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam applyForward_7
     [(lam mapList_8
@@ -94,6 +96,69 @@ main#1
                   values_16]))]
             values_16]))])
     (lam x_13 (lam f_14 [f_14 x_13]))])
+--- optimized Core
+let applyForward#40 : 'erased -> ('erased -> 'erased) -> 'erased = \x#38 : 'erased (f#39 : 'erased -> 'erased) -> f#39 x#38 in
+let anf#86 : Bytes = bData (con bytestring #aa) in
+let anf#88 : Bytes = bData (con bytestring #bb) in
+let anf#89 : pair Bytes Bytes = mkPairData anf#86 anf#88 in
+let anf#90 : list (pair Bytes Bytes) = mkCons anf#89 (con (list (pair data data)) []) in
+let anf#91 : Map Bytes Bytes = mapData anf#90 in
+let anf#81 : list (pair Data Data) = applyForward#40 anf#91 unMapData in
+let anf#82 : (list (pair Data Data) -> list (pair Data Data)) -> list (pair Data Data) = applyForward#40 anf#81 in
+let anf#84 : list (pair Data Data) = anf#82 (\values#43 : list 'erased -> letrec
+  worker#76 : list 'erased -> list (pair Data Data) [static []] = \values#75 : list 'erased -> case@List values#75 of
+    Nil -> (con (list (pair data data)) [])
+    Cons field#45 field#46 -> let anf#77 : pair Data Data = case@Pair field#45 of
+      Pair field#61 field#62 -> let destruct#52 : int = unIData field#61 in
+      let destruct#57 : bytes = unBData field#62 in
+      mkPairData field#61 field#62 in
+    let anf#78 : list (pair Data Data) = worker#76 field#46 in
+    mkCons anf#77 anf#78
+in
+worker#76 values#43) in
+applyForward#40 anf#84 mapData
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_27
+    [(lam applyForward_5
+      [(lam anf_6
+        [(lam anf_7
+          [(lam anf_8
+            [(lam anf_9
+              [(lam anf_10
+                [(lam anf_11
+                  [(lam anf_12
+                    [(lam anf_26 [[applyForward_5 anf_26] (builtin mapData)])
+                      [anf_12
+                        (lam values_13
+                          [(lam worker_25 [worker_25 values_13])
+                            [(lam self_14 [self_14 self_14])
+                              (lam self_15
+                                (lam values_16
+                                  (case
+                                    values_16
+                                    (lam field_17
+                                      (lam field_18
+                                        [(lam anf_23
+                                          [(lam anf_24 [[builtin_27 anf_23] anf_24]) [[self_15 self_15] field_18]])
+                                          (case
+                                            field_17
+                                            (lam field_19
+                                              (lam field_20
+                                                [(lam destruct_21
+                                                  [(lam destruct_22 [[(builtin mkPairData) field_19] field_20])
+                                                    [(builtin unBData) field_20]])
+                                                  [(builtin unIData) field_19]])))]))
+                                    (con (list (pair data data)) []))))]])]])
+                    [applyForward_5 anf_11]])
+                  [[applyForward_5 anf_10] (builtin unMapData)]])
+                [(builtin mapData) anf_9]])
+              [[builtin_27 anf_8] (con (list (pair data data)) [])]])
+            [[(builtin mkPairData) anf_6] anf_7]])
+          [(builtin bData) (con bytestring #bb)]])
+        [(builtin bData) (con bytestring #aa)]])
+      (lam x_3 (lam f_4 [f_4 x_3]))])
+    (force (builtin mkCons))])
 --- result
 error: Runtime(MalFormedData(ByteString([170])))
 --- logs

@@ -1,23 +1,48 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let helper#2 : int -> int = \x#1 : int -> trace "body" in 21 in
+case@Bool true of
+  True -> 42
+  False -> helper#2 1
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam helper_2
+    (case (con bool True) [helper_2 (con integer 1)] (con integer 42)))
+    (lam x_1
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
+--- optimized Core
+case@Bool true of
+  True -> 42
+  False -> trace "body" in 21
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (case
+      (con bool True)
+      (force [[builtin_1 (con string "body")] (delay (con integer 21))])
+      (con integer 42)))
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let helper#2 : int -> int = \x#1 : int -> trace "body" in 21 in
 case@Bool true of
   True -> 42
   False -> helper#2 1
---- core after
-let helper#2 : @delay int = delay (trace "body" in 21) in
-case@Bool true of
-  True -> 42
-  False -> force helper#2
 --- uplc before
 (program 1.1.0
   [(lam helper_2
     (case (con bool True) [helper_2 (con integer 1)] (con integer 42)))
     (lam x_1
       (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
+--- core after
+let helper#2 : @delay int = delay (trace "body" in 21) in
+case@Bool true of
+  True -> 42
+  False -> force helper#2
 --- uplc after
 (program 1.1.0
   [(lam helper_2 (case (con bool True) (force helper_2) (con integer 42)))

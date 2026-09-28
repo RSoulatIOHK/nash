@@ -1,13 +1,36 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/known_bool.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+assertion_line: 22
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), left.uplc, pretty(after), right.uplc, right.result,\nright.logs))"
 ---
+--- unoptimized Core
+case@Bool true of
+  True -> trace "chosen" in 42
+  False -> trace "wrong" in error
+--- unoptimized UPLC
+(program 1.1.0
+  (case
+    (con bool True)
+    (force [[(force (builtin trace)) (con string "wrong")] (delay (error))])
+    (force
+      [[(force (builtin trace)) (con string "chosen")] (delay (con integer 42))])))
+--- optimized Core
+case@Bool true of
+  True -> trace "chosen" in 42
+  False -> trace "wrong" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (case
+      (con bool True)
+      (force [[builtin_1 (con string "wrong")] (delay (error))])
+      (force [[builtin_1 (con string "chosen")] (delay (con integer 42))])))
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 case@Bool true of
   True -> trace "chosen" in 42
   False -> trace "wrong" in error
---- core after
-trace "chosen" in 42
 --- uplc before
 (program 1.1.0
   (case
@@ -15,6 +38,8 @@ trace "chosen" in 42
     (force [[(force (builtin trace)) (con string "wrong")] (delay (error))])
     (force
       [[(force (builtin trace)) (con string "chosen")] (delay (con integer 42))])))
+--- core after
+trace "chosen" in 42
 --- uplc after
 (program 1.1.0
   (force

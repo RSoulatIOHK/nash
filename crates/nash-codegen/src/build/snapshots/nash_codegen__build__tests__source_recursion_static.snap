@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 471
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nrepeat : int -> int -> int\nrepeat item n = if Builtin.equalsInteger n 0 then item else repeat item (Builtin.subtractInteger n 1)\nmain : int\nmain = repeat 42 3\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#6 : int -> value#6 in
 letrec
   repeat#2 : int -> int -> int [static [0]] = \item#4 : int n#5 : int -> case@Bool equalsInteger n#5 (fromInt#3 0) of
@@ -11,18 +12,42 @@ letrec
 in
 let main#1 : int = repeat#2 (fromInt#3 42) (fromInt#3 3) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1 [(lam i2 i2) [[i1 [i0 (con integer 42)]] [i0 (con integer 3)]]])
-      (lam i1
-        (lam i2
-          [[(lam i3 [i3 i3])
-            (lam i3
-              (lam i4
+  [(lam fromInt_3
+    [(lam repeat_2
+      [(lam main_1 main_1)
+        [[repeat_2 [fromInt_3 (con integer 42)]] [fromInt_3 (con integer 3)]]])
+      (lam item_4
+        (lam n_5
+          [[(lam self_7 [self_7 self_7])
+            (lam self_7
+              (lam n_5
                 (case
-                  [[(builtin equalsInteger) i4] [i0 (con integer 0)]]
-                  [[i3 i3] [[(builtin subtractInteger) i4] [i0 (con integer 1)]]]
-                  i1)))]
-            i2]))])
-    (lam i0 i0)])
+                  [[(builtin equalsInteger) n_5] [fromInt_3 (con integer 0)]]
+                  [[self_7 self_7] [[(builtin subtractInteger) n_5] [fromInt_3 (con integer 1)]]]
+                  item_4)))]
+            n_5]))])
+    (lam value_6 value_6)])
+--- optimized Core
+letrec
+  worker#14 : int -> int [static []] = \n#13 : int -> let anf#16 : bool = equalsInteger n#13 0 in
+  case@Bool anf#16 of
+    True -> 42
+    False -> let anf#18 : int = subtractInteger n#13 1 in
+    worker#14 anf#18
+in
+worker#14 3
+--- optimized UPLC
+(program 1.1.0
+  [(lam worker_8 [worker_8 (con integer 3)])
+    [(lam self_3 [self_3 self_3])
+      (lam self_4
+        (lam n_5
+          [(lam anf_6
+            (case
+              anf_6
+              [(lam anf_7 [[self_4 self_4] anf_7])
+                [[(builtin subtractInteger) n_5] (con integer 1)]]
+              (con integer 42)))
+            [[(builtin equalsInteger) n_5] (con integer 0)]]))]])

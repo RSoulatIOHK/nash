@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1345
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nchoose : bool -> int\nchoose flag =\n    if trace \"condition\" flag then trace \"true\" 42\n    else trace \"false\" 7\nmain = (choose True, choose False)\n"
 ---
---- core
+--- unoptimized Core
 let message#10 : string = "condition" in
 let message#11 : string = "true" in
 let message#12 : string = "false" in
@@ -14,7 +15,7 @@ let choose#2 : bool -> int = \flag#4 : bool -> case@Bool (trace (fromString#6 me
 let fromBool#3 : bool -> bool = \value#7 : bool -> value#7 in
 let main#1 : (int, int) = constr 0 (choose#2 (fromBool#3 true)) (choose#2 (fromBool#3 false)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_10
     [(lam message_11
@@ -42,6 +43,28 @@ main#1
         (con string "false")])
       (con string "true")])
     (con string "condition")])
+--- optimized Core
+let choose#21 : bool -> int = \flag#20 : bool -> let anf#26 : bool = trace "condition" in flag#20 in
+case@Bool anf#26 of
+  True -> trace "true" in 42
+  False -> trace "false" in 7 in
+let anf#30 : int = choose#21 true in
+let anf#32 : int = choose#21 false in
+constr 0 anf#30 anf#32
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_6
+    [(lam choose_3
+      [(lam anf_4 [(lam anf_5 (constr 0 anf_4 anf_5)) [choose_3 (con bool False)]])
+        [choose_3 (con bool True)]])
+      (lam flag_1
+        [(lam anf_2
+          (case
+            anf_2
+            (force [[builtin_6 (con string "false")] (delay (con integer 7))])
+            (force [[builtin_6 (con string "true")] (delay (con integer 42))])))
+          (force [[builtin_6 (con string "condition")] (delay flag_1)])])])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 42) (con integer 7))
 --- logs

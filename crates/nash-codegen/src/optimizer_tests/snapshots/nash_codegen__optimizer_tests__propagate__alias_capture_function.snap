@@ -1,17 +1,40 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/propagate.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+let x#1 : int = trace "outer" in 42 in
+let alias#2 : int = x#1 in
+(\x#3 : int -> alias#2) (trace "argument" in 0)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam x_1
+    [(lam alias_2
+      [(lam x_3 alias_2)
+        (force
+          [[(force (builtin trace)) (con string "argument")] (delay (con integer 0))])])
+      x_1])
+    (force
+      [[(force (builtin trace)) (con string "outer")] (delay (con integer 42))])])
+--- optimized Core
+let x#4 : int = trace "outer" in 42 in
+let anf#7 : int = trace "argument" in 0 in
+x#4
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam x_1
+      [(lam anf_2 x_1)
+        (force [[builtin_3 (con string "argument")] (delay (con integer 0))])])
+      (force [[builtin_3 (con string "outer")] (delay (con integer 42))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let x#1 : int = trace "outer" in 42 in
 let alias#2 : int = x#1 in
 let anf#4 : int = trace "argument" in 0 in
 (\x#3 : int -> alias#2) anf#4
---- core after
-let x#1 : int = trace "outer" in 42 in
-let anf#4 : int = trace "argument" in 0 in
-(\x#3 : int -> x#1) anf#4
 --- baseline
 --- uplc
 (program 1.1.0
@@ -27,6 +50,10 @@ let anf#4 : int = trace "argument" in 0 in
 (con integer 42)
 --- logs
 ["outer", "argument"]
+--- core after
+let x#1 : int = trace "outer" in 42 in
+let anf#4 : int = trace "argument" in 0 in
+(\x#3 : int -> x#1) anf#4
 --- candidate
 --- uplc
 (program 1.1.0

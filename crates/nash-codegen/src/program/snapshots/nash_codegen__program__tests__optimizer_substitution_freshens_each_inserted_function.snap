@@ -1,11 +1,51 @@
 ---
 source: crates/nash-codegen/src/program/tests.rs
-expression: "(pretty::term(changed.term.unwrap()), changed.info.logs)"
+assertion_line: 110
+expression: "crate::harness::pass_snapshot(&arena, reference,\nformat!(\"--- Core after substitution\\n{}\\n--- UPLC after substitution\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_ir::pretty::pretty(candidate),\npretty::term(assemble_core(&arena, candidate).unwrap().named),\npretty::term(changed.term.unwrap()), changed.info.logs,))"
 ---
-(
-    "(constr 0 (con integer 21) (con integer 22))",
-    [
-        "called",
-        "called",
-    ],
-)
+--- unoptimized Core
+let target#1 : int -> int = \x#2 : int -> trace "called" in addInteger x#2 1 in
+constr 0 (target#1 20) (target#1 21)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam target_1
+    (constr 0 [target_1 (con integer 20)] [target_1 (con integer 21)]))
+    (lam x_2
+      (force
+        [[(force (builtin trace)) (con string "called")]
+          (delay [[(builtin addInteger) x_2] (con integer 1)])]))])
+--- optimized Core
+let target#4 : int -> int = \x#3 : int -> trace "called" in addInteger x#3 1 in
+let anf#5 : int = target#4 20 in
+let anf#6 : int = target#4 21 in
+constr 0 anf#5 anf#6
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_9
+    [(lam target_2
+      [(lam anf_7 [(lam anf_8 (constr 0 anf_7 anf_8)) [target_2 (con integer 21)]])
+        [target_2 (con integer 20)]])
+      (lam x_1
+        (force
+          [[builtin_9 (con string "called")]
+            (delay [[(builtin addInteger) x_1] (con integer 1)])]))])
+    (force (builtin trace))])
+--- isolated pass
+--- Core after substitution
+constr 0 ((\x#3 : int -> trace "called" in addInteger x#3 1) 20) ((\x#4 : int -> trace "called" in addInteger x#4 1) 21)
+--- UPLC after substitution
+(constr 0
+  [(lam x_3
+    (force
+      [[(force (builtin trace)) (con string "called")]
+        (delay [[(builtin addInteger) x_3] (con integer 1)])]))
+    (con integer 20)]
+  [(lam x_4
+    (force
+      [[(force (builtin trace)) (con string "called")]
+        (delay [[(builtin addInteger) x_4] (con integer 1)])]))
+    (con integer 21)])
+--- result
+(constr 0 (con integer 21) (con integer 22))
+--- logs
+["called", "called"]

@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 607
+assertion_line: 573
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Lift exposing (Lift)\nentries : map Int (List Data)\nentries = [Builtin.mkPairData (Builtin.iData 7) (Builtin.listData [I 42])]\nwrapped : Map Int (List Data)\nwrapped = lift entries\ndecoded : map Int (List Data)\ndecoded = lower wrapped\nmain : int\nmain =\n    case decoded of\n        [pair(key, values)] ->\n            case Builtin.unListData values of\n                [I number] -> Builtin.addInteger (Builtin.unIData key) number\n                _ -> fail\n        _ -> fail\n"
 ---
---- core
+--- unoptimized Core
 let lower#40 : Map 'erased 'erased -> list (pair 'erased 'erased) = unMapData in
 let lift#42 : list (pair 'erased 'erased) -> Map 'erased 'erased = mapData in
 let fromInt#44 : int -> int = \value#46 : int -> value#46 in
@@ -34,7 +34,7 @@ let main#1 : int = case@List match#26 of
           DataB field#25 -> force leaf#16
       Cons field#38 field#39 -> force leaf#33 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam lower_40
     [(lam lift_42
@@ -101,6 +101,93 @@ main#1
         (lam value_46 value_46)])
       (builtin mapData)])
     (builtin unMapData)])
+--- optimized Core
+let anf#66 : Int = iData 7 in
+let anf#68 : Data = iData 42 in
+let anf#69 : list Data = mkCons anf#68 (con (list data) []) in
+let anf#70 : List Data = listData anf#69 in
+let anf#71 : pair Int (List Data) = mkPairData anf#66 anf#70 in
+let entries#12 : list (pair Int (List Data)) = mkCons anf#71 (con (list (pair data data)) []) in
+let wrapped#13 : Map Int (List Data) = mapData entries#12 in
+let decoded#14 : list (pair Int (List Data)) = unMapData wrapped#13 in
+let leaf#27 : @delay int = delay error in
+case@List decoded#14 of
+  Nil -> force leaf#27
+  Cons field#28 field#29 -> case@Pair field#28 of
+    Pair field#30 field#31 -> case@List field#29 of
+      Nil -> let projection#49 : list Data = unListData field#31 in
+      let leaf#51 : @delay int = delay error in
+      case@List projection#49 of
+        Nil -> force leaf#51
+        Cons field#52 field#53 -> case@Data field#52 of
+          DataConstr field#54 -> force leaf#51
+          DataMap field#55 -> force leaf#51
+          DataList field#56 -> force leaf#51
+          DataI field#57 -> case@List field#53 of
+            Nil -> let anf#72 : int = unIData field#30 in
+            addInteger anf#72 field#57
+            Cons field#59 field#60 -> force leaf#51
+          DataB field#61 -> force leaf#51
+      Cons field#62 field#63 -> force leaf#27
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_37
+    [(lam builtin_38
+      [(lam anf_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam entries_6
+                  [(lam wrapped_7
+                    [(lam decoded_8
+                      [(lam leaf_9
+                        (case
+                          decoded_8
+                          (lam field_10
+                            (lam field_11
+                              (case
+                                field_10
+                                (lam field_15
+                                  (lam field_16
+                                    (case
+                                      field_11
+                                      (lam field_34 (lam field_35 (force leaf_9)))
+                                      [(lam projection_17
+                                        [(lam leaf_18
+                                          (case
+                                            projection_17
+                                            (lam field_19
+                                              (lam field_20
+                                                [(lam generated_36
+                                                  (force
+                                                    [[[[[[builtin_37 generated_36] (delay (force leaf_18))] (delay (force leaf_18))]
+                                                      (delay (force leaf_18))]
+                                                      (delay
+                                                        [(lam field_24
+                                                          (case
+                                                            field_20
+                                                            (lam field_26 (lam field_32 (force leaf_18)))
+                                                            [(lam anf_25 [[(builtin addInteger) anf_25] field_24])
+                                                              [(builtin unIData) field_15]]))
+                                                          [(builtin unIData) generated_36]])]
+                                                      (delay (force leaf_18))]))
+                                                  field_19]))
+                                            (force leaf_18)))
+                                          (delay (error))])
+                                        [(builtin unListData) field_16]]))))))
+                          (force leaf_9)))
+                        (delay (error))])
+                      [(builtin unMapData) wrapped_7]])
+                    [(builtin mapData) entries_6]])
+                  [[builtin_38 anf_5] (con (list (pair data data)) [])]])
+                [[(builtin mkPairData) anf_1] anf_4]])
+              [(builtin listData) anf_3]])
+            [[builtin_38 anf_2] (con (list data) [])]])
+          [(builtin iData) (con integer 42)]])
+        [(builtin iData) (con integer 7)]])
+      (force (builtin mkCons))])
+    (force (builtin chooseData))])
 --- result
 (con integer 49)
 --- logs

@@ -36,15 +36,19 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, fails: bool) {
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core early\n{}\n--- core after ANF\n{}\n--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            pretty(before),
-            pretty(early),
-            pretty(after),
-            baseline.uplc,
-            candidate.uplc,
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            before,
+            format!(
+                "--- core before\n{}\n--- core early\n{}\n--- core after ANF\n{}\n--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                pretty(early),
+                pretty(after),
+                baseline.uplc,
+                candidate.uplc,
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     // Properties independent of the expected snapshot.
@@ -215,10 +219,14 @@ fn fresh_binders_avoid_free_ids_and_keep_argument_type_views() {
     assert_eq!(arg.ty, bytes);
     insta::assert_snapshot!(
         "fresh_type_views",
-        format!(
-            "--- core before\n{}\n--- core after\n{}",
-            pretty(root),
-            pretty(after)
+        crate::harness::pass_snapshot(
+            b.arena,
+            b.lam(&[external], root),
+            format!(
+                "--- core before\n{}\n--- core after\n{}",
+                pretty(root),
+                pretty(after)
+            )
         )
     );
 }
@@ -252,10 +260,14 @@ fn diverging_discarded_argument_is_still_a_strict_binding() {
     hygiene::validate(after, &[]).unwrap();
     insta::assert_snapshot!(
         "divergent_argument",
-        format!(
-            "--- core before\n{}\n--- core after\n{}",
-            pretty(root),
-            pretty(after)
+        crate::harness::pass_snapshot(
+            b.arena,
+            root,
+            format!(
+                "--- core before\n{}\n--- core after\n{}",
+                pretty(root),
+                pretty(after)
+            )
         )
     );
 }

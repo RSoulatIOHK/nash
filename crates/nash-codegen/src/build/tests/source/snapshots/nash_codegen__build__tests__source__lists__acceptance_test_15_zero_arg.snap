@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 400
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData)\ntype pairs = Pairs { inner : list (pair Data Data) }\nnew () = Pairs { inner = [] }\nsame (Pairs a) (Pairs b) = equalsData (toData (mapData a)) (toData (mapData b))\nmain = same (new ()) (Pairs { inner = [] })\n"
 ---
---- core
+--- unoptimized Core
 let toData#10 : 'erased -> Data = \coerce#19 : 'erased -> coerce#19 in
 let same#2 : Main.pairs -> Main.pairs -> bool = \arg#6 : Main.pairs arg#8 : Main.pairs -> let match#13 : Main.pairs = arg#6 in
 case@Tag match#13 of
@@ -16,7 +17,7 @@ let new#3 : unit -> Main.pairs = \arg#15 : unit -> let match#17 : unit = arg#15 
 let fromUnit#4 : unit -> unit = \value#18 : unit -> value#18 in
 let main#1 : bool = same#2 (new#3 (fromUnit#4 ())) ((\field#5 : list (pair Data Data) -> constr 0 field#5) (con (list (pair data data)) [])) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam toData_10
     [(lam same_2
@@ -49,6 +50,29 @@ main#1
                   field_14])))
             arg_6]))])
     (lam coerce_19 coerce_19)])
+--- optimized Core
+let anf#44 : Main.pairs = constr 0 (con (list (pair data data)) []) in
+let anf#46 : Main.pairs = constr 0 (con (list (pair data data)) []) in
+case@Tag anf#44 of
+  0 field#25 -> case@Tag anf#46 of
+    0 field#28 -> let anf#39 : Map Data Data = mapData field#25 in
+    let anf#41 : Map Data Data = mapData field#28 in
+    equalsData anf#39 anf#41
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam anf_2
+      (case
+        anf_1
+        (lam field_3
+          (case
+            anf_2
+            (lam field_4
+              [(lam anf_5
+                [(lam anf_6 [[(builtin equalsData) anf_5] anf_6]) [(builtin mapData) field_4]])
+                [(builtin mapData) field_3]])))))
+      (constr 0 (con (list (pair data data)) []))])
+    (constr 0 (con (list (pair data data)) []))])
 --- result
 (con bool True)
 --- logs

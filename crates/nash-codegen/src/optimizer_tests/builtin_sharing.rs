@@ -23,6 +23,7 @@ fn check<'a>(
     bindings: usize,
     apply: bool,
 ) {
+    let original = core;
     let core = crate::recursion::rewrite(b, core).unwrap();
     let before = crate::lower::lower(b.arena, core).unwrap();
     let after = crate::lower::lower_with_builtin_sharing(b.arena, core).unwrap();
@@ -43,12 +44,16 @@ fn check<'a>(
 
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            nash_plutus::pretty::term(before),
-            nash_plutus::pretty::term(after),
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            original,
+            format!(
+                "--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                nash_plutus::pretty::term(before),
+                nash_plutus::pretty::term(after),
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     let mut rest = after;

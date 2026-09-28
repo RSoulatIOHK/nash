@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nread : choice -> int\nread value =\n    case value of\n        Stop -> 0\n        Zero -> 0\n        One a -> a\n        Two a b -> addInteger (a) (b)\nchoose : int -> choice -> int\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        whole -> trace \"fallback\" (addInteger outer (read whole))\nmain = (choose 10 Stop, choose 10 Zero, choose 10 (One 20), choose 10 (Two 30 40))\n"
 ---
---- core
+--- unoptimized Core
 let message#30 : string = "subject" in
 let message#31 : string = "fallback" in
 let fromInt#3 : int -> int = \value#20 : int -> value#20 in
@@ -29,7 +29,7 @@ case@Tag match#12 of
   leaf#16 whole#10 in
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (fromInt#3 10) (constr 0)) (choose#2 (fromInt#3 10) (constr 1)) (choose#2 (fromInt#3 10) ((\field#4 : int -> constr 2 field#4) (fromInt#3 20))) (choose#2 (fromInt#3 10) ((\field#5 : int field#6 : int -> constr 3 field#5 field#6) (fromInt#3 30) (fromInt#3 40))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_30
     [(lam message_31
@@ -77,6 +77,82 @@ main#1
         (lam value_20 value_20)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let choose#55 : int -> Main.choice -> int = \outer#44 : int subject#45 : Main.choice -> let match#46 : Main.choice = trace "subject" in subject#45 in
+let leaf#48 : Main.choice -> int = \whole#47 : Main.choice -> trace "fallback" in let anf#62 : int = case@Tag whole#47 of
+  0 -> 0
+  1 -> 0
+  2 field#37 -> field#37
+  3 field#39 field#40 -> addInteger field#39 field#40 in
+addInteger outer#44 anf#62 in
+case@Tag match#46 of
+  0 -> 1
+  1 -> leaf#48 match#46
+  2 field#50 -> leaf#48 match#46
+  3 field#52 field#53 -> leaf#48 match#46 in
+let anf#64 : Main.choice -> int = choose#55 10 in
+let anf#65 : Main.choice = constr 0 in
+let anf#66 : int = anf#64 anf#65 in
+let anf#68 : Main.choice -> int = choose#55 10 in
+let anf#69 : Main.choice = constr 1 in
+let anf#70 : int = anf#68 anf#69 in
+let anf#72 : Main.choice -> int = choose#55 10 in
+let anf#74 : Main.choice = constr 2 20 in
+let anf#75 : int = anf#72 anf#74 in
+let anf#77 : Main.choice -> int = choose#55 10 in
+let anf#81 : Main.choice = constr 3 30 40 in
+let anf#82 : int = anf#77 anf#81 in
+constr 0 anf#66 anf#70 anf#75 anf#82
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_26
+    [(lam choose_13
+      [(lam anf_14
+        [(lam anf_15
+          [(lam anf_16
+            [(lam anf_17
+              [(lam anf_18
+                [(lam anf_19
+                  [(lam anf_20
+                    [(lam anf_21
+                      [(lam anf_22
+                        [(lam anf_23
+                          [(lam anf_24
+                            [(lam anf_25 (constr 0 anf_16 anf_19 anf_22 anf_25)) [anf_23 anf_24]])
+                            (constr 3 (con integer 30) (con integer 40))])
+                          [choose_13 (con integer 10)]])
+                        [anf_20 anf_21]])
+                      (constr 2 (con integer 20))])
+                    [choose_13 (con integer 10)]])
+                  [anf_17 anf_18]])
+                (constr 1)])
+              [choose_13 (con integer 10)]])
+            [anf_14 anf_15]])
+          (constr 0)])
+        [choose_13 (con integer 10)]])
+      (lam outer_1
+        (lam subject_2
+          [(lam match_3
+            [(lam leaf_9
+              (case
+                match_3
+                (con integer 1)
+                [leaf_9 match_3]
+                (lam field_10 [leaf_9 match_3])
+                (lam field_11 (lam field_12 [leaf_9 match_3]))))
+              (lam whole_4
+                (force
+                  [[builtin_26 (con string "fallback")]
+                    (delay
+                      [(lam anf_8 [[(builtin addInteger) outer_1] anf_8])
+                        (case
+                          whole_4
+                          (con integer 0)
+                          (con integer 0)
+                          (lam field_5 field_5)
+                          (lam field_6 (lam field_7 [[(builtin addInteger) field_6] field_7])))])]))])
+            (force [[builtin_26 (con string "subject")] (delay subject_2)])]))])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 1) (con integer 10) (con integer 30) (con integer 80))
 --- logs

@@ -21,14 +21,18 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, fails: bool) {
     assert_eq!(right.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core after\n{}\n--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            pretty(before),
-            pretty(after),
-            left.uplc,
-            right.uplc,
-            right.result,
-            right.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            before,
+            format!(
+                "--- core before\n{}\n--- uplc before\n{}\n--- core after\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                left.uplc,
+                pretty(after),
+                right.uplc,
+                right.result,
+                right.logs
+            )
         )
     );
     // Properties independent of the expected snapshot.

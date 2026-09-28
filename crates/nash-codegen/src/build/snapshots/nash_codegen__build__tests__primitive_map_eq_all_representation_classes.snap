@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nbigBig : map Int Int\nbigBig = [Builtin.mkPairData 1 2]\nbigLittle : map Int int\nbigLittle = []\nlittleBig : map int Int\nlittleBig = []\nlittleLittle : map int (list Data)\nlittleLittle = [Builtin.unConstrData (Builtin.constrData 1 [])]\ndifferent : map int (list Data)\ndifferent = [Builtin.unConstrData (Builtin.constrData 2 [])]\nsame : Eq (map 'k 'v) => map 'k 'v -> map 'k 'v -> bool\nsame = eq\nmain =\n    ( same bigBig bigBig\n    , same bigLittle bigLittle\n    , same littleBig littleBig\n    , same littleLittle different\n    )\n"
 ---
---- core
+--- unoptimized Core
 let eq#11 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = \xs#17 : list (pair 'erased 'erased) ys#18 : list (pair 'erased 'erased) -> equalsData (mapData xs#17) (mapData ys#18) in
 let same#2 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#11 in
 let fromInt#12 : int -> Int = iData in
@@ -29,22 +29,24 @@ case@Pair match#82 of
       let secondB#97 : 'erased = field#89 in
       eq#90 secondA#92 secondB#97
       False -> false in
-let eq#23 : list 'erased -> list 'erased -> bool = (\self#123 : @self (list 'erased -> list 'erased -> bool) -> self#123 self#123) (\self#123 : @self (list 'erased -> list 'erased -> bool) xs#26 : list 'erased ys#27 : list 'erased -> let match#40 : list 'erased = xs#26 in
-case@List match#40 of
-  Nil -> let match#29 : list 'erased = ys#27 in
-  case@List match#29 of
-    Nil -> fromBool#28 true
-    Cons field#30 field#31 -> fromBool#28 false
-  Cons field#41 field#42 -> let x#32 : 'erased = field#41 in
-  let restX#33 : list 'erased = field#42 in
-  let match#37 : list 'erased = ys#27 in
-  case@List match#37 of
-    Nil -> fromBool#28 false
-    Cons field#38 field#39 -> let y#34 : 'erased = field#38 in
-    let restY#35 : list 'erased = field#39 in
-    case@Bool eq#36 x#32 y#34 of
-      True -> self#123 self#123 restX#33 restY#35
-      False -> false) in
+letrec
+  eq#23 : list 'erased -> list 'erased -> bool [static []] = \xs#26 : list 'erased ys#27 : list 'erased -> let match#40 : list 'erased = xs#26 in
+  case@List match#40 of
+    Nil -> let match#29 : list 'erased = ys#27 in
+    case@List match#29 of
+      Nil -> fromBool#28 true
+      Cons field#30 field#31 -> fromBool#28 false
+    Cons field#41 field#42 -> let x#32 : 'erased = field#41 in
+    let restX#33 : list 'erased = field#42 in
+    let match#37 : list 'erased = ys#27 in
+    case@List match#37 of
+      Nil -> fromBool#28 false
+      Cons field#38 field#39 -> let y#34 : 'erased = field#38 in
+      let restY#35 : list 'erased = field#39 in
+      case@Bool eq#36 x#32 y#34 of
+        True -> eq#23 restX#33 restY#35
+        False -> false
+in
 let eqMapEntries#19 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#23 in
 let eq#13 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#19 in
 let same#4 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#13 in
@@ -68,22 +70,24 @@ case@Pair match#107 of
       let secondB#121 : 'erased = field#114 in
       equalsData secondA#116 secondB#121
       False -> false in
-let eq#24 : list 'erased -> list 'erased -> bool = (\self#100 : @self (list 'erased -> list 'erased -> bool) -> self#100 self#100) (\self#100 : @self (list 'erased -> list 'erased -> bool) xs#43 : list 'erased ys#44 : list 'erased -> let match#56 : list 'erased = xs#43 in
-case@List match#56 of
-  Nil -> let match#45 : list 'erased = ys#44 in
-  case@List match#45 of
-    Nil -> fromBool#28 true
-    Cons field#46 field#47 -> fromBool#28 false
-  Cons field#57 field#58 -> let x#48 : 'erased = field#57 in
-  let restX#49 : list 'erased = field#58 in
-  let match#53 : list 'erased = ys#44 in
-  case@List match#53 of
-    Nil -> fromBool#28 false
-    Cons field#54 field#55 -> let y#50 : 'erased = field#54 in
-    let restY#51 : list 'erased = field#55 in
-    case@Bool eq#52 x#48 y#50 of
-      True -> self#100 self#100 restX#49 restY#51
-      False -> false) in
+letrec
+  eq#24 : list 'erased -> list 'erased -> bool [static []] = \xs#43 : list 'erased ys#44 : list 'erased -> let match#56 : list 'erased = xs#43 in
+  case@List match#56 of
+    Nil -> let match#45 : list 'erased = ys#44 in
+    case@List match#45 of
+      Nil -> fromBool#28 true
+      Cons field#46 field#47 -> fromBool#28 false
+    Cons field#57 field#58 -> let x#48 : 'erased = field#57 in
+    let restX#49 : list 'erased = field#58 in
+    let match#53 : list 'erased = ys#44 in
+    case@List match#53 of
+      Nil -> fromBool#28 false
+      Cons field#54 field#55 -> let y#50 : 'erased = field#54 in
+      let restY#51 : list 'erased = field#55 in
+      case@Bool eq#52 x#48 y#50 of
+        True -> eq#24 restX#49 restY#51
+        False -> false
+in
 let eqMapEntries#20 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#24 in
 let eq#14 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#20 in
 let same#6 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#14 in
@@ -108,22 +112,24 @@ case@Pair match#131 of
       let secondB#146 : 'erased = field#138 in
       eq#139 secondA#141 secondB#146
       False -> false in
-let eq#25 : list 'erased -> list 'erased -> bool = (\self#94 : @self (list 'erased -> list 'erased -> bool) -> self#94 self#94) (\self#94 : @self (list 'erased -> list 'erased -> bool) xs#59 : list 'erased ys#60 : list 'erased -> let match#72 : list 'erased = xs#59 in
-case@List match#72 of
-  Nil -> let match#61 : list 'erased = ys#60 in
-  case@List match#61 of
-    Nil -> fromBool#28 true
-    Cons field#62 field#63 -> fromBool#28 false
-  Cons field#73 field#74 -> let x#64 : 'erased = field#73 in
-  let restX#65 : list 'erased = field#74 in
-  let match#69 : list 'erased = ys#60 in
-  case@List match#69 of
-    Nil -> fromBool#28 false
-    Cons field#70 field#71 -> let y#66 : 'erased = field#70 in
-    let restY#67 : list 'erased = field#71 in
-    case@Bool eq#68 x#64 y#66 of
-      True -> self#94 self#94 restX#65 restY#67
-      False -> false) in
+letrec
+  eq#25 : list 'erased -> list 'erased -> bool [static []] = \xs#59 : list 'erased ys#60 : list 'erased -> let match#72 : list 'erased = xs#59 in
+  case@List match#72 of
+    Nil -> let match#61 : list 'erased = ys#60 in
+    case@List match#61 of
+      Nil -> fromBool#28 true
+      Cons field#62 field#63 -> fromBool#28 false
+    Cons field#73 field#74 -> let x#64 : 'erased = field#73 in
+    let restX#65 : list 'erased = field#74 in
+    let match#69 : list 'erased = ys#60 in
+    case@List match#69 of
+      Nil -> fromBool#28 false
+      Cons field#70 field#71 -> let y#66 : 'erased = field#70 in
+      let restY#67 : list 'erased = field#71 in
+      case@Bool eq#68 x#64 y#66 of
+        True -> eq#25 restX#65 restY#67
+        False -> false
+in
 let eqMapEntries#21 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#25 in
 let eq#15 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eqMapEntries#21 in
 let same#8 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = eq#15 in
@@ -136,7 +142,7 @@ let projection#155 : pair int (list Data) = unConstrData evaluated#154 in
 let different#10 : list (pair int (list Data)) = mkCons projection#155 (con (list (pair integer (list data))) []) in
 let main#1 : (bool, bool, bool, bool) = constr 0 (same#2 bigBig#3 bigBig#3) (same#4 bigLittle#5 bigLittle#5) (same#6 littleBig#7 littleBig#7) (same#8 littleLittle#9 different#10) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam eq_11
     [(lam same_2
@@ -433,6 +439,214 @@ main#1
     (lam xs_17
       (lam ys_18
         [[(builtin equalsData) [(builtin mapData) xs_17]] [(builtin mapData) ys_18]]))])
+--- optimized Core
+let fromInt#118 : int -> Int = iData in
+let anf#289 : Int = fromInt#118 1 in
+let anf#290 : Int = fromInt#118 2 in
+let anf#291 : pair Int Int = mkPairData anf#289 anf#290 in
+let bigBig#119 : list (pair Int Int) = mkCons anf#291 (con (list (pair data data)) []) in
+let eq#143 : int -> int -> bool = equalsInteger in
+letrec
+  eq#174 : list 'erased -> list 'erased -> bool [static []] = \xs#175 : list 'erased ys#176 : list 'erased -> case@List xs#175 of
+    Nil -> case@List ys#176 of
+      Nil -> true
+      Cons field#179 field#180 -> false
+    Cons field#181 field#182 -> case@List ys#176 of
+      Nil -> false
+      Cons field#186 field#187 -> let anf#293 : bool = case@Pair field#181 of
+        Pair field#158 field#159 -> case@Pair field#186 of
+          Pair field#163 field#164 -> let anf#292 : bool = equalsData field#158 field#163 in
+          case@Bool anf#292 of
+            True -> eq#143 field#159 field#164
+            False -> false in
+      case@Bool anf#293 of
+        True -> eq#174 field#182 field#187
+        False -> false
+in
+let bigLittle#193 : list (pair Int int) = (con (list (pair data integer)) []) in
+letrec
+  eq#215 : list 'erased -> list 'erased -> bool [static []] = \xs#216 : list 'erased ys#217 : list 'erased -> case@List xs#216 of
+    Nil -> case@List ys#217 of
+      Nil -> true
+      Cons field#220 field#221 -> false
+    Cons field#222 field#223 -> case@List ys#217 of
+      Nil -> false
+      Cons field#227 field#228 -> let anf#295 : bool = case@Pair field#222 of
+        Pair field#199 field#200 -> case@Pair field#227 of
+          Pair field#204 field#205 -> let anf#294 : bool = eq#143 field#199 field#204 in
+          case@Bool anf#294 of
+            True -> equalsData field#200 field#205
+            False -> false in
+      case@Bool anf#295 of
+        True -> eq#215 field#223 field#228
+        False -> false
+in
+let littleBig#234 : list (pair int Int) = (con (list (pair integer data)) []) in
+letrec
+  eq#259 : list 'erased -> list 'erased -> bool [static []] = \xs#260 : list 'erased ys#261 : list 'erased -> case@List xs#260 of
+    Nil -> case@List ys#261 of
+      Nil -> true
+      Cons field#264 field#265 -> false
+    Cons field#266 field#267 -> case@List ys#261 of
+      Nil -> false
+      Cons field#271 field#272 -> let anf#299 : bool = case@Pair field#266 of
+        Pair field#243 field#244 -> case@Pair field#271 of
+          Pair field#248 field#249 -> let anf#298 : bool = eq#143 field#243 field#248 in
+          case@Bool anf#298 of
+            True -> let anf#296 : List 'erased = listData field#244 in
+            let anf#297 : List 'erased = listData field#249 in
+            equalsData anf#296 anf#297
+            False -> false in
+      case@Bool anf#299 of
+        True -> eq#259 field#267 field#272
+        False -> false
+in
+let evaluated#280 : Data = constrData 1 (con (list data) []) in
+let projection#281 : pair int (list Data) = unConstrData evaluated#280 in
+let littleLittle#282 : list (pair int (list Data)) = mkCons projection#281 (con (list (pair integer (list data))) []) in
+let evaluated#283 : Data = constrData 2 (con (list data) []) in
+let projection#284 : pair int (list Data) = unConstrData evaluated#283 in
+let different#285 : list (pair int (list Data)) = mkCons projection#284 (con (list (pair integer (list data))) []) in
+let anf#287 : Map 'erased 'erased = mapData bigBig#119 in
+let anf#288 : Map 'erased 'erased = mapData bigBig#119 in
+let anf#302 : bool = equalsData anf#287 anf#288 in
+let anf#303 : bool = eq#174 bigLittle#193 bigLittle#193 in
+let anf#304 : bool = eq#215 littleBig#234 littleBig#234 in
+let anf#305 : bool = eq#259 littleLittle#282 different#285 in
+constr 0 anf#302 anf#303 anf#304 anf#305
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_83
+    [(lam fromInt_10
+      [(lam anf_11
+        [(lam anf_12
+          [(lam anf_13
+            [(lam bigBig_14
+              [(lam eq_15
+                [(lam eq_32
+                  [(lam bigLittle_33
+                    [(lam eq_50
+                      [(lam littleBig_51
+                        [(lam eq_70
+                          [(lam evaluated_71
+                            [(lam projection_72
+                              [(lam littleLittle_73
+                                [(lam evaluated_74
+                                  [(lam projection_75
+                                    [(lam different_76
+                                      [(lam anf_77
+                                        [(lam anf_78
+                                          [(lam anf_79
+                                            [(lam anf_80
+                                              [(lam anf_81
+                                                [(lam anf_82 (constr 0 anf_79 anf_80 anf_81 anf_82))
+                                                  [[eq_70 littleLittle_73] different_76]])
+                                                [[eq_50 littleBig_51] littleBig_51]])
+                                              [[eq_32 bigLittle_33] bigLittle_33]])
+                                            [[(builtin equalsData) anf_77] anf_78]])
+                                          [(builtin mapData) bigBig_14]])
+                                        [(builtin mapData) bigBig_14]])
+                                      [[builtin_83 projection_75] (con (list (pair integer (list data))) [])]])
+                                    [(builtin unConstrData) evaluated_74]])
+                                  [[(builtin constrData) (con integer 2)] (con (list data) [])]])
+                                [[builtin_83 projection_72] (con (list (pair integer (list data))) [])]])
+                              [(builtin unConstrData) evaluated_71]])
+                            [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+                          [(lam self_52 [self_52 self_52])
+                            (lam self_53
+                              (lam xs_54
+                                (lam ys_55
+                                  (case
+                                    xs_54
+                                    (lam field_58
+                                      (lam field_59
+                                        (case
+                                          ys_55
+                                          (lam field_60
+                                            (lam field_61
+                                              [(lam anf_69
+                                                (case anf_69 (con bool False) [[[self_53 self_53] field_59] field_61]))
+                                                (case
+                                                  field_58
+                                                  (lam field_62
+                                                    (lam field_63
+                                                      (case
+                                                        field_60
+                                                        (lam field_64
+                                                          (lam field_65
+                                                            [(lam anf_66
+                                                              (case
+                                                                anf_66
+                                                                (con bool False)
+                                                                [(lam anf_67
+                                                                  [(lam anf_68 [[(builtin equalsData) anf_67] anf_68])
+                                                                    [(builtin listData) field_65]])
+                                                                  [(builtin listData) field_63]]))
+                                                              [[eq_15 field_62] field_64]]))))))]))
+                                          (con bool False))))
+                                    (case ys_55 (lam field_56 (lam field_57 (con bool False))) (con bool True))))))]])
+                        (con (list (pair integer data)) [])])
+                      [(lam self_34 [self_34 self_34])
+                        (lam self_35
+                          (lam xs_36
+                            (lam ys_37
+                              (case
+                                xs_36
+                                (lam field_40
+                                  (lam field_41
+                                    (case
+                                      ys_37
+                                      (lam field_42
+                                        (lam field_43
+                                          [(lam anf_49
+                                            (case anf_49 (con bool False) [[[self_35 self_35] field_41] field_43]))
+                                            (case
+                                              field_40
+                                              (lam field_44
+                                                (lam field_45
+                                                  (case
+                                                    field_42
+                                                    (lam field_46
+                                                      (lam field_47
+                                                        [(lam anf_48
+                                                          (case anf_48 (con bool False) [[(builtin equalsData) field_45] field_47]))
+                                                          [[eq_15 field_44] field_46]]))))))]))
+                                      (con bool False))))
+                                (case ys_37 (lam field_38 (lam field_39 (con bool False))) (con bool True))))))]])
+                    (con (list (pair data integer)) [])])
+                  [(lam self_16 [self_16 self_16])
+                    (lam self_17
+                      (lam xs_18
+                        (lam ys_19
+                          (case
+                            xs_18
+                            (lam field_22
+                              (lam field_23
+                                (case
+                                  ys_19
+                                  (lam field_24
+                                    (lam field_25
+                                      [(lam anf_31
+                                        (case anf_31 (con bool False) [[[self_17 self_17] field_23] field_25]))
+                                        (case
+                                          field_22
+                                          (lam field_26
+                                            (lam field_27
+                                              (case
+                                                field_24
+                                                (lam field_28
+                                                  (lam field_29
+                                                    [(lam anf_30 (case anf_30 (con bool False) [[eq_15 field_27] field_29]))
+                                                      [[(builtin equalsData) field_26] field_28]]))))))]))
+                                  (con bool False))))
+                            (case ys_19 (lam field_20 (lam field_21 (con bool False))) (con bool True))))))]])
+                (builtin equalsInteger)])
+              [[builtin_83 anf_13] (con (list (pair data data)) [])]])
+            [[(builtin mkPairData) anf_11] anf_12]])
+          [fromInt_10 (con integer 2)]])
+        [fromInt_10 (con integer 1)]])
+      (builtin iData)])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con bool True) (con bool True) (con bool True) (con bool False))
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Two Int Int\nchoose : Choice -> (int -> int)\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> \\n -> n\n        _ -> trace \"fallback\" (\\n -> addInteger n 1)\nmain = (choose Stop 10, choose (Two 3 4) 20)\n"
 ---
---- core
+--- unoptimized Core
 let message#19 : string = "subject" in
 let message#20 : string = "fallback" in
 let fromInt#3 : int -> int = \value#16 : int -> value#16 in
@@ -16,7 +17,7 @@ case@Pair projection#18 of
 let fromInt#6 : int -> Int = iData in
 let main#1 : (int, int) = constr 0 (choose#2 (constrData 0 (con (list data) [])) (fromInt#3 10)) (choose#2 ((\field#4 : Int field#5 : Int -> constrData 1 (mkCons field#4 (mkCons field#5 (con (list data) [])))) (fromInt#6 3) (fromInt#6 4)) (fromInt#3 20)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_19
     [(lam message_20
@@ -57,6 +58,67 @@ main#1
         (lam value_16 value_16)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let choose#32 : Main.Choice -> int -> int = \subject#25 : Main.Choice -> let match#26 : Main.Choice = trace "subject" in subject#25 in
+let projection#27 : pair int (list Data) = unConstrData match#26 in
+case@Pair projection#27 of
+  Pair tag#28 fields#29 -> case@Tag tag#28 of
+    0 -> \n#30 : int -> n#30
+    1 -> trace "fallback" in \n#31 : int -> addInteger n#31 1 in
+let fromInt#33 : int -> Int = iData in
+let anf#40 : Main.Choice = constrData 0 (con (list data) []) in
+let anf#41 : int -> int = choose#32 anf#40 in
+let anf#43 : int = anf#41 10 in
+let anf#46 : Int = fromInt#33 3 in
+let anf#48 : Int = fromInt#33 4 in
+let anf#44 : list Data = mkCons anf#48 (con (list data) []) in
+let anf#45 : list Data = mkCons anf#46 anf#44 in
+let anf#49 : Main.Choice = constrData 1 anf#45 in
+let anf#50 : int -> int = choose#32 anf#49 in
+let anf#52 : int = anf#50 20 in
+constr 0 anf#43 anf#52
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_20
+    [(lam builtin_21
+      [(lam choose_8
+        [(lam fromInt_9
+          [(lam anf_10
+            [(lam anf_11
+              [(lam anf_12
+                [(lam anf_13
+                  [(lam anf_14
+                    [(lam anf_15
+                      [(lam anf_16
+                        [(lam anf_17
+                          [(lam anf_18 [(lam anf_19 (constr 0 anf_12 anf_19)) [anf_18 (con integer 20)]])
+                            [choose_8 anf_17]])
+                          [[(builtin constrData) (con integer 1)] anf_16]])
+                        [[builtin_20 anf_13] anf_15]])
+                      [[builtin_20 anf_14] (con (list data) [])]])
+                    [fromInt_9 (con integer 4)]])
+                  [fromInt_9 (con integer 3)]])
+                [anf_11 (con integer 10)]])
+              [choose_8 anf_10]])
+            [[(builtin constrData) (con integer 0)] (con (list data) [])]])
+          (builtin iData)])
+        (lam subject_1
+          [(lam match_2
+            [(lam projection_3
+              (case
+                projection_3
+                (lam tag_4
+                  (lam fields_5
+                    (case
+                      tag_4
+                      (lam n_6 n_6)
+                      (force
+                        [[builtin_21 (con string "fallback")]
+                          (delay (lam n_7 [[(builtin addInteger) n_7] (con integer 1)]))]))))))
+              [(builtin unConstrData) match_2]])
+            (force [[builtin_21 (con string "subject")] (delay subject_1)])])])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con integer 10) (con integer 21))
 --- logs

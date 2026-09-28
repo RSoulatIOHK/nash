@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 602
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : unit\nmain = trace \"hello\" (assert False)\n"
 ---
---- core
+--- unoptimized Core
 let message#4 : string = "Main:5:8" in
 let message#5 : string = "Main:5:23" in
 let fromBool#2 : bool -> bool = \value#3 : bool -> value#3 in
@@ -10,7 +11,7 @@ let main#1 : unit = trace message#4 in case@Bool fromBool#2 false of
   True -> ()
   False -> trace message#5 in error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_4
     [(lam message_5
@@ -26,6 +27,21 @@ main#1
         (lam value_3 value_3)])
       (con string "Main:5:23")])
     (con string "Main:5:8")])
+--- optimized Core
+trace "Main:5:8" in case@Bool false of
+  True -> ()
+  False -> trace "Main:5:23" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force
+      [[builtin_1 (con string "Main:5:8")]
+        (delay
+          (case
+            (con bool False)
+            (force [[builtin_1 (con string "Main:5:23")] (delay (error))])
+            (con unit ())))]))
+    (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm
 --- logs

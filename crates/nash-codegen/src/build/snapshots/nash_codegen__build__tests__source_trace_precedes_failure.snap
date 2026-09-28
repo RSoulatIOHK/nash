@@ -1,13 +1,14 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1312
 description: "module Main exposing (..)\nmain : unit\nmain = trace \"before failure\" fail\n"
 ---
---- core
+--- unoptimized Core
 let message#4 : string = "before failure" in
 let fromString#2 : string -> string = \value#3 : string -> value#3 in
 let main#1 : unit = trace (fromString#2 message#4) in error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_4
     [(lam fromString_2
@@ -15,6 +16,13 @@ main#1
         (force [[(force (builtin trace)) [fromString_2 message_4]] (delay (error))])])
       (lam value_3 value_3)])
     (con string "before failure")])
+--- optimized Core
+trace "before failure" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force [[builtin_1 (con string "before failure")] (delay (error))]))
+    (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm
 --- logs

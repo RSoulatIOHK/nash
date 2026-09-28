@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1525
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\nselect : list int -> bool\nselect xs =\n    let\n        dropped = Builtin.dropList 1 xs\n    in\n    if Builtin.nullList dropped then\n        Builtin.nullList (Builtin.tailList xs)\n    else False\nmain = select []\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#5 : bool -> bool = \value#7 : bool -> value#7 in
 let fromInt#6 : int -> int = \value#8 : int -> value#8 in
 let select#2 : list int -> bool = \xs#3 : list int -> let dropped#4 : list int = dropList (fromInt#6 1) xs#3 in
@@ -12,7 +13,7 @@ case@Bool nullList dropped#4 of
   False -> fromBool#5 false in
 let main#1 : bool = select#2 (con (list integer) []) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_5
     [(lam fromInt_6
@@ -27,6 +28,32 @@ main#1
             [[(force (builtin dropList)) [fromInt_6 (con integer 1)]] xs_3]])])
       (lam value_8 value_8)])
     (lam value_7 value_7)])
+--- optimized Core
+let xs#14 : list int = (con (list integer) []) in
+let dropped#15 : list int = dropList 1 xs#14 in
+let anf#20 : bool = nullList dropped#15 in
+case@Bool anf#20 of
+  True -> let projection#16 : list int = tailList xs#14 in
+  nullList projection#16
+  False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam builtin_6
+      [(lam builtin_7
+        [(lam xs_1
+          [(lam dropped_2
+            [(lam anf_3
+              (case
+                anf_3
+                (con bool False)
+                [(lam projection_4 [builtin_5 projection_4]) [builtin_6 xs_1]]))
+              [builtin_5 dropped_2]])
+            [[builtin_7 (con integer 1)] xs_1]])
+          (con (list integer) [])])
+        (force (builtin dropList))])
+      (force (builtin tailList))])
+    (force (builtin nullList))])
 --- result
 error: Runtime(EmptyList([]))
 --- logs

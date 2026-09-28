@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 871
+assertion_line: 832
 description: "module Main exposing (..)\nimport Primitive exposing (type bool(..), coerce)\nimport Bool\nimport Logic\nimport Lift exposing (Lift)\ntype alias flag = bool\nimpl Lift bool flag where\n    lift item = coerce item\n    lower = (fail \"unselected conversion\")\nvalue : flag\nvalue = coerce False\nmain : bool\nmain = Logic.or True value\n"
 ---
---- core
+--- unoptimized Core
 let message#10 : string = "unselected conversion" in
 let fromBool#2 : bool -> bool = \value#8 : bool -> value#8 in
 let value#3 : bool = (\coerce#9 : bool -> coerce#9) (fromBool#2 false) in
@@ -14,7 +14,7 @@ let main#1 : bool = case@Bool fromBool#2 true of
   let lower#4 : bool -> bool = trace (fromString#5 message#7) in error in
   lower#4 value#3 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_10
     [(lam fromBool_2
@@ -32,6 +32,20 @@ main#1
         [(lam coerce_9 coerce_9) [fromBool_2 (con bool False)]]])
       (lam value_8 value_8)])
     (con string "unselected conversion")])
+--- optimized Core
+case@Bool true of
+  True -> true
+  False -> let lower#19 : bool -> bool = trace "unselected conversion" in error in
+  lower#19 false
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    (case
+      (con bool True)
+      [(lam lower_1 [lower_1 (con bool False)])
+        (force [[builtin_2 (con string "unselected conversion")] (delay (error))])]
+      (con bool True)))
+    (force (builtin trace))])
 --- result
 (con bool True)
 --- logs

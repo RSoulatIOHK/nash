@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
+assertion_line: 414
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nslice bytes start end = sliceByteString start end bytes\nlength bytes = lengthOfByteString bytes\ndrop bytes n = slice bytes n (subtractInteger (length bytes) n)\nmain =\n    let\n        x = #\"01020304050607\"\n    in\n    eq (drop x 2) #\"0304050607\"\n"
 ---
---- core
+--- unoptimized Core
 let eq#2 : bytes -> bytes -> bool = equalsByteString in
 let slice#9 : bytes -> int -> int -> bytes = \bytes#13 : bytes start#14 : int end#15 : int -> sliceByteString start#14 end#15 bytes#13 in
 let length#10 : bytes -> int = \bytes#16 : bytes -> lengthOfByteString bytes#16 in
@@ -12,7 +13,7 @@ let fromBytes#6 : bytes -> bytes = \value#12 : bytes -> value#12 in
 let x#4 : 'erased = fromBytes#6 (con bytestring #01020304050607) in
 let main#1 : bool = eq#2 (drop#3 x#4 (fromInt#5 2)) (fromBytes#6 (con bytestring #0304050607)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam eq_2
     [(lam slice_9
@@ -35,6 +36,23 @@ main#1
         (lam start_14
           (lam end_15 [[[(builtin sliceByteString) start_14] end_15] bytes_13])))])
     (builtin equalsByteString)])
+--- optimized Core
+let anf#34 : int = lengthOfByteString (con bytestring #01020304050607) in
+let anf#35 : int = subtractInteger anf#34 2 in
+let anf#38 : bytes = sliceByteString 2 anf#35 (con bytestring #01020304050607) in
+let anf#39 : bytes -> bool = equalsByteString anf#38 in
+anf#39 (con bytestring #0304050607)
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam anf_2
+      [(lam anf_3
+        [(lam anf_4 [anf_4 (con bytestring #0304050607)])
+          [(builtin equalsByteString) anf_3]])
+        [[[(builtin sliceByteString) (con integer 2)] anf_2]
+          (con bytestring #01020304050607)]])
+      [[(builtin subtractInteger) anf_1] (con integer 2)]])
+    [(builtin lengthOfByteString) (con bytestring #01020304050607)]])
 --- result
 (con bool True)
 --- logs

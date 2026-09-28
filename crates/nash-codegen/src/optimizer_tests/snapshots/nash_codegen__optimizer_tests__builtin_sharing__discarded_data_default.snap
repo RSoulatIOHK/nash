@@ -1,7 +1,53 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/builtin_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 45
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+case@Data iData 42 of
+  DataConstr unused#3 -> 42
+  DataMap unused#4 -> 42
+  DataList unused#5 -> 42
+  DataI unused#6 -> 42
+  DataB unused#7 -> 42
+  _ -> case@Bool true of
+    True -> trace "never" in error
+    _ -> error
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam generated_8
+    (force
+      [[[[[[(force (builtin chooseData)) generated_8] (delay (con integer 42))]
+        (delay (con integer 42))]
+        (delay (con integer 42))]
+        (delay (con integer 42))]
+        (delay (con integer 42))]))
+    [(builtin iData) (con integer 42)]])
+--- optimized Core
+let anf#11 : Data = iData 42 in
+case@Data anf#11 of
+  DataConstr unused#1 -> 42
+  DataMap unused#2 -> 42
+  DataList unused#8 -> 42
+  DataI unused#9 -> 42
+  DataB unused#10 -> 42
+  _ -> case@Bool true of
+    True -> trace "never" in error
+    _ -> error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_15
+    [(lam anf_3
+      [(lam generated_14
+        (force
+          [[[[[[builtin_15 generated_14] (delay (con integer 42))] (delay (con integer 42))]
+            (delay (con integer 42))]
+            (delay (con integer 42))]
+            (delay (con integer 42))]))
+        anf_3])
+      [(builtin iData) (con integer 42)]])
+    (force (builtin chooseData))])
+--- isolated pass
 --- uplc before
 [(lam generated_8
   (force

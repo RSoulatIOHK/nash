@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 730
+assertion_line: 699
 description: "module Main exposing (..)\nimport Data\nimport Primitive exposing (..)\nimport Option exposing (type option(..))\nmain : int\nmain =\n    let index = Data.tag (Builtin.constrData 7 [I 42]) in\n    case Data.fields (Builtin.constrData 7 [I 42]) of\n        [I number] -> Builtin.addInteger index number\n        _ -> fail\n"
 ---
---- core
+--- unoptimized Core
 let fields#3 : Data -> list Data = \value#29 : Data -> let projection#42 : pair int (list Data) = unConstrData value#29 in
 let destruct#30 : pair int (list Data) = projection#42 in
 let match#32 : pair int (list Data) = destruct#30 in
@@ -32,7 +32,7 @@ let main#1 : int = case@List match#7 of
       Cons field#24 field#25 -> force leaf#17
     DataB field#26 -> force leaf#17 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fields_3
     [(lam fromInt_4
@@ -88,6 +88,78 @@ main#1
             destruct_30])
           projection_42])
         [(builtin unConstrData) value_29]])])
+--- optimized Core
+let anf#71 : Data = iData 42 in
+let anf#72 : list Data = mkCons anf#71 (con (list data) []) in
+let anf#73 : Data = constrData 7 anf#72 in
+let projection#46 : pair int (list Data) = unConstrData anf#73 in
+let index#54 : int = case@Pair projection#46 of
+  Pair field#49 field#50 -> field#49 in
+let anf#76 : Data = iData 42 in
+let anf#77 : list Data = mkCons anf#76 (con (list data) []) in
+let anf#78 : Data = constrData 7 anf#77 in
+let projection#9 : pair int (list Data) = unConstrData anf#78 in
+let match#56 : list Data = case@Pair projection#9 of
+  Pair field#12 field#13 -> field#13 in
+let leaf#57 : @delay int = delay error in
+case@List match#56 of
+  Nil -> force leaf#57
+  Cons field#58 field#59 -> case@Data field#58 of
+    DataConstr field#60 -> force leaf#57
+    DataMap field#61 -> force leaf#57
+    DataList field#62 -> force leaf#57
+    DataI field#63 -> case@List field#59 of
+      Nil -> addInteger index#54 field#63
+      Cons field#65 field#66 -> force leaf#57
+    DataB field#67 -> force leaf#57
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_29
+    [(lam builtin_30
+      [(lam partial_31
+        [(lam anf_1
+          [(lam anf_2
+            [(lam anf_3
+              [(lam projection_4
+                [(lam index_7
+                  [(lam anf_8
+                    [(lam anf_10
+                      [(lam anf_11
+                        [(lam projection_14
+                          [(lam match_17
+                            [(lam leaf_18
+                              (case
+                                match_17
+                                (lam field_19
+                                  (lam field_20
+                                    [(lam generated_28
+                                      (force
+                                        [[[[[[builtin_29 generated_28] (delay (force leaf_18))] (delay (force leaf_18))]
+                                          (delay (force leaf_18))]
+                                          (delay
+                                            [(lam field_24
+                                              (case
+                                                field_20
+                                                (lam field_25 (lam field_26 (force leaf_18)))
+                                                [[(builtin addInteger) index_7] field_24]))
+                                              [(builtin unIData) generated_28]])]
+                                          (delay (force leaf_18))]))
+                                      field_19]))
+                                (force leaf_18)))
+                              (delay (error))])
+                            (case projection_14 (lam field_15 (lam field_16 field_16)))])
+                          [(builtin unConstrData) anf_11]])
+                        [partial_31 anf_10]])
+                      [[builtin_30 anf_8] (con (list data) [])]])
+                    [(builtin iData) (con integer 42)]])
+                  (case projection_4 (lam field_5 (lam field_6 field_5)))])
+                [(builtin unConstrData) anf_3]])
+              [partial_31 anf_2]])
+            [[builtin_30 anf_1] (con (list data) [])]])
+          [(builtin iData) (con integer 42)]])
+        [(builtin constrData) (con integer 7)]])
+      (force (builtin mkCons))])
+    (force (builtin chooseData))])
 --- result
 (con integer 49)
 --- logs

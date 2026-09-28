@@ -1,13 +1,43 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/force_delay.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+assertion_line: 23
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), left.uplc, pretty(after), right.uplc, right.result,\nright.logs))"
 ---
+--- unoptimized Core
+let first#1 : int = trace "first" in 0 in
+addInteger (force (delay (trace "body" in 21))) (force (delay (trace "body" in 21)))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam first_1
+    [[(builtin addInteger)
+      (force
+        (delay
+          (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])))]
+      (force
+        (delay
+          (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])))])
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 0))])])
+--- optimized Core
+let first#2 : int = trace "first" in 0 in
+let anf#3 : int = trace "body" in 21 in
+let anf#4 : int = trace "body" in 21 in
+addInteger anf#3 anf#4
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam partial_8
+      [(lam first_1
+        [(lam anf_5
+          [(lam anf_6 [[(builtin addInteger) anf_5] anf_6])
+            (force [partial_8 (delay (con integer 21))])])
+          (force [partial_8 (delay (con integer 21))])])
+        (force [[builtin_7 (con string "first")] (delay (con integer 0))])])
+      [builtin_7 (con string "body")]])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let first#1 : int = trace "first" in 0 in
 addInteger (force (delay (trace "body" in 21))) (force (delay (trace "body" in 21)))
---- core after
-let first#1 : int = trace "first" in 0 in
-addInteger (trace "body" in 21) (trace "body" in 21)
 --- uplc before
 (program 1.1.0
   [(lam first_1
@@ -19,6 +49,9 @@ addInteger (trace "body" in 21) (trace "body" in 21)
         (delay
           (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])))])
     (force [[(force (builtin trace)) (con string "first")] (delay (con integer 0))])])
+--- core after
+let first#1 : int = trace "first" in 0 in
+addInteger (trace "body" in 21) (trace "body" in 21)
 --- uplc after
 (program 1.1.0
   [(lam first_1

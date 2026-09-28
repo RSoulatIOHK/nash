@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = First unit | Second\nloop : bool -> unit\nloop =\n    case trace \"choose\" (First ()) of\n        First captured -> trace \"selected\" (\\flag -> if flag then captured else loop True)\n        Second -> \\flag -> loop flag\nmain = loop False\n"
 ---
---- core
+--- unoptimized Core
 let message#15 : string = "choose" in
 let message#16 : string = "selected" in
 let fromBool#3 : bool -> bool = \value#12 : bool -> value#12 in
@@ -12,15 +12,19 @@ let fromString#6 : string -> string = \value#14 : string -> value#14 in
 let match#10 : Main.choice = trace (fromString#6 message#15) in (\field#4 : unit -> constr 0 field#4) (fromUnit#5 ()) in
 case@Tag match#10 of
   0 field#11 -> let captured#7 : unit = field#11 in
-  trace (fromString#6 message#16) in let loop#2 : bool -> unit = (\self#17 : @self (bool -> unit) -> self#17 self#17) (\self#17 : @self (bool -> unit) flag#8 : bool -> case@Bool flag#8 of
-    True -> captured#7
-    False -> self#17 self#17 (fromBool#3 true)) in
+  trace (fromString#6 message#16) in letrec
+    loop#2 : bool -> unit [static []] = \flag#8 : bool -> case@Bool flag#8 of
+      True -> captured#7
+      False -> loop#2 (fromBool#3 true)
+  in
   let main#1 : unit = loop#2 (fromBool#3 false) in
   main#1
-  1 -> let loop#2 : bool -> unit = \flag#9 : bool -> force ((\self#19 : @self (@delay unit) -> self#19 self#19) (\self#19 : @self (@delay unit) -> delay force (self#19 self#19))) in
+  1 -> letrec
+    loop#2 : bool -> unit [static [0]] = \flag#9 : bool -> loop#2 flag#9
+  in
   let main#1 : unit = loop#2 (fromBool#3 false) in
   main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_15
     [(lam message_16
@@ -54,6 +58,38 @@ case@Tag match#10 of
         (lam value_12 value_12)])
       (con string "selected")])
     (con string "choose")])
+--- optimized Core
+let match#26 : Main.choice = trace "choose" in constr 0 () in
+case@Tag match#26 of
+  0 field#27 -> trace "selected" in letrec
+    loop#29 : bool -> unit [static []] = \flag#30 : bool -> case@Bool flag#30 of
+      True -> field#27
+      False -> loop#29 true
+  in
+  loop#29 false
+  1 -> letrec
+    worker#35 : @delay unit [static []] = \ -> delay (force worker#35)
+  in
+  force worker#35
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_13
+    [(lam match_4
+      (case
+        match_4
+        (lam field_5
+          (force
+            [[builtin_13 (con string "selected")]
+              (delay
+                [(lam loop_9 [loop_9 (con bool False)])
+                  [(lam self_6 [self_6 self_6])
+                    (lam self_7
+                      (lam flag_8 (case flag_8 [[self_7 self_7] (con bool True)] field_5)))]])]))
+        [(lam worker_12 (force worker_12))
+          [(lam self_10 [self_10 self_10])
+            (lam self_11 (delay (force [self_11 self_11])))]]))
+      (force [[builtin_13 (con string "choose")] (delay (constr 0 (con unit ())))])])
+    (force (builtin trace))])
 --- result
 (con unit ())
 --- logs

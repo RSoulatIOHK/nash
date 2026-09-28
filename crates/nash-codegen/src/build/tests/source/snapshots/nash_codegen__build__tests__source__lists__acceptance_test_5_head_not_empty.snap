@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
-assertion_line: 120
+assertion_line: 114
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype option 'a = None | Some 'a\nimpl Eq 'a => Eq (option 'a) where\n    eq a b =\n        case (a, b) of\n            (None, None) -> True\n            (Some x, Some y) -> eq x y\n            _ -> False\nhead : list int -> option int\nhead xs =\n    case xs of\n        [] -> None\n        _ -> Some (headList xs)\nmain = eq (head [1, 2, 3]) (Some 1)\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#8 : bool -> bool = \value#30 : bool -> value#30 in
 let eq#11 : int -> int -> bool = equalsInteger in
 let eq#2 : Main.option 'erased -> Main.option 'erased -> bool = \a#6 : Main.option 'erased b#7 : Main.option 'erased -> let match#12 : (Main.option 'erased, Main.option 'erased) = constr 0 a#6 b#7 in
@@ -25,7 +25,7 @@ case@List match#26 of
 let fromInt#4 : int -> int = \value#29 : int -> value#29 in
 let main#1 : bool = eq#2 (head#3 (mkCons (fromInt#4 1) (mkCons (fromInt#4 2) (mkCons (fromInt#4 3) (con (list integer) []))))) ((\field#5 : int -> constr 1 field#5) (fromInt#4 1)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_8
     [(lam eq_11
@@ -67,6 +67,54 @@ main#1
               (constr 0 a_6 b_7)]))])
       (builtin equalsInteger)])
     (lam value_30 value_30)])
+--- optimized Core
+let anf#54 : list int = mkCons 3 (con (list integer) []) in
+let anf#55 : list int = mkCons 2 anf#54 in
+let anf#56 : list int = mkCons 1 anf#55 in
+let anf#57 : Main.option int = case@List anf#56 of
+  Nil -> constr 0
+  Cons field#43 field#44 -> constr 1 field#43 in
+let anf#60 : Main.option int = constr 1 1 in
+let match#31 : (Main.option 'erased, Main.option 'erased) = constr 0 anf#57 anf#60 in
+let leaf#32 : @delay bool = delay false in
+case@Tag match#31 of
+  0 field#33 field#34 -> case@Tag field#33 of
+    0 -> case@Tag field#34 of
+      0 -> true
+      1 field#35 -> force leaf#32
+    1 field#36 -> case@Tag field#34 of
+      0 -> force leaf#32
+      1 field#37 -> equalsInteger field#36 field#37
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_15
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_6
+            [(lam anf_7
+              [(lam match_8
+                [(lam leaf_9
+                  (case
+                    match_8
+                    (lam field_10
+                      (lam field_11
+                        (case
+                          field_10
+                          (case field_11 (con bool True) (lam field_12 (force leaf_9)))
+                          (lam field_13
+                            (case
+                              field_11
+                              (force leaf_9)
+                              (lam field_14 [[(builtin equalsInteger) field_13] field_14]))))))))
+                  (delay (con bool False))])
+                (constr 0 anf_6 anf_7)])
+              (constr 1 (con integer 1))])
+            (case anf_3 (lam field_4 (lam field_5 (constr 1 field_4))) (constr 0))])
+          [[builtin_15 (con integer 1)] anf_2]])
+        [[builtin_15 (con integer 2)] anf_1]])
+      [[builtin_15 (con integer 3)] (con (list integer) [])]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

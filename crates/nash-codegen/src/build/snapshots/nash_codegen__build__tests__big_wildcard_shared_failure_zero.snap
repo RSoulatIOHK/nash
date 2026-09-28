@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        _ -> trace \"fallback\" fail\nmain = choose Zero\n"
 ---
---- core
+--- unoptimized Core
 let message#21 : string = "subject" in
 let message#22 : string = "fallback" in
 let fromString#4 : string -> string = \value#18 : string -> value#18 in
@@ -19,7 +19,7 @@ case@Pair projection#20 of
     3 -> force leaf#12 in
 let main#1 : int = choose#2 (constrData 1 (con (list data) [])) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_21
     [(lam message_22
@@ -50,6 +50,34 @@ main#1
         (lam value_18 value_18)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let anf#31 : Main.Choice = constrData 1 (con (list data) []) in
+let match#15 : Main.Choice = trace "subject" in anf#31 in
+let leaf#23 : @delay int = delay (trace "fallback" in error) in
+let projection#24 : pair int (list Data) = unConstrData match#15 in
+case@Pair projection#24 of
+  Pair tag#25 fields#26 -> case@Tag tag#25 of
+    0 -> 1
+    1 -> force leaf#23
+    2 -> force leaf#23
+    3 -> force leaf#23
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam anf_1
+      [(lam match_2
+        [(lam leaf_3
+          [(lam projection_4
+            (case
+              projection_4
+              (lam tag_5
+                (lam fields_6
+                  (case tag_5 (con integer 1) (force leaf_3) (force leaf_3) (force leaf_3))))))
+            [(builtin unConstrData) match_2]])
+          (delay (force [[builtin_7 (con string "fallback")] (delay (error))]))])
+        (force [[builtin_7 (con string "subject")] (delay anf_1)])])
+      [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+    (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm
 --- logs

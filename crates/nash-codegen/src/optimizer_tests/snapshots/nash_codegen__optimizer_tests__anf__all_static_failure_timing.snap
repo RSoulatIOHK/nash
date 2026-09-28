@@ -1,8 +1,56 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+letrec
+  same#1 : int -> int -> int [static [0]] = \x#2 : int -> let failed#3 : int = trace "failure" in error in
+  same#1 x#2
+in
+same#1 (trace "argument" in 42) (trace "unreachable extra" in 1)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam same_1
+    [[same_1
+      (force
+        [[(force (builtin trace)) (con string "argument")] (delay (con integer 42))])]
+      (force
+        [[(force (builtin trace)) (con string "unreachable extra")]
+          (delay (con integer 1))])])
+    (lam x_2
+      (force
+        [(lam self_4 [self_4 self_4])
+          (lam self_4
+            (delay
+              [(lam failed_3 (force [self_4 self_4]))
+                (force [[(force (builtin trace)) (con string "failure")] (delay (error))])]))]))])
+--- optimized Core
+let anf#8 : int = trace "argument" in 42 in
+letrec
+  worker#7 : @delay (int -> int) [static []] = \ -> delay (let failed#6 : int = trace "failure" in error in
+  force worker#7)
+in
+let anf#9 : int -> int = force worker#7 in
+let anf#10 : int = trace "unreachable extra" in 1 in
+anf#9 anf#10
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_14
+    [(lam anf_2
+      [(lam worker_11
+        [(lam anf_12
+          [(lam anf_13 [anf_12 anf_13])
+            (force [[builtin_14 (con string "unreachable extra")] (delay (con integer 1))])])
+          (force worker_11)])
+        [(lam self_3 [self_3 self_3])
+          (lam self_4
+            (delay
+              [(lam failed_5 (force [self_4 self_4]))
+                (force [[builtin_14 (con string "failure")] (delay (error))])]))]])
+      (force [[builtin_14 (con string "argument")] (delay (con integer 42))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 letrec
   same#5 : int -> int -> int [static [0]] = \x#6 : int -> let failed#7 : int = trace "failure" in error in

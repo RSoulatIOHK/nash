@@ -1,14 +1,15 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nsame : list Int -> list Int -> bool\nsame = eq\nmain =\n    ( same [] []\n    , same [1, 2] [1, 2]\n    , same [1, 2] [1, 3]\n    , same [1] [1, 2]\n    , same [1, 2] [2, 1]\n    )\n"
 ---
---- core
+--- unoptimized Core
 let eq#4 : list 'erased -> list 'erased -> bool = \xs#5 : list 'erased ys#6 : list 'erased -> equalsData (listData xs#5) (listData ys#6) in
 let same#2 : list Int -> list Int -> bool = eq#4 in
 let fromInt#3 : int -> Int = iData in
 let main#1 : (bool, bool, bool, bool, bool) = constr 0 (same#2 (con (list data) []) (con (list data) [])) (same#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) []))) (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) [])))) (same#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) []))) (mkCons (fromInt#3 1) (mkCons (fromInt#3 3) (con (list data) [])))) (same#2 (mkCons (fromInt#3 1) (con (list data) [])) (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) [])))) (same#2 (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (con (list data) []))) (mkCons (fromInt#3 2) (mkCons (fromInt#3 1) (con (list data) [])))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam eq_4
     [(lam same_2
@@ -40,6 +41,140 @@ main#1
     (lam xs_5
       (lam ys_6
         [[(builtin equalsData) [(builtin listData) xs_5]] [(builtin listData) ys_6]]))])
+--- optimized Core
+let eq#9 : list 'erased -> list 'erased -> bool = \xs#7 : list 'erased ys#8 : list 'erased -> let anf#13 : List 'erased = listData xs#7 in
+let anf#14 : List 'erased = listData ys#8 in
+equalsData anf#13 anf#14 in
+let fromInt#11 : int -> Int = iData in
+let anf#15 : bool = eq#9 (con (list data) []) (con (list data) []) in
+let anf#16 : Int = fromInt#11 1 in
+let anf#17 : Int = fromInt#11 2 in
+let anf#18 : list Int = mkCons anf#17 (con (list data) []) in
+let anf#19 : list Int = mkCons anf#16 anf#18 in
+let anf#20 : list Int -> bool = eq#9 anf#19 in
+let anf#21 : Int = fromInt#11 1 in
+let anf#22 : Int = fromInt#11 2 in
+let anf#23 : list Int = mkCons anf#22 (con (list data) []) in
+let anf#24 : list Int = mkCons anf#21 anf#23 in
+let anf#25 : bool = anf#20 anf#24 in
+let anf#26 : Int = fromInt#11 1 in
+let anf#27 : Int = fromInt#11 2 in
+let anf#28 : list Int = mkCons anf#27 (con (list data) []) in
+let anf#29 : list Int = mkCons anf#26 anf#28 in
+let anf#30 : list Int -> bool = eq#9 anf#29 in
+let anf#31 : Int = fromInt#11 1 in
+let anf#32 : Int = fromInt#11 3 in
+let anf#33 : list Int = mkCons anf#32 (con (list data) []) in
+let anf#34 : list Int = mkCons anf#31 anf#33 in
+let anf#35 : bool = anf#30 anf#34 in
+let anf#36 : Int = fromInt#11 1 in
+let anf#37 : list Int = mkCons anf#36 (con (list data) []) in
+let anf#38 : list Int -> bool = eq#9 anf#37 in
+let anf#39 : Int = fromInt#11 1 in
+let anf#40 : Int = fromInt#11 2 in
+let anf#41 : list Int = mkCons anf#40 (con (list data) []) in
+let anf#42 : list Int = mkCons anf#39 anf#41 in
+let anf#43 : bool = anf#38 anf#42 in
+let anf#44 : Int = fromInt#11 1 in
+let anf#45 : Int = fromInt#11 2 in
+let anf#46 : list Int = mkCons anf#45 (con (list data) []) in
+let anf#47 : list Int = mkCons anf#44 anf#46 in
+let anf#48 : list Int -> bool = eq#9 anf#47 in
+let anf#49 : Int = fromInt#11 2 in
+let anf#50 : Int = fromInt#11 1 in
+let anf#51 : list Int = mkCons anf#50 (con (list data) []) in
+let anf#52 : list Int = mkCons anf#49 anf#51 in
+let anf#53 : bool = anf#48 anf#52 in
+constr 0 anf#15 anf#25 anf#35 anf#43 anf#53
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_91
+    [(lam eq_5
+      [(lam fromInt_6
+        [(lam anf_10
+          [(lam anf_12
+            [(lam anf_54
+              [(lam anf_55
+                [(lam anf_56
+                  [(lam anf_57
+                    [(lam anf_58
+                      [(lam anf_59
+                        [(lam anf_60
+                          [(lam anf_61
+                            [(lam anf_62
+                              [(lam anf_63
+                                [(lam anf_64
+                                  [(lam anf_65
+                                    [(lam anf_66
+                                      [(lam anf_67
+                                        [(lam anf_68
+                                          [(lam anf_69
+                                            [(lam anf_70
+                                              [(lam anf_71
+                                                [(lam anf_72
+                                                  [(lam anf_73
+                                                    [(lam anf_74
+                                                      [(lam anf_75
+                                                        [(lam anf_76
+                                                          [(lam anf_77
+                                                            [(lam anf_78
+                                                              [(lam anf_79
+                                                                [(lam anf_80
+                                                                  [(lam anf_81
+                                                                    [(lam anf_82
+                                                                      [(lam anf_83
+                                                                        [(lam anf_84
+                                                                          [(lam anf_85
+                                                                            [(lam anf_86
+                                                                              [(lam anf_87
+                                                                                [(lam anf_88
+                                                                                  [(lam anf_89
+                                                                                    [(lam anf_90 (constr 0 anf_10 anf_62 anf_72 anf_80 anf_90)) [anf_85 anf_89]])
+                                                                                    [[builtin_91 anf_86] anf_88]])
+                                                                                  [[builtin_91 anf_87] (con (list data) [])]])
+                                                                                [fromInt_6 (con integer 1)]])
+                                                                              [fromInt_6 (con integer 2)]])
+                                                                            [eq_5 anf_84]])
+                                                                          [[builtin_91 anf_81] anf_83]])
+                                                                        [[builtin_91 anf_82] (con (list data) [])]])
+                                                                      [fromInt_6 (con integer 2)]])
+                                                                    [fromInt_6 (con integer 1)]])
+                                                                  [anf_75 anf_79]])
+                                                                [[builtin_91 anf_76] anf_78]])
+                                                              [[builtin_91 anf_77] (con (list data) [])]])
+                                                            [fromInt_6 (con integer 2)]])
+                                                          [fromInt_6 (con integer 1)]])
+                                                        [eq_5 anf_74]])
+                                                      [[builtin_91 anf_73] (con (list data) [])]])
+                                                    [fromInt_6 (con integer 1)]])
+                                                  [anf_67 anf_71]])
+                                                [[builtin_91 anf_68] anf_70]])
+                                              [[builtin_91 anf_69] (con (list data) [])]])
+                                            [fromInt_6 (con integer 3)]])
+                                          [fromInt_6 (con integer 1)]])
+                                        [eq_5 anf_66]])
+                                      [[builtin_91 anf_63] anf_65]])
+                                    [[builtin_91 anf_64] (con (list data) [])]])
+                                  [fromInt_6 (con integer 2)]])
+                                [fromInt_6 (con integer 1)]])
+                              [anf_57 anf_61]])
+                            [[builtin_91 anf_58] anf_60]])
+                          [[builtin_91 anf_59] (con (list data) [])]])
+                        [fromInt_6 (con integer 2)]])
+                      [fromInt_6 (con integer 1)]])
+                    [eq_5 anf_56]])
+                  [[builtin_91 anf_12] anf_55]])
+                [[builtin_91 anf_54] (con (list data) [])]])
+              [fromInt_6 (con integer 2)]])
+            [fromInt_6 (con integer 1)]])
+          [[eq_5 (con (list data) [])] (con (list data) [])]])
+        (builtin iData)])
+      (lam xs_1
+        (lam ys_2
+          [(lam anf_3
+            [(lam anf_4 [[(builtin equalsData) anf_3] anf_4]) [(builtin listData) ys_2]])
+            [(builtin listData) xs_1]]))])
+    (force (builtin mkCons))])
 --- result
 (constr 0
   (con bool True)

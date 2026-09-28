@@ -1,7 +1,27 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/builtin_sharing.rs
-expression: "format!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs)"
+assertion_line: 45
+expression: "crate::harness::pass_snapshot(b.arena, original,\nformat!(\"--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\nnash_plutus::pretty::term(before), nash_plutus::pretty::term(after),\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+case@Bool true of
+  True -> 42
+  False -> 0
+  _ -> case@Bool true of
+    True -> trace "never" in error
+    _ -> error
+--- unoptimized UPLC
+(program 1.1.0 (case (con bool True) (con integer 0) (con integer 42)))
+--- optimized Core
+case@Bool true of
+  True -> 42
+  False -> 0
+  _ -> case@Bool true of
+    True -> trace "never" in error
+    _ -> error
+--- optimized UPLC
+(program 1.1.0 (case (con bool True) (con integer 0) (con integer 42)))
+--- isolated pass
 --- uplc before
 (case (con bool True) (con integer 0) (con integer 42))
 --- uplc after

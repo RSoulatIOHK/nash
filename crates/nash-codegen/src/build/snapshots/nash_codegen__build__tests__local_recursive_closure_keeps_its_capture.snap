@@ -1,17 +1,19 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nrun captured =\n    let\n        loop : int -> int\n        loop n = if Builtin.equalsInteger n 0 then captured else loop (Builtin.subtractInteger n 1)\n    in\n    loop 3\nmain : int\nmain = run 42\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#7 : int -> value#7 in
-let run#2 : int -> int = \captured#4 : int -> let loop#5 : int -> int = (\self#8 : @self (int -> int) -> self#8 self#8) (\self#8 : @self (int -> int) n#6 : int -> case@Bool equalsInteger n#6 (fromInt#3 0) of
-  True -> captured#4
-  False -> self#8 self#8 (subtractInteger n#6 (fromInt#3 1))) in
+let run#2 : int -> int = \captured#4 : int -> letrec
+  loop#5 : int -> int [static []] = \n#6 : int -> case@Bool equalsInteger n#6 (fromInt#3 0) of
+    True -> captured#4
+    False -> loop#5 (subtractInteger n#6 (fromInt#3 1))
+in
 loop#5 (fromInt#3 3) in
 let main#1 : int = run#2 (fromInt#3 42) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam run_2 [(lam main_1 main_1) [run_2 [fromInt_3 (con integer 42)]]])
@@ -25,6 +27,28 @@ main#1
                   [[self_8 self_8] [[(builtin subtractInteger) n_6] [fromInt_3 (con integer 1)]]]
                   captured_4)))]])])
     (lam value_7 value_7)])
+--- optimized Core
+letrec
+  loop#11 : int -> int [static []] = \n#12 : int -> let anf#16 : bool = equalsInteger n#12 0 in
+  case@Bool anf#16 of
+    True -> 42
+    False -> let anf#18 : int = subtractInteger n#12 1 in
+    loop#11 anf#18
+in
+loop#11 3
+--- optimized UPLC
+(program 1.1.0
+  [(lam loop_8 [loop_8 (con integer 3)])
+    [(lam self_3 [self_3 self_3])
+      (lam self_4
+        (lam n_5
+          [(lam anf_6
+            (case
+              anf_6
+              [(lam anf_7 [[self_4 self_4] anf_7])
+                [[(builtin subtractInteger) n_5] (con integer 1)]]
+              (con integer 42)))
+            [[(builtin equalsInteger) n_5] (con integer 0)]]))]])
 --- result
 (con integer 42)
 --- logs

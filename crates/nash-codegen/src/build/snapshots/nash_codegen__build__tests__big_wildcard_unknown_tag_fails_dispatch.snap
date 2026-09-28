@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nchoose : Choice -> int\nchoose subject =\n    case trace \"subject\" subject of\n        Stop -> trace \"explicit\" 1\n        _ -> trace \"fallback\" 9\nmain = choose (coerce (constrData 59 []))\n"
 ---
---- core
+--- unoptimized Core
 let message#22 : string = "subject" in
 let message#23 : string = "fallback" in
 let message#24 : string = "explicit" in
@@ -20,7 +20,7 @@ case@Pair projection#21 of
     3 -> force leaf#13 in
 let main#1 : int = choose#2 ((\coerce#3 : Data -> coerce#3) (constrData (fromInt#4 59) (con (list data) []))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_22
     [(lam message_23
@@ -59,6 +59,39 @@ main#1
         (con string "explicit")])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let anf#37 : Data = constrData 59 (con (list data) []) in
+let match#25 : Main.Choice = trace "subject" in anf#37 in
+let leaf#26 : @delay int = delay (trace "fallback" in 9) in
+let projection#27 : pair int (list Data) = unConstrData match#25 in
+case@Pair projection#27 of
+  Pair tag#28 fields#29 -> case@Tag tag#28 of
+    0 -> trace "explicit" in 1
+    1 -> force leaf#26
+    2 -> force leaf#26
+    3 -> force leaf#26
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam anf_1
+      [(lam match_2
+        [(lam leaf_3
+          [(lam projection_4
+            (case
+              projection_4
+              (lam tag_5
+                (lam fields_6
+                  (case
+                    tag_5
+                    (force [[builtin_7 (con string "explicit")] (delay (con integer 1))])
+                    (force leaf_3)
+                    (force leaf_3)
+                    (force leaf_3))))))
+            [(builtin unConstrData) match_2]])
+          (delay (force [[builtin_7 (con string "fallback")] (delay (con integer 9))]))])
+        (force [[builtin_7 (con string "subject")] (delay anf_1)])])
+      [[(builtin constrData) (con integer 59)] (con (list data) [])]])
+    (force (builtin trace))])
 --- result
 error: NonConstrScrutinized(Con(Integer(59)))
 --- logs

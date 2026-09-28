@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 195
+assertion_line: 184
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain =\n    let\n        a : list int\n        a = [1, 2, 3]\n    in\n    case a of\n        [h] -> equalsInteger h h\n        _ -> fail\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#14 : int -> int = \value#15 : int -> value#15 in
 let a#2 : list int = mkCons (fromInt#14 1) (mkCons (fromInt#14 2) (mkCons (fromInt#14 3) (con (list integer) []))) in
 let match#4 : list int = a#2 in
@@ -15,7 +15,7 @@ let main#1 : bool = case@List match#4 of
     equalsInteger h#3 h#3
     Cons field#12 field#13 -> force leaf#9 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_14
     [(lam a_2
@@ -38,6 +38,37 @@ main#1
           [[(force (builtin mkCons)) [fromInt_14 (con integer 3)]]
             (con (list integer) [])]]]])
     (lam value_15 value_15)])
+--- optimized Core
+let anf#26 : list int = mkCons 3 (con (list integer) []) in
+let anf#27 : list int = mkCons 2 anf#26 in
+let a#7 : list int = mkCons 1 anf#27 in
+let leaf#16 : @delay bool = delay error in
+case@List a#7 of
+  Nil -> force leaf#16
+  Cons field#17 field#18 -> case@List field#18 of
+    Nil -> equalsInteger field#17 field#17
+    Cons field#20 field#21 -> force leaf#16
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_10
+    [(lam anf_1
+      [(lam anf_2
+        [(lam a_3
+          [(lam leaf_4
+            (case
+              a_3
+              (lam field_5
+                (lam field_6
+                  (case
+                    field_6
+                    (lam field_8 (lam field_9 (force leaf_4)))
+                    [[(builtin equalsInteger) field_5] field_5])))
+              (force leaf_4)))
+            (delay (error))])
+          [[builtin_10 (con integer 1)] anf_2]])
+        [[builtin_10 (con integer 2)] anf_1]])
+      [[builtin_10 (con integer 3)] (con (list integer) [])]])
+    (force (builtin mkCons))])
 --- result
 error: ExplicitErrorTerm
 --- logs

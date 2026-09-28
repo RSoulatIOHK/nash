@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 132
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype make = Make { a : int, b : subMake }\ntype subMake = SubMake { c : int }\nimpl Eq subMake where\n    eq (SubMake a) (SubMake b) = equalsInteger a b\nimpl Eq make where\n    eq (Make a b) (Make c d) = if equalsInteger a c then eq b d else False\nhi sm toMake = toMake 3 sm\nmain = eq (Make 3 (SubMake 1)) (hi (SubMake 1) Make)\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#17 : bool -> bool = \value#28 : bool -> value#28 in
 let eq#18 : Main.subMake -> Main.subMake -> bool = \arg#29 : Main.subMake arg#31 : Main.subMake -> let match#35 : Main.subMake = arg#29 in
 case@Tag match#35 of
@@ -26,7 +27,7 @@ let fromInt#5 : int -> int = \value#25 : int -> value#25 in
 let hi#7 : 'erased -> ('erased -> 'erased -> 'erased) -> 'erased = \sm#26 : 'erased (toMake#27 : 'erased -> 'erased -> 'erased) -> toMake#27 (fromInt#5 3) sm#26 in
 let main#1 : bool = eq#2 ((\field#3 : int field#4 : Main.subMake -> constr 0 field#3 field#4) (fromInt#5 3) ((\field#6 : int -> constr 0 field#6) (fromInt#5 1))) (hi#7 ((\field#8 : int -> constr 0 field#8) (fromInt#5 1)) (\field#9 : int field#10 : Main.subMake -> constr 0 field#9 field#10)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_17
     [(lam eq_18
@@ -83,6 +84,46 @@ main#1
                   field_36])))
             arg_29]))])
     (lam value_28 value_28)])
+--- optimized Core
+let anf#78 : Main.subMake = constr 0 1 in
+let anf#79 : Main.make = constr 0 3 anf#78 in
+let anf#82 : Main.subMake = constr 0 1 in
+let anf#83 : Main.make = constr 0 3 anf#82 in
+case@Tag anf#79 of
+  0 field#51 field#52 -> case@Tag anf#83 of
+    0 field#56 field#57 -> let anf#73 : bool = equalsInteger field#51 field#56 in
+    case@Bool anf#73 of
+      True -> case@Tag field#52 of
+        0 field#42 -> case@Tag field#57 of
+          0 field#45 -> equalsInteger field#42 field#45
+      False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1
+    [(lam anf_2
+      [(lam anf_3
+        [(lam anf_4
+          (case
+            anf_2
+            (lam field_5
+              (lam field_6
+                (case
+                  anf_4
+                  (lam field_7
+                    (lam field_8
+                      [(lam anf_9
+                        (case
+                          anf_9
+                          (con bool False)
+                          (case
+                            field_6
+                            (lam field_10
+                              (case field_8 (lam field_11 [[(builtin equalsInteger) field_10] field_11]))))))
+                        [[(builtin equalsInteger) field_5] field_7]])))))))
+          (constr 0 (con integer 3) anf_3)])
+        (constr 0 (con integer 1))])
+      (constr 0 (con integer 3) anf_1)])
+    (constr 0 (con integer 1))])
 --- result
 (con bool True)
 --- logs

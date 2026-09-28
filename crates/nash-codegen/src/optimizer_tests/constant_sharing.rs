@@ -13,6 +13,7 @@ fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) {
     check_args(name, b, core, fails, &[])
 }
 fn check_args<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool, args: &[i128]) {
+    let original = core;
     let core = crate::recursion::rewrite(b, core).unwrap();
     let before = crate::lower::lower_with_builtin_sharing(b.arena, core).unwrap();
     let after = crate::lower::lower_with_constant_sharing(b.arena, core).unwrap();
@@ -32,12 +33,16 @@ fn check_args<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool, 
 
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            nash_plutus::pretty::term(before),
-            nash_plutus::pretty::term(after),
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            original,
+            format!(
+                "--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                nash_plutus::pretty::term(before),
+                nash_plutus::pretty::term(after),
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     // Properties independent of the expected snapshot.

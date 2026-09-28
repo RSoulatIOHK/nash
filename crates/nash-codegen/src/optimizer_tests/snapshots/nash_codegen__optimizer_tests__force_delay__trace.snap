@@ -1,16 +1,32 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/force_delay.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+assertion_line: 23
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), left.uplc, pretty(after), right.uplc, right.result,\nright.logs))"
 ---
+--- unoptimized Core
+force (delay (trace "body" in 42))
+--- unoptimized UPLC
+(program 1.1.0
+  (force
+    (delay
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 42))]))))
+--- optimized Core
+trace "body" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force [[builtin_1 (con string "body")] (delay (con integer 42))]))
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 force (delay (trace "body" in 42))
---- core after
-trace "body" in 42
 --- uplc before
 (program 1.1.0
   (force
     (delay
       (force [[(force (builtin trace)) (con string "body")] (delay (con integer 42))]))))
+--- core after
+trace "body" in 42
 --- uplc after
 (program 1.1.0
   (force [[(force (builtin trace)) (con string "body")] (delay (con integer 42))]))

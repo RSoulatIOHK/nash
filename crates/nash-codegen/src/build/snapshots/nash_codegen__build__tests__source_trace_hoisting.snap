@@ -1,22 +1,42 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 629
 description: "module Main exposing (..)\nmain : (unit, unit)\nmain = (trace \"hello\" (), trace \"hello\" ())\n"
 ---
---- core
+--- unoptimized Core
 let message#6 : string = "hello" in
 let fromUnit#2 : unit -> unit = \value#4 : unit -> value#4 in
 let fromString#3 : string -> string = \value#5 : string -> value#5 in
 let main#1 : (unit, unit) = constr 0 (trace (fromString#3 message#6) in fromUnit#2 ()) (trace (fromString#3 message#6) in fromUnit#2 ()) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2
-        [(lam i3 i3)
+  [(lam message_6
+    [(lam fromUnit_2
+      [(lam fromString_3
+        [(lam main_1 main_1)
           (constr 0
-            (force [[(force (builtin trace)) [i2 i0]] (delay [i1 (con unit ())])])
-            (force [[(force (builtin trace)) [i2 i0]] (delay [i1 (con unit ())])]))])
-        (lam i2 i2)])
-      (lam i1 i1)])
+            (force
+              [[(force (builtin trace)) [fromString_3 message_6]]
+                (delay [fromUnit_2 (con unit ())])])
+            (force
+              [[(force (builtin trace)) [fromString_3 message_6]]
+                (delay [fromUnit_2 (con unit ())])]))])
+        (lam value_5 value_5)])
+      (lam value_4 value_4)])
     (con string "hello")])
+--- optimized Core
+let message#7 : string = "hello" in
+let anf#14 : unit = trace message#7 in () in
+let anf#16 : unit = trace message#7 in () in
+constr 0 anf#14 anf#16
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    [(lam message_1
+      [(lam anf_2
+        [(lam anf_3 (constr 0 anf_2 anf_3))
+          (force [[builtin_4 message_1] (delay (con unit ()))])])
+        (force [[builtin_4 message_1] (delay (con unit ()))])])
+      (con string "hello")])
+    (force (builtin trace))])

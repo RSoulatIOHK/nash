@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 951
 description: "module Main exposing (..)\ntype Box = Box Int Int\nignore : Box -> int\nignore value = case value of\n    Box _ _ -> 7\nmain : int\nmain = ignore (trace \"box input\" (Box 1 2))\n"
 ---
---- core
+--- unoptimized Core
 let message#14 : string = "box input" in
 let fromInt#8 : int -> int = \value#13 : int -> value#13 in
 let ignore#2 : Main.Box -> int = \value#7 : Main.Box -> let match#9 : Main.Box = value#7 in
@@ -11,7 +12,7 @@ let fromInt#5 : int -> Int = iData in
 let fromString#6 : string -> string = \value#12 : string -> value#12 in
 let main#1 : int = ignore#2 (trace (fromString#6 message#14) in (\field#3 : Int field#4 : Int -> constrData 0 (mkCons field#3 (mkCons field#4 (con (list data) [])))) (fromInt#5 1) (fromInt#5 2)) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_14
     [(lam fromInt_8
@@ -35,6 +36,34 @@ main#1
         (lam value_7 [(lam match_9 [fromInt_8 (con integer 7)]) value_7])])
       (lam value_13 value_13)])
     (con string "box input")])
+--- optimized Core
+let fromInt#19 : int -> Int = iData in
+let anf#31 : Main.Box = trace "box input" in let anf#28 : Int = fromInt#19 1 in
+let anf#30 : Int = fromInt#19 2 in
+let anf#26 : list Data = mkCons anf#30 (con (list data) []) in
+let anf#27 : list Data = mkCons anf#28 anf#26 in
+constrData 0 anf#27 in
+7
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam builtin_8
+      [(lam fromInt_1
+        [(lam anf_6 (con integer 7))
+          (force
+            [[builtin_8 (con string "box input")]
+              (delay
+                [(lam anf_2
+                  [(lam anf_3
+                    [(lam anf_4
+                      [(lam anf_5 [[(builtin constrData) (con integer 0)] anf_5])
+                        [[builtin_7 anf_2] anf_4]])
+                      [[builtin_7 anf_3] (con (list data) [])]])
+                    [fromInt_1 (con integer 2)]])
+                  [fromInt_1 (con integer 1)]])])])
+        (builtin iData)])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (con integer 7)
 --- logs

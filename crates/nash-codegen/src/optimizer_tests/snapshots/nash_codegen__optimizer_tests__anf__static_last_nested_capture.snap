@@ -1,8 +1,71 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/anf.rs
-assertion_line: 74
-expression: "format!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),)"
+assertion_line: 53
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before static lifting\\n{}\\n--- core after static lifting / before ANF\\n{}\\n--- core after ANF\\n{}\\n--- rewritten core (no second ANF)\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(fresh), pretty(lifted), pretty(first_anf), pretty(after),\nsemantic_output(&baseline), semantic_output(&normalized),))"
 ---
+--- unoptimized Core
+let outer#1 : int = trace "capture" in 2 in
+letrec
+  countdown#2 : int -> int -> int [static [1]] = \n#3 : int fixed#4 : int -> case@Bool equalsInteger n#3 0 of
+    True -> addInteger fixed#4 outer#1
+    False -> countdown#2 (trace "next" in subtractInteger n#3 1) fixed#4
+in
+countdown#2 2 (trace "fixed" in 40)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam outer_1
+    [(lam countdown_2
+      [[countdown_2 (con integer 2)]
+        (force
+          [[(force (builtin trace)) (con string "fixed")] (delay (con integer 40))])])
+      (lam n_3
+        (lam fixed_4
+          [[(lam self_5 [self_5 self_5])
+            (lam self_5
+              (lam n_3
+                (case
+                  [[(builtin equalsInteger) n_3] (con integer 0)]
+                  [[self_5 self_5]
+                    (force
+                      [[(force (builtin trace)) (con string "next")]
+                        (delay [[(builtin subtractInteger) n_3] (con integer 1)])])]
+                  [[(builtin addInteger) fixed_4] outer_1])))]
+            n_3]))])
+    (force
+      [[(force (builtin trace)) (con string "capture")] (delay (con integer 2))])])
+--- optimized Core
+let outer#5 : int = trace "capture" in 2 in
+let anf#14 : int = trace "fixed" in 40 in
+letrec
+  worker#10 : int -> int [static []] = \n#9 : int -> let anf#11 : bool = equalsInteger n#9 0 in
+  case@Bool anf#11 of
+    True -> addInteger anf#14 outer#5
+    False -> let anf#12 : int = trace "next" in subtractInteger n#9 1 in
+    worker#10 anf#12
+in
+worker#10 2
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_17
+    [(lam outer_3
+      [(lam anf_4
+        [(lam worker_16 [worker_16 (con integer 2)])
+          [(lam self_6 [self_6 self_6])
+            (lam self_7
+              (lam n_8
+                [(lam anf_13
+                  (case
+                    anf_13
+                    [(lam anf_15 [[self_7 self_7] anf_15])
+                      (force
+                        [[builtin_17 (con string "next")]
+                          (delay [[(builtin subtractInteger) n_8] (con integer 1)])])]
+                    [[(builtin addInteger) anf_4] outer_3]))
+                  [[(builtin equalsInteger) n_8] (con integer 0)]]))]])
+        (force [[builtin_17 (con string "fixed")] (delay (con integer 40))])])
+      (force [[builtin_17 (con string "capture")] (delay (con integer 2))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before static lifting
 let outer#6 : int = trace "capture" in 2 in
 letrec

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 878
 description: "module Main exposing (..)\ntype Box = Box Int Int\ntype Choice = First Box | Second Int | Third\nselect : Choice -> int\nselect value = case value of\n    First (Box first second) -> Builtin.addInteger (Builtin.unIData first) (Builtin.unIData second)\n    Second number -> Builtin.unIData number\n    Third -> 0\nmain : (int, int, int)\nmain = (select (First (Box 20 22)), select (Second 7), select Third)\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#12 : int -> int = \value#26 : int -> value#26 in
 let select#2 : Main.Choice -> int = \value#8 : Main.Choice -> let match#13 : Main.Choice = value#8 in
 let projection#27 : pair int (list Data) = unConstrData match#13 in
@@ -23,7 +24,7 @@ case@Pair projection#27 of
 let fromInt#6 : int -> Int = iData in
 let main#1 : (int, int, int) = constr 0 (select#2 ((\field#3 : Main.Box -> constrData 0 (mkCons field#3 (con (list data) []))) ((\field#4 : Int field#5 : Int -> constrData 0 (mkCons field#4 (mkCons field#5 (con (list data) [])))) (fromInt#6 20) (fromInt#6 22)))) (select#2 ((\field#7 : Int -> constrData 1 (mkCons field#7 (con (list data) []))) (fromInt#6 7))) (select#2 (constrData 2 (con (list data) []))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_12
     [(lam select_2
@@ -93,6 +94,111 @@ main#1
             [(builtin unConstrData) match_13]])
           value_8])])
     (lam value_26 value_26)])
+--- optimized Core
+let select#50 : Main.Choice -> int = \value#31 : Main.Choice -> let projection#33 : pair int (list Data) = unConstrData value#31 in
+case@Pair projection#33 of
+  Pair tag#34 fields#35 -> case@Tag tag#34 of
+    0 -> case@List fields#35 of
+      Cons field#36 fieldTail#37 -> let projection#38 : pair int (list Data) = unConstrData field#36 in
+      case@Pair projection#38 of
+        Pair tag#39 fields#40 -> case@List fields#40 of
+          Cons field#41 fieldTail#42 -> case@List fieldTail#42 of
+            Cons field#43 fieldTail#44 -> let anf#57 : int = unIData field#41 in
+            let anf#58 : int = unIData field#43 in
+            addInteger anf#57 anf#58
+    1 -> case@List fields#35 of
+      Cons field#47 fieldTail#48 -> unIData field#47
+    2 -> 0 in
+let fromInt#51 : int -> Int = iData in
+let anf#62 : Int = fromInt#51 20 in
+let anf#64 : Int = fromInt#51 22 in
+let anf#60 : list Data = mkCons anf#64 (con (list data) []) in
+let anf#61 : list Data = mkCons anf#62 anf#60 in
+let anf#65 : Main.Box = constrData 0 anf#61 in
+let anf#59 : list Data = mkCons anf#65 (con (list data) []) in
+let anf#66 : Main.Choice = constrData 0 anf#59 in
+let anf#67 : int = select#50 anf#66 in
+let anf#69 : Int = fromInt#51 7 in
+let anf#68 : list Data = mkCons anf#69 (con (list data) []) in
+let anf#70 : Main.Choice = constrData 1 anf#68 in
+let anf#71 : int = select#50 anf#70 in
+let anf#72 : Main.Choice = constrData 2 (con (list data) []) in
+let anf#73 : int = select#50 anf#72 in
+constr 0 anf#67 anf#71 anf#73
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_47
+    [(lam partial_48
+      [(lam select_18
+        [(lam fromInt_19
+          [(lam anf_20
+            [(lam anf_21
+              [(lam anf_22
+                [(lam anf_23
+                  [(lam anf_24
+                    [(lam anf_25
+                      [(lam anf_26
+                        [(lam anf_27
+                          [(lam anf_28
+                            [(lam anf_29
+                              [(lam anf_30
+                                [(lam anf_32
+                                  [(lam anf_45 [(lam anf_46 (constr 0 anf_27 anf_32 anf_46)) [select_18 anf_45]])
+                                    [[(builtin constrData) (con integer 2)] (con (list data) [])]])
+                                  [select_18 anf_30]])
+                                [[(builtin constrData) (con integer 1)] anf_29]])
+                              [[builtin_47 anf_28] (con (list data) [])]])
+                            [fromInt_19 (con integer 7)]])
+                          [select_18 anf_26]])
+                        [partial_48 anf_25]])
+                      [[builtin_47 anf_24] (con (list data) [])]])
+                    [partial_48 anf_23]])
+                  [[builtin_47 anf_20] anf_22]])
+                [[builtin_47 anf_21] (con (list data) [])]])
+              [fromInt_19 (con integer 22)]])
+            [fromInt_19 (con integer 20)]])
+          (builtin iData)])
+        (lam value_1
+          [(lam projection_2
+            (case
+              projection_2
+              (lam tag_3
+                (lam fields_4
+                  (case
+                    tag_3
+                    (case
+                      fields_4
+                      (lam field_5
+                        (lam fieldTail_6
+                          [(lam projection_7
+                            (case
+                              projection_7
+                              (lam tag_8
+                                (lam fields_9
+                                  (case
+                                    fields_9
+                                    (lam field_10
+                                      (lam fieldTail_11
+                                        (case
+                                          fieldTail_11
+                                          (lam field_12
+                                            (lam fieldTail_13
+                                              [(lam anf_14
+                                                [(lam anf_15 [[(builtin addInteger) anf_14] anf_15])
+                                                  [(builtin unIData) field_12]])
+                                                [(builtin unIData) field_10]]))
+                                          (error))))
+                                    (error))))))
+                            [(builtin unConstrData) field_5]]))
+                      (error))
+                    (case
+                      fields_4
+                      (lam field_16 (lam fieldTail_17 [(builtin unIData) field_16]))
+                      (error))
+                    (con integer 0))))))
+            [(builtin unConstrData) value_1]])])
+      [(builtin constrData) (con integer 0)]])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con integer 42) (con integer 7) (con integer 0))
 --- logs

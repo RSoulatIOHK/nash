@@ -32,28 +32,7 @@ fn constr<'a>(b: &Builder<'a>, tag: u16, fields: &[&'a Core<'a>]) -> &'a Core<'a
     )
 }
 
-/// Normalize once before optimization, then rewrite recursion and lower nested
-/// Core directly. Used only by tests, never production assembly.
-pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a> {
-    let b = Builder::new(arena);
-    let fresh = hygiene::freshen(&b, core);
-    hygiene::validate(fresh, &[]).unwrap();
-    let lifted = nash_ir::static_lift::lift(&b, fresh);
-    hygiene::validate(lifted, &[]).unwrap();
-    let shortened = nash_ir::unused_params::reduce(&b, lifted);
-    hygiene::validate(shortened, &[]).unwrap();
-    let normalized = anf::normalize(&b, shortened);
-    anf::validate(normalized).unwrap();
-    hygiene::validate(normalized, &[]).unwrap();
-    let propagated = nash_ir::small_inline::simplify(&b, normalized);
-    anf::validate(propagated).unwrap();
-    let rewritten = crate::recursion::rewrite(&b, propagated).unwrap();
-    // Recursion rewriting reuses self-application lambda subtrees.
-    let result = hygiene::freshen(&b, rewritten);
-    hygiene::validate(result, &[]).unwrap();
-    assert_eq!(core.ty, result.ty);
-    result
-}
+pub(crate) use crate::snapshot_optimizer::candidate;
 
 fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, fails: bool) {
     let before = crate::recursion::rewrite(b, core).unwrap();
@@ -73,14 +52,18 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, fails: bool) {
     assert_eq!(normalized.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before static lifting\n{}\n--- core after static lifting / before ANF\n{}\n--- core after ANF\n{}\n--- rewritten core (no second ANF)\n{}\n--- baseline\n{}\n--- candidate\n{}",
-            pretty(fresh),
-            pretty(lifted),
-            pretty(first_anf),
-            pretty(after),
-            semantic_output(&baseline),
-            semantic_output(&normalized),
+        crate::harness::pass_snapshot(
+            b.arena,
+            core,
+            format!(
+                "--- core before static lifting\n{}\n--- core after static lifting / before ANF\n{}\n--- core after ANF\n{}\n--- rewritten core (no second ANF)\n{}\n--- baseline\n{}\n--- candidate\n{}",
+                pretty(fresh),
+                pretty(lifted),
+                pretty(first_anf),
+                pretty(after),
+                semantic_output(&baseline),
+                semantic_output(&normalized),
+            )
         )
     );
     // Properties independent of the expected snapshot.
@@ -800,11 +783,15 @@ fn optimized_recursion_lowers_without_renormalizing_self_application() {
     );
     assert_eq!(baseline.logs, optimized.logs);
 
-    insta::assert_snapshot!(format!(
-        "--- core before\n{}\n--- core after\n{}\n--- baseline\n{}\n--- optimized\n{}",
-        pretty(core),
-        pretty(after),
-        semantic_output(&baseline),
-        semantic_output(&optimized),
+    insta::assert_snapshot!(crate::harness::pass_snapshot(
+        b.arena,
+        core,
+        format!(
+            "--- core before\n{}\n--- core after\n{}\n--- baseline\n{}\n--- optimized\n{}",
+            pretty(core),
+            pretty(after),
+            semantic_output(&baseline),
+            semantic_output(&optimized),
+        )
     ));
 }

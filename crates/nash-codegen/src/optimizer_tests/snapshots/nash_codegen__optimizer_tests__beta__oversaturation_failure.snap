@@ -1,13 +1,28 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/beta.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+(\x#1 : int -> trace "failure" in error) 0 42
+--- unoptimized UPLC
+(program 1.1.0
+  [[(lam x_1
+    (force [[(force (builtin trace)) (con string "failure")] (delay (error))]))
+    (con integer 0)]
+    (con integer 42)])
+--- optimized Core
+let beta#3 : int -> int = trace "failure" in error in
+beta#3 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_2
+    [(lam beta_1 [beta_1 (con integer 42)])
+      (force [[builtin_2 (con string "failure")] (delay (error))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 (\x#1 : int -> trace "failure" in error) 0 42
---- core after
-let beta#2 : int -> int = trace "failure" in error in
-beta#2 42
 --- baseline
 --- uplc
 (program 1.1.0
@@ -19,6 +34,9 @@ beta#2 42
 error: ExplicitErrorTerm
 --- logs
 ["failure"]
+--- core after
+let beta#2 : int -> int = trace "failure" in error in
+beta#2 42
 --- candidate
 --- uplc
 (program 1.1.0

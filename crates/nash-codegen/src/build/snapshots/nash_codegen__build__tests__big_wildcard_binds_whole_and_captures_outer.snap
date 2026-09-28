@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype Choice = Stop | Zero | One Int | Two Int Int\nread : Choice -> int\nread value =\n    case value of\n        Stop -> 0\n        Zero -> 0\n        One a -> unIData a\n        Two a b -> addInteger (unIData a) (unIData b)\nchoose : int -> Choice -> int\nchoose outer subject =\n    case trace \"subject\" subject of\n        Stop -> 1\n        whole -> trace \"fallback\" (addInteger outer (read whole))\nmain = (choose 10 Stop, choose 10 Zero, choose 10 (One 20), choose 10 (Two 30 40))\n"
 ---
---- core
+--- unoptimized Core
 let message#42 : string = "subject" in
 let message#43 : string = "fallback" in
 let fromInt#3 : int -> int = \value#25 : int -> value#25 in
@@ -37,7 +37,7 @@ case@Pair projection#41 of
 let fromInt#5 : int -> Int = iData in
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (fromInt#3 10) (constrData 0 (con (list data) []))) (choose#2 (fromInt#3 10) (constrData 1 (con (list data) []))) (choose#2 (fromInt#3 10) ((\field#4 : Int -> constrData 2 (mkCons field#4 (con (list data) []))) (fromInt#5 20))) (choose#2 (fromInt#3 10) ((\field#6 : Int field#7 : Int -> constrData 3 (mkCons field#6 (mkCons field#7 (con (list data) [])))) (fromInt#5 30) (fromInt#5 40))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_42
     [(lam message_43
@@ -123,6 +123,142 @@ main#1
         (lam value_25 value_25)])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let choose#68 : int -> Main.Choice -> int = \outer#57 : int subject#58 : Main.Choice -> let match#59 : Main.Choice = trace "subject" in subject#58 in
+let leaf#61 : Main.Choice -> int = \whole#60 : Main.Choice -> trace "fallback" in let projection#44 : pair int (list Data) = unConstrData whole#60 in
+let anf#78 : int = case@Pair projection#44 of
+  Pair tag#45 fields#46 -> case@Tag tag#45 of
+    0 -> 0
+    1 -> 0
+    2 -> case@List fields#46 of
+      Cons field#47 fieldTail#48 -> unIData field#47
+    3 -> case@List fields#46 of
+      Cons field#50 fieldTail#51 -> case@List fieldTail#51 of
+        Cons field#52 fieldTail#53 -> let anf#74 : int = unIData field#50 in
+        let anf#75 : int = unIData field#52 in
+        addInteger anf#74 anf#75 in
+addInteger outer#57 anf#78 in
+let projection#62 : pair int (list Data) = unConstrData match#59 in
+case@Pair projection#62 of
+  Pair tag#63 fields#64 -> case@Tag tag#63 of
+    0 -> 1
+    1 -> leaf#61 match#59
+    2 -> leaf#61 match#59
+    3 -> leaf#61 match#59 in
+let fromInt#69 : int -> Int = iData in
+let anf#80 : Main.Choice -> int = choose#68 10 in
+let anf#81 : Main.Choice = constrData 0 (con (list data) []) in
+let anf#82 : int = anf#80 anf#81 in
+let anf#84 : Main.Choice -> int = choose#68 10 in
+let anf#85 : Main.Choice = constrData 1 (con (list data) []) in
+let anf#86 : int = anf#84 anf#85 in
+let anf#88 : Main.Choice -> int = choose#68 10 in
+let anf#90 : Int = fromInt#69 20 in
+let anf#89 : list Data = mkCons anf#90 (con (list data) []) in
+let anf#91 : Main.Choice = constrData 2 anf#89 in
+let anf#92 : int = anf#88 anf#91 in
+let anf#94 : Main.Choice -> int = choose#68 10 in
+let anf#97 : Int = fromInt#69 30 in
+let anf#99 : Int = fromInt#69 40 in
+let anf#95 : list Data = mkCons anf#99 (con (list data) []) in
+let anf#96 : list Data = mkCons anf#97 anf#95 in
+let anf#100 : Main.Choice = constrData 3 anf#96 in
+let anf#101 : int = anf#94 anf#100 in
+constr 0 anf#82 anf#86 anf#92 anf#101
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_41
+    [(lam builtin_42
+      [(lam choose_21
+        [(lam fromInt_22
+          [(lam anf_23
+            [(lam anf_24
+              [(lam anf_25
+                [(lam anf_26
+                  [(lam anf_27
+                    [(lam anf_28
+                      [(lam anf_29
+                        [(lam anf_30
+                          [(lam anf_31
+                            [(lam anf_32
+                              [(lam anf_33
+                                [(lam anf_34
+                                  [(lam anf_35
+                                    [(lam anf_36
+                                      [(lam anf_37
+                                        [(lam anf_38
+                                          [(lam anf_39
+                                            [(lam anf_40 (constr 0 anf_25 anf_28 anf_33 anf_40)) [anf_34 anf_39]])
+                                            [[(builtin constrData) (con integer 3)] anf_38]])
+                                          [[builtin_41 anf_35] anf_37]])
+                                        [[builtin_41 anf_36] (con (list data) [])]])
+                                      [fromInt_22 (con integer 40)]])
+                                    [fromInt_22 (con integer 30)]])
+                                  [choose_21 (con integer 10)]])
+                                [anf_29 anf_32]])
+                              [[(builtin constrData) (con integer 2)] anf_31]])
+                            [[builtin_41 anf_30] (con (list data) [])]])
+                          [fromInt_22 (con integer 20)]])
+                        [choose_21 (con integer 10)]])
+                      [anf_26 anf_27]])
+                    [[(builtin constrData) (con integer 1)] (con (list data) [])]])
+                  [choose_21 (con integer 10)]])
+                [anf_23 anf_24]])
+              [[(builtin constrData) (con integer 0)] (con (list data) [])]])
+            [choose_21 (con integer 10)]])
+          (builtin iData)])
+        (lam outer_1
+          (lam subject_2
+            [(lam match_3
+              [(lam leaf_17
+                [(lam projection_18
+                  (case
+                    projection_18
+                    (lam tag_19
+                      (lam fields_20
+                        (case
+                          tag_19
+                          (con integer 1)
+                          [leaf_17 match_3]
+                          [leaf_17 match_3]
+                          [leaf_17 match_3])))))
+                  [(builtin unConstrData) match_3]])
+                (lam whole_4
+                  (force
+                    [[builtin_42 (con string "fallback")]
+                      (delay
+                        [(lam projection_5
+                          [(lam anf_16 [[(builtin addInteger) outer_1] anf_16])
+                            (case
+                              projection_5
+                              (lam tag_6
+                                (lam fields_7
+                                  (case
+                                    tag_6
+                                    (con integer 0)
+                                    (con integer 0)
+                                    (case
+                                      fields_7
+                                      (lam field_8 (lam fieldTail_9 [(builtin unIData) field_8]))
+                                      (error))
+                                    (case
+                                      fields_7
+                                      (lam field_10
+                                        (lam fieldTail_11
+                                          (case
+                                            fieldTail_11
+                                            (lam field_12
+                                              (lam fieldTail_13
+                                                [(lam anf_14
+                                                  [(lam anf_15 [[(builtin addInteger) anf_14] anf_15])
+                                                    [(builtin unIData) field_12]])
+                                                  [(builtin unIData) field_10]]))
+                                            (error))))
+                                      (error))))))])
+                          [(builtin unConstrData) whole_4]])]))])
+              (force [[builtin_42 (con string "subject")] (delay subject_2)])]))])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con integer 1) (con integer 10) (con integer 30) (con integer 80))
 --- logs

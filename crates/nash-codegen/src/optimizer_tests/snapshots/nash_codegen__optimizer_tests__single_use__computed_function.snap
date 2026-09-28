@@ -1,12 +1,31 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
---- core before
+--- unoptimized Core
 let f#2 : int -> int = trace "function" in \x#1 : int -> trace "body" in x#1 in
 f#2 42
---- core after
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam f_2 [f_2 (con integer 42)])
+    (force
+      [[(force (builtin trace)) (con string "function")]
+        (delay
+          (lam x_1 (force [[(force (builtin trace)) (con string "body")] (delay x_1)])))])])
+--- optimized Core
+let f#4 : int -> int = trace "function" in \x#3 : int -> trace "body" in x#3 in
+f#4 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_3
+    [(lam f_2 [f_2 (con integer 42)])
+      (force
+        [[builtin_3 (con string "function")]
+          (delay (lam x_1 (force [[builtin_3 (con string "body")] (delay x_1)])))])])
+    (force (builtin trace))])
+--- isolated pass
+--- core before
 let f#2 : int -> int = trace "function" in \x#1 : int -> trace "body" in x#1 in
 f#2 42
 --- baseline
@@ -21,6 +40,9 @@ f#2 42
 (con integer 42)
 --- logs
 ["function", "body"]
+--- core after
+let f#2 : int -> int = trace "function" in \x#1 : int -> trace "body" in x#1 in
+f#2 42
 --- candidate
 --- uplc
 (program 1.1.0

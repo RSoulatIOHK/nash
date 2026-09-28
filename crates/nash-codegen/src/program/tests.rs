@@ -29,11 +29,16 @@ fn optimizer_substitution_preserves_free_names_at_runtime() {
     let reference = b.let_(y, b.int(20), b.let_(target, b.var(y.name, y.ty), recipient));
     let original_program = assemble_core(&arena, reference).unwrap();
     let changed_program = assemble_core(&arena, candidate).unwrap();
-    insta::assert_debug_snapshot!((
-        nash_ir::pretty::pretty(reference),
-        nash_ir::pretty::pretty(candidate),
-        pretty::term(original_program.named),
-        pretty::term(changed_program.named),
+    insta::assert_snapshot!(crate::harness::pass_snapshot(
+        &arena,
+        reference,
+        format!(
+            "--- Core before substitution\n{}\n--- UPLC before substitution\n{}\n--- Core after substitution\n{}\n--- UPLC after substitution\n{}",
+            nash_ir::pretty::pretty(reference),
+            pretty::term(original_program.named),
+            nash_ir::pretty::pretty(candidate),
+            pretty::term(changed_program.named),
+        )
     ));
     let original = original_program.program.eval(&arena);
     let changed = changed_program.program.eval(&arena);
@@ -102,7 +107,17 @@ fn optimizer_substitution_freshens_each_inserted_function() {
         pretty::term(changed.term.as_ref().unwrap())
     );
     assert_eq!(original.info.logs, changed.info.logs);
-    insta::assert_debug_snapshot!((pretty::term(changed.term.unwrap()), changed.info.logs));
+    insta::assert_snapshot!(crate::harness::pass_snapshot(
+        &arena,
+        reference,
+        format!(
+            "--- Core after substitution\n{}\n--- UPLC after substitution\n{}\n--- result\n{}\n--- logs\n{:?}",
+            nash_ir::pretty::pretty(candidate),
+            pretty::term(assemble_core(&arena, candidate).unwrap().named),
+            pretty::term(changed.term.unwrap()),
+            changed.info.logs,
+        )
+    ));
 }
 
 #[test]
@@ -172,10 +187,8 @@ fn optimizer_discard_analysis_respects_runtime_staging() {
             ty: value.ty,
             ..unused
         };
-        let evaluated = assemble_core(&arena, b.let_(unused, value, b.int(42)))
-            .unwrap()
-            .program
-            .eval(&arena);
+        let core = b.let_(unused, value, b.int(42));
+        let evaluated = assemble_core(&arena, core).unwrap().program.eval(&arena);
         let result = evaluated
             .term
             .map(pretty::term)
@@ -184,9 +197,10 @@ fn optimizer_discard_analysis_respects_runtime_staging() {
             assert_eq!(result.as_deref(), Ok("(con integer 42)"));
             assert!(evaluated.info.logs.is_empty());
         }
-        results.push((label, safe_to_discard(value), result, evaluated.info.logs));
+        results.push(format!("--- fixture\n{label}\n{}\n--- safe to discard\n{}\n--- result\n{result:?}\n--- logs\n{:?}",
+            crate::snapshot_optimizer::code_snapshot(&arena, core), safe_to_discard(value), evaluated.info.logs));
     }
-    insta::assert_debug_snapshot!(results);
+    insta::assert_snapshot!(results.join("\n"));
 }
 
 fn binder<'a>(b: &Builder<'a>, text: &'a str) -> Binder<'a> {

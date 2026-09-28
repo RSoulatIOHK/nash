@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 381
+assertion_line: 362
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\nimport Lift exposing (lift)\nimport Data exposing (toData)\ntype MyDatum = MyDatum { a : Int }\nencodeMyDatum (MyDatum n) = Builtin.constrData 0 [toData n]\ntype Address = Address { thing : Bytes }\ntype Datum = NoDatum | InlineDatum Data\ntype Option 'a = None | Some 'a\ntype alias Output =\n    { address : Address\n    , value : Map Bytes (Map Bytes Int)\n    , datum : Datum\n    , scriptRef : Option Bytes\n    }\nmain =\n    let\n        emptyPairs : map Bytes (Map Bytes Int)\n        emptyPairs = []\n        prevOutput : Output\n        prevOutput =\n            { address = (Address { thing = #\"7363726970745f686173685f30\" })\n            , value = (lift emptyPairs)\n            , datum = (InlineDatum (encodeMyDatum (MyDatum 3)))\n            , scriptRef = None\n            }\n        nextOutput = { prevOutput | value = (lift emptyPairs), datum = prevOutput.datum }\n    in\n    eq prevOutput nextOutput\n"
 ---
---- core
+--- unoptimized Core
 let lift#8 : list (pair 'erased 'erased) -> Map 'erased 'erased = mapData in
 let fromBytes#12 : bytes -> Bytes = bData in
 let fromInt#19 : int -> int = \value#26 : int -> value#26 in
@@ -26,7 +26,7 @@ case@List projection#29 of
       Cons head#9 tail#10 -> let nextOutput#4 : { _0 : Main.Address, _1 : Map Bytes (Map Bytes Int), _2 : Main.Datum, _3 : Main.Option Bytes } = listData (mkCons head#6 (mkCons evaluated#32 (mkCons head#9 tail#10))) in
       let main#1 : bool = equalsData prevOutput#3 nextOutput#4 in
       main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam lift_8
     [(lam fromBytes_12
@@ -106,6 +106,119 @@ case@List projection#29 of
         (lam value_26 value_26)])
       (builtin bData)])
     (builtin mapData)])
+--- optimized Core
+let lift#33 : list (pair 'erased 'erased) -> Map 'erased 'erased = mapData in
+let emptyPairs#49 : list (pair Bytes (Map Bytes Int)) = (con (list (pair data data)) []) in
+let anf#69 : Bytes = bData (con bytestring #7363726970745f686173685f30) in
+let anf#68 : list Data = mkCons anf#69 (con (list data) []) in
+let anf#70 : Main.Address = constrData 0 anf#68 in
+let anf#71 : Map Bytes (Map Bytes Int) = lift#33 emptyPairs#49 in
+let anf#74 : Int = iData 3 in
+let anf#73 : list Data = mkCons anf#74 (con (list data) []) in
+let anf#75 : Main.MyDatum = constrData 0 anf#73 in
+let projection#41 : pair int (list Data) = unConstrData anf#75 in
+let anf#76 : Data = case@Pair projection#41 of
+  Pair tag#42 fields#43 -> case@List fields#43 of
+    Cons field#44 fieldTail#45 -> let anf#67 : list Data = mkCons field#44 (con (list data) []) in
+    constrData 0 anf#67 in
+let anf#72 : list Data = mkCons anf#76 (con (list data) []) in
+let anf#77 : Main.Datum = constrData 1 anf#72 in
+let anf#78 : Main.Option Bytes = constrData 0 (con (list data) []) in
+let anf#79 : list Data = mkCons anf#78 (con (list data) []) in
+let anf#80 : list Data = mkCons anf#77 anf#79 in
+let anf#81 : list Data = mkCons anf#71 anf#80 in
+let anf#82 : list Data = mkCons anf#70 anf#81 in
+let prevOutput#53 : { _0 : Main.Address, _1 : Map Bytes (Map Bytes Int), _2 : Main.Datum, _3 : Main.Option Bytes } = listData anf#82 in
+let projection#55 : list Data = unListData prevOutput#53 in
+case@List projection#55 of
+  Cons head#56 tail#57 -> let evaluated#58 : Map Bytes (Map Bytes Int) = lift#33 emptyPairs#49 in
+  case@List tail#57 of
+    Cons head#59 tail#60 -> case@List tail#60 of
+      Cons head#61 tail#62 -> let anf#83 : list Data = mkCons head#61 tail#62 in
+      let anf#84 : list Data = mkCons evaluated#58 anf#83 in
+      let anf#85 : list Data = mkCons head#56 anf#84 in
+      let nextOutput#63 : { _0 : Main.Address, _1 : Map Bytes (Map Bytes Int), _2 : Main.Datum, _3 : Main.Option Bytes } = listData anf#85 in
+      equalsData prevOutput#53 nextOutput#63
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_38
+    [(lam partial_39
+      [(lam lift_1
+        [(lam emptyPairs_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam anf_6
+                  [(lam anf_7
+                    [(lam anf_8
+                      [(lam anf_9
+                        [(lam projection_10
+                          [(lam anf_16
+                            [(lam anf_17
+                              [(lam anf_18
+                                [(lam anf_19
+                                  [(lam anf_20
+                                    [(lam anf_21
+                                      [(lam anf_22
+                                        [(lam anf_23
+                                          [(lam prevOutput_24
+                                            [(lam projection_25
+                                              (case
+                                                projection_25
+                                                (lam head_26
+                                                  (lam tail_27
+                                                    [(lam evaluated_28
+                                                      (case
+                                                        tail_27
+                                                        (lam head_29
+                                                          (lam tail_30
+                                                            (case
+                                                              tail_30
+                                                              (lam head_31
+                                                                (lam tail_32
+                                                                  [(lam anf_34
+                                                                    [(lam anf_35
+                                                                      [(lam anf_36
+                                                                        [(lam nextOutput_37 [[(builtin equalsData) prevOutput_24] nextOutput_37])
+                                                                          [(builtin listData) anf_36]])
+                                                                        [[builtin_38 head_26] anf_35]])
+                                                                      [[builtin_38 evaluated_28] anf_34]])
+                                                                    [[builtin_38 head_31] tail_32]]))
+                                                              (error))))
+                                                        (error)))
+                                                      [lift_1 emptyPairs_2]]))
+                                                (error)))
+                                              [(builtin unListData) prevOutput_24]])
+                                            [(builtin listData) anf_23]])
+                                          [[builtin_38 anf_5] anf_22]])
+                                        [[builtin_38 anf_6] anf_21]])
+                                      [[builtin_38 anf_18] anf_20]])
+                                    [[builtin_38 anf_19] (con (list data) [])]])
+                                  [partial_39 (con (list data) [])]])
+                                [[(builtin constrData) (con integer 1)] anf_17]])
+                              [[builtin_38 anf_16] (con (list data) [])]])
+                            (case
+                              projection_10
+                              (lam tag_11
+                                (lam fields_12
+                                  (case
+                                    fields_12
+                                    (lam field_13
+                                      (lam fieldTail_14
+                                        [(lam anf_15 [partial_39 anf_15]) [[builtin_38 field_13] (con (list data) [])]]))
+                                    (error)))))])
+                          [(builtin unConstrData) anf_9]])
+                        [partial_39 anf_8]])
+                      [[builtin_38 anf_7] (con (list data) [])]])
+                    [(builtin iData) (con integer 3)]])
+                  [lift_1 emptyPairs_2]])
+                [partial_39 anf_4]])
+              [[builtin_38 anf_3] (con (list data) [])]])
+            [(builtin bData) (con bytestring #7363726970745f686173685f30)]])
+          (con (list (pair data data)) [])])
+        (builtin mapData)])
+      [(builtin constrData) (con integer 0)]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 234
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : unit\nmain =\n    let\n        predicate = True\n    in\n    trace \"foo\" (assert predicate)\n"
 ---
---- core
+--- unoptimized Core
 let message#7 : string = "foo" in
 let message#8 : string = "assertion failed" in
 let fromString#3 : string -> string = \value#5 : string -> value#5 in
@@ -12,7 +13,7 @@ let main#1 : unit = trace (fromString#3 message#7) in case@Bool predicate#2 of
   True -> ()
   False -> trace message#8 in error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_7
     [(lam message_8
@@ -32,6 +33,21 @@ main#1
         (lam value_5 value_5)])
       (con string "assertion failed")])
     (con string "foo")])
+--- optimized Core
+trace "foo" in case@Bool true of
+  True -> ()
+  False -> trace "assertion failed" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force
+      [[builtin_1 (con string "foo")]
+        (delay
+          (case
+            (con bool True)
+            (force [[builtin_1 (con string "assertion failed")] (delay (error))])
+            (con unit ())))]))
+    (force (builtin trace))])
 --- result
 (con unit ())
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1761
 description: "module Main exposing (..)\ntype alias Record = { a : Int, b : Int, c : Int, d : Int, e : Int, f : Int }\nselect : Record -> (Int, Int, Int, Int)\nselect r = (r.a, r.d, r.e, r.d)\nmain = select { a = 1, b = 2, c = 3, d = 4, e = 5, f = 6 }\n"
 ---
---- core
+--- unoptimized Core
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } -> (Int, Int, Int, Int) = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } -> let projection#13 : list Data = unListData r#4 in
 case@List projection#13 of
   Cons head#5 tail#6 -> let projection#14 : list Data = dropList 2 tail#6 in
@@ -12,7 +13,7 @@ case@List projection#13 of
 let fromInt#3 : int -> Int = iData in
 let main#1 : (Int, Int, Int, Int) = select#2 (listData (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (mkCons (fromInt#3 3) (mkCons (fromInt#3 4) (mkCons (fromInt#3 5) (mkCons (fromInt#3 6) (con (list data) [])))))))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam select_2
     [(lam fromInt_3
@@ -45,6 +46,79 @@ main#1
                 [[(force (builtin dropList)) (con integer 2)] tail_6]]))
           (error)))
         [(builtin unListData) r_4]])])
+--- optimized Core
+let fromInt#23 : int -> Int = iData in
+let anf#25 : Int = fromInt#23 1 in
+let anf#26 : Int = fromInt#23 2 in
+let anf#27 : Int = fromInt#23 3 in
+let anf#28 : Int = fromInt#23 4 in
+let anf#29 : Int = fromInt#23 5 in
+let anf#30 : Int = fromInt#23 6 in
+let anf#31 : list Data = mkCons anf#30 (con (list data) []) in
+let anf#32 : list Data = mkCons anf#29 anf#31 in
+let anf#33 : list Data = mkCons anf#28 anf#32 in
+let anf#34 : list Data = mkCons anf#27 anf#33 in
+let anf#35 : list Data = mkCons anf#26 anf#34 in
+let anf#36 : list Data = mkCons anf#25 anf#35 in
+let anf#37 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int, _4 : Int, _5 : Int } = listData anf#36 in
+let projection#12 : list Data = unListData anf#37 in
+case@List projection#12 of
+  Cons head#15 tail#16 -> let projection#17 : list Data = dropList 2 tail#16 in
+  case@List projection#17 of
+    Cons head#18 tail#19 -> case@List tail#19 of
+      Cons head#20 tail#21 -> constr 0 head#15 head#18 head#20 head#18
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_45
+    [(lam builtin_46
+      [(lam fromInt_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam anf_6
+                  [(lam anf_7
+                    [(lam anf_8
+                      [(lam anf_9
+                        [(lam anf_10
+                          [(lam anf_11
+                            [(lam anf_13
+                              [(lam anf_14
+                                [(lam anf_22
+                                  [(lam projection_24
+                                    (case
+                                      projection_24
+                                      (lam head_38
+                                        (lam tail_39
+                                          [(lam projection_40
+                                            (case
+                                              projection_40
+                                              (lam head_41
+                                                (lam tail_42
+                                                  (case
+                                                    tail_42
+                                                    (lam head_43 (lam tail_44 (constr 0 head_38 head_41 head_43 head_41)))
+                                                    (error))))
+                                              (error)))
+                                            [[builtin_45 (con integer 2)] tail_39]]))
+                                      (error)))
+                                    [(builtin unListData) anf_22]])
+                                  [(builtin listData) anf_14]])
+                                [[builtin_46 anf_2] anf_13]])
+                              [[builtin_46 anf_3] anf_11]])
+                            [[builtin_46 anf_4] anf_10]])
+                          [[builtin_46 anf_5] anf_9]])
+                        [[builtin_46 anf_6] anf_8]])
+                      [[builtin_46 anf_7] (con (list data) [])]])
+                    [fromInt_1 (con integer 6)]])
+                  [fromInt_1 (con integer 5)]])
+                [fromInt_1 (con integer 4)]])
+              [fromInt_1 (con integer 3)]])
+            [fromInt_1 (con integer 2)]])
+          [fromInt_1 (con integer 1)]])
+        (builtin iData)])
+      (force (builtin mkCons))])
+    (force (builtin dropList))])
 --- result
 (constr 0 (con data (I 1)) (con data (I 4)) (con data (I 5)) (con data (I 4)))
 --- logs

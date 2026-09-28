@@ -1,7 +1,20 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\", pretty(root),\npretty(after))"
+assertion_line: 269
+expression: "crate::harness::pass_snapshot(b.arena, root,\nformat!(\"--- core before\\n{}\\n--- core after\\n{}\", pretty(root),\npretty(after)))"
 ---
+--- unoptimized Core
+let helper#3 : int -> int -> int = \unused#1 : int used#2 : int -> used#2 in
+helper#3 0 42
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam helper_3 [[helper_3 (con integer 0)] (con integer 42)])
+    (lam unused_1 (lam used_2 used_2))])
+--- optimized Core
+42
+--- optimized UPLC
+(program 1.1.0 (con integer 42))
+--- isolated pass
 --- core before
 let helper#3 : int -> int -> int = \unused#1 : int used#2 : int -> used#2 in
 helper#3 0 42

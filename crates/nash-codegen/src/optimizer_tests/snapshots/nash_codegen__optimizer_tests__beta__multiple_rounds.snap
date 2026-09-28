@@ -1,12 +1,21 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/beta.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
+--- unoptimized Core
+(\x#1 : int -> \y#2 : int -> \z#3 : int -> z#3) 0 1 42
+--- unoptimized UPLC
+(program 1.1.0
+  [[[(lam x_1 (lam y_2 (lam z_3 z_3))) (con integer 0)] (con integer 1)]
+    (con integer 42)])
+--- optimized Core
+42
+--- optimized UPLC
+(program 1.1.0 (con integer 42))
+--- isolated pass
 --- core before
 (\x#1 : int -> \y#2 : int -> \z#3 : int -> z#3) 0 1 42
---- core after
-42
 --- baseline
 --- uplc
 (program 1.1.0
@@ -16,6 +25,8 @@ expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline
 (con integer 42)
 --- logs
 []
+--- core after
+42
 --- candidate
 --- uplc
 (program 1.1.0 (con integer 42))

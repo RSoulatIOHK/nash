@@ -1,7 +1,47 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 37
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline uplc\\n{}\\n--- core after\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let offset#1 : int = trace "offset" in 10 in
+let adjust#3 : int -> int = \x#2 : int -> addInteger offset#1 x#2 in
+addInteger (adjust#3 (trace "first" in 1)) (adjust#3 (trace "second" in 2))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam offset_1
+    [(lam adjust_3
+      [[(builtin addInteger)
+        [adjust_3
+          (force [[(force (builtin trace)) (con string "first")] (delay (con integer 1))])]]
+        [adjust_3
+          (force
+            [[(force (builtin trace)) (con string "second")] (delay (con integer 2))])]])
+      (lam x_2 [[(builtin addInteger) offset_1] x_2])])
+    (force
+      [[(force (builtin trace)) (con string "offset")] (delay (con integer 10))])])
+--- optimized Core
+let offset#4 : int = trace "offset" in 10 in
+let anf#7 : int = trace "first" in 1 in
+let anf#8 : int = addInteger offset#4 anf#7 in
+let anf#9 : int = trace "second" in 2 in
+let anf#10 : int = addInteger offset#4 anf#9 in
+addInteger anf#8 anf#10
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_7
+    [(lam offset_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_5
+            [(lam anf_6 [[(builtin addInteger) anf_3] anf_6])
+              [[(builtin addInteger) offset_1] anf_5]])
+            (force [[builtin_7 (con string "second")] (delay (con integer 2))])])
+          [[(builtin addInteger) offset_1] anf_2]])
+        (force [[builtin_7 (con string "first")] (delay (con integer 1))])])
+      (force [[builtin_7 (con string "offset")] (delay (con integer 10))])])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let offset#1 : int = trace "offset" in 10 in
 let adjust#3 : int -> int = \x#2 : int -> addInteger offset#1 x#2 in
@@ -9,13 +49,6 @@ let anf#4 : int = trace "first" in 1 in
 let anf#5 : int = adjust#3 anf#4 in
 let anf#6 : int = trace "second" in 2 in
 let anf#7 : int = adjust#3 anf#6 in
-addInteger anf#5 anf#7
---- core after
-let offset#1 : int = trace "offset" in 10 in
-let anf#4 : int = trace "first" in 1 in
-let anf#5 : int = addInteger offset#1 anf#4 in
-let anf#6 : int = trace "second" in 2 in
-let anf#7 : int = addInteger offset#1 anf#6 in
 addInteger anf#5 anf#7
 --- baseline uplc
 (program 1.1.0
@@ -31,6 +64,13 @@ addInteger anf#5 anf#7
       (lam x_2 [[(builtin addInteger) offset_1] x_2])])
     (force
       [[(force (builtin trace)) (con string "offset")] (delay (con integer 10))])])
+--- core after
+let offset#1 : int = trace "offset" in 10 in
+let anf#4 : int = trace "first" in 1 in
+let anf#5 : int = addInteger offset#1 anf#4 in
+let anf#6 : int = trace "second" in 2 in
+let anf#7 : int = addInteger offset#1 anf#6 in
+addInteger anf#5 anf#7
 --- optimized uplc
 (program 1.1.0
   [(lam offset_1

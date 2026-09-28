@@ -1,14 +1,23 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/unused_params.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let helper#4 : int -> int -> int -> int = \same#1 : int same#2 : int -> \same#3 : int -> same#1 in
+helper#4 42 0 7
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam helper_4 [[[helper_4 (con integer 42)] (con integer 0)] (con integer 7)])
+    (lam same_1 (lam same_2 (lam same_3 same_1)))])
+--- optimized Core
+42
+--- optimized UPLC
+(program 1.1.0 (con integer 42))
+--- isolated pass
 --- core before
 let helper#4 : int -> int -> int -> int = \same#1 : int same#2 : int -> \same#3 : int -> same#1 in
 let anf#5 : int -> int = helper#4 42 0 in
-anf#5 7
---- core after
-let helper#4 : int -> int -> int = \same#1 : int -> \same#3 : int -> same#1 in
-let anf#5 : int -> int = helper#4 42 in
 anf#5 7
 --- uplc before
 (program 1.1.0
@@ -16,6 +25,10 @@ anf#5 7
     [(lam anf_5 [anf_5 (con integer 7)])
       [[helper_4 (con integer 42)] (con integer 0)]])
     (lam same_1 (lam same_2 (lam same_3 same_1)))])
+--- core after
+let helper#4 : int -> int -> int = \same#1 : int -> \same#3 : int -> same#1 in
+let anf#5 : int -> int = helper#4 42 in
+anf#5 7
 --- uplc after
 (program 1.1.0
   [(lam helper_4 [(lam anf_5 [anf_5 (con integer 7)]) [helper_4 (con integer 42)]])

@@ -1,25 +1,41 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 547
 description: "validator module Main exposing (main)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : Data -> Bytes -> Data -> unit\nmain redeemer policyId transaction = assert True\n"
 ---
---- core
+--- unoptimized Core
 let message#7 : string = "assertion failed" in
 let fromBool#5 : bool -> bool = \value#6 : bool -> value#6 in
 let main#1 : Data -> Bytes -> Data -> unit = \redeemer#2 : Data policyId#3 : Bytes transaction#4 : Data -> case@Bool fromBool#5 true of
   True -> ()
   False -> trace message#7 in error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2 i2)
-        (lam i2
-          (lam i3
-            (lam i4
+  [(lam message_7
+    [(lam fromBool_5
+      [(lam main_1 main_1)
+        (lam redeemer_2
+          (lam policyId_3
+            (lam transaction_4
               (case
-                [i1 (con bool True)]
-                (force [[(force (builtin trace)) i0] (delay (error))])
+                [fromBool_5 (con bool True)]
+                (force [[(force (builtin trace)) message_7] (delay (error))])
                 (con unit ())))))])
-      (lam i1 i1)])
+      (lam value_6 value_6)])
     (con string "assertion failed")])
+--- optimized Core
+\redeemer#11 : Data policyId#12 : Bytes transaction#13 : Data -> case@Bool true of
+  True -> ()
+  False -> trace "assertion failed" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_4
+    (lam redeemer_1
+      (lam policyId_2
+        (lam transaction_3
+          (case
+            (con bool True)
+            (force [[builtin_4 (con string "assertion failed")] (delay (error))])
+            (con unit ()))))))
+    (force (builtin trace))])

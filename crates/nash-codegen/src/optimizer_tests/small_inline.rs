@@ -36,14 +36,18 @@ fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) -> &'
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core after\n{}\n--- baseline uplc\n{}\n--- optimized uplc\n{}\n--- result\n{}\n--- logs\n{:?}",
-            pretty(before),
-            pretty(after),
-            baseline.uplc,
-            candidate.uplc,
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            core,
+            format!(
+                "--- core before\n{}\n--- baseline uplc\n{}\n--- core after\n{}\n--- optimized uplc\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                baseline.uplc,
+                pretty(after),
+                candidate.uplc,
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     for term in [before, after] {

@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 1054
+assertion_line: 1001
 description: "module Main exposing (..)\nimport Data exposing (ToData, Validate)\nmain : Int\nmain = validate (toData (Builtin.iData 42))\n"
 ---
---- core
+--- unoptimized Core
 let validate#2 : Data -> Int = \value#5 : Data -> let candidate#6 : Int = (\coerce#8 : Data -> coerce#8) value#5 in
 let destruct#7 : int = unIData candidate#6 in
 candidate#6 in
@@ -11,7 +11,7 @@ let toData#3 : 'erased -> Data = \coerce#9 : 'erased -> coerce#9 in
 let fromInt#4 : int -> int = \value#10 : int -> value#10 in
 let main#1 : Int = validate#2 (toData#3 (iData (fromInt#4 42))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam validate_2
     [(lam toData_3
@@ -23,6 +23,14 @@ main#1
     (lam value_5
       [(lam candidate_6 [(lam destruct_7 candidate_6) [(builtin unIData) candidate_6]])
         [(lam coerce_8 coerce_8) value_5]])])
+--- optimized Core
+let anf#22 : Int = iData 42 in
+let destruct#14 : int = unIData anf#22 in
+anf#22
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1 [(lam destruct_2 anf_1) [(builtin unIData) anf_1]])
+    [(builtin iData) (con integer 42)]])
 --- result
 (con data (I 42))
 --- logs

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype alias map 'k 'v = list (pair ('k : Big) ('v : Big))\nimpl Eq (map 'k 'v) where\n    eq xs ys = eq (Builtin.mapData xs) (Builtin.mapData ys)\nentries : map Int Int\nentries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]\nreversed : map Int Int\nreversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]\nsame : Eq 'a => 'a -> 'a -> bool\nsame = eq\nmain = (same entries entries, same entries reversed)\n"
+assertion_line: 239
+description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\ntype alias entriesMap 'k 'v = list (pair ('k : Big) ('v : Big))\nimpl Eq (entriesMap 'k 'v) where\n    eq xs ys = eq (Builtin.mapData xs) (Builtin.mapData ys)\nentries : entriesMap Int Int\nentries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]\nreversed : entriesMap Int Int\nreversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]\nsame : Eq 'a => 'a -> 'a -> bool\nsame = eq\nmain = (same entries entries, same entries reversed)\n"
 ---
---- core
+--- unoptimized Core
 let eq#5 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = \xs#7 : list (pair 'erased 'erased) ys#8 : list (pair 'erased 'erased) -> equalsData (mapData xs#7) (mapData ys#8) in
 let same#2 : 'erased -> 'erased -> bool = eq#5 in
 let fromInt#6 : int -> Int = iData in
@@ -10,7 +11,7 @@ let entries#3 : list (pair Int Int) = mkCons (mkPairData (fromInt#6 1) (fromInt#
 let reversed#4 : list (pair Int Int) = mkCons (mkPairData (fromInt#6 1) (fromInt#6 3)) (mkCons (mkPairData (fromInt#6 1) (fromInt#6 2)) (con (list (pair data data)) [])) in
 let main#1 : (bool, bool) = constr 0 (same#2 entries#3 entries#3) (same#2 entries#3 reversed#4) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam eq_5
     [(lam same_2
@@ -34,6 +35,77 @@ main#1
     (lam xs_7
       (lam ys_8
         [[(builtin equalsData) [(builtin mapData) xs_7]] [(builtin mapData) ys_8]]))])
+--- optimized Core
+let eq#11 : list (pair 'erased 'erased) -> list (pair 'erased 'erased) -> bool = \xs#9 : list (pair 'erased 'erased) ys#10 : list (pair 'erased 'erased) -> let anf#17 : Map 'erased 'erased = mapData xs#9 in
+let anf#18 : Map 'erased 'erased = mapData ys#10 in
+equalsData anf#17 anf#18 in
+let fromInt#13 : int -> Int = iData in
+let anf#19 : Int = fromInt#13 1 in
+let anf#20 : Int = fromInt#13 2 in
+let anf#21 : pair Int Int = mkPairData anf#19 anf#20 in
+let anf#22 : Int = fromInt#13 1 in
+let anf#23 : Int = fromInt#13 3 in
+let anf#24 : pair Int Int = mkPairData anf#22 anf#23 in
+let anf#25 : list (pair Int Int) = mkCons anf#24 (con (list (pair data data)) []) in
+let entries#14 : list (pair Int Int) = mkCons anf#21 anf#25 in
+let anf#26 : Int = fromInt#13 1 in
+let anf#27 : Int = fromInt#13 3 in
+let anf#28 : pair Int Int = mkPairData anf#26 anf#27 in
+let anf#29 : Int = fromInt#13 1 in
+let anf#30 : Int = fromInt#13 2 in
+let anf#31 : pair Int Int = mkPairData anf#29 anf#30 in
+let anf#32 : list (pair Int Int) = mkCons anf#31 (con (list (pair data data)) []) in
+let reversed#15 : list (pair Int Int) = mkCons anf#28 anf#32 in
+let anf#33 : bool = eq#11 entries#14 entries#14 in
+let anf#34 : bool = eq#11 entries#14 reversed#15 in
+constr 0 anf#33 anf#34
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_49
+    [(lam eq_5
+      [(lam fromInt_6
+        [(lam anf_7
+          [(lam anf_8
+            [(lam anf_12
+              [(lam anf_16
+                [(lam anf_35
+                  [(lam anf_36
+                    [(lam anf_37
+                      [(lam entries_38
+                        [(lam anf_39
+                          [(lam anf_40
+                            [(lam anf_41
+                              [(lam anf_42
+                                [(lam anf_43
+                                  [(lam anf_44
+                                    [(lam anf_45
+                                      [(lam reversed_46
+                                        [(lam anf_47
+                                          [(lam anf_48 (constr 0 anf_47 anf_48)) [[eq_5 entries_38] reversed_46]])
+                                          [[eq_5 entries_38] entries_38]])
+                                        [[builtin_49 anf_41] anf_45]])
+                                      [[builtin_49 anf_44] (con (list (pair data data)) [])]])
+                                    [[(builtin mkPairData) anf_42] anf_43]])
+                                  [fromInt_6 (con integer 2)]])
+                                [fromInt_6 (con integer 1)]])
+                              [[(builtin mkPairData) anf_39] anf_40]])
+                            [fromInt_6 (con integer 3)]])
+                          [fromInt_6 (con integer 1)]])
+                        [[builtin_49 anf_12] anf_37]])
+                      [[builtin_49 anf_36] (con (list (pair data data)) [])]])
+                    [[(builtin mkPairData) anf_16] anf_35]])
+                  [fromInt_6 (con integer 3)]])
+                [fromInt_6 (con integer 1)]])
+              [[(builtin mkPairData) anf_7] anf_8]])
+            [fromInt_6 (con integer 2)]])
+          [fromInt_6 (con integer 1)]])
+        (builtin iData)])
+      (lam xs_1
+        (lam ys_2
+          [(lam anf_3
+            [(lam anf_4 [[(builtin equalsData) anf_3] anf_4]) [(builtin mapData) ys_2]])
+            [(builtin mapData) xs_1]]))])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con bool True) (con bool False))
 --- logs

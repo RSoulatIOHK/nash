@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 558
 description: "validator module Main exposing (main)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype Void = Void\ntype A 'x = NoA | SomeA Void 'x\ntype B = B { something : Void }\ntype Option 'a = None | Some 'a\nmain : Option Data -> A B -> Data -> Data -> unit\nmain datum r outputRef transaction =\n    assert\n        (case r of\n            NoA -> False\n            SomeA _ (B something) -> eq something Void\n        )\n"
 ---
---- core
+--- unoptimized Core
 let message#23 : string = "assertion failed" in
 let fromBool#6 : bool -> bool = \value#20 : bool -> value#20 in
 let main#1 : Main.Option Data -> Main.A Main.B -> Data -> Data -> unit = \datum#2 : Main.Option Data r#3 : Main.A Main.B outputRef#4 : Data transaction#5 : Data -> let match#8 : Main.A Main.B = r#3 in
@@ -20,53 +21,113 @@ case@Pair projection#21 of
     True -> ()
     False -> trace message#23 in error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2 i2)
-        (lam i2
-          (lam i3
-            (lam i4
-              (lam i5
-                [(lam i6
-                  [(lam i7
+  [(lam message_23
+    [(lam fromBool_6
+      [(lam main_1 main_1)
+        (lam datum_2
+          (lam r_3
+            (lam outputRef_4
+              (lam transaction_5
+                [(lam match_8
+                  [(lam projection_21
                     (case
-                      i7
-                      (lam i8
-                        (lam i9
+                      projection_21
+                      (lam tag_15
+                        (lam fields_16
                           (case
                             (case
-                              i8
-                              [i1 (con bool False)]
+                              tag_15
+                              [fromBool_6 (con bool False)]
                               (case
-                                i9
-                                (lam i10
-                                  (lam i11
+                                fields_16
+                                (lam ignored_17
+                                  (lam fieldTail_18
                                     (case
-                                      i11
-                                      (lam i12
-                                        (lam i13
-                                          [(lam i14
+                                      fieldTail_18
+                                      (lam field_10
+                                        (lam fieldTail_19
+                                          [(lam projection_22
                                             (case
-                                              i14
-                                              (lam i15
-                                                (lam i16
+                                              projection_22
+                                              (lam tag_12
+                                                (lam fields_13
                                                   (case
-                                                    i16
-                                                    (lam i17
-                                                      (lam i18
-                                                        [(lam i19
-                                                          [[(builtin equalsData) i19]
+                                                    fields_13
+                                                    (lam field_11
+                                                      (lam fieldTail_14
+                                                        [(lam something_7
+                                                          [[(builtin equalsData) something_7]
                                                             [[(builtin constrData) (con integer 0)] (con (list data) [])]])
-                                                          i17]))
+                                                          field_11]))
                                                     (error))))))
-                                            [(builtin unConstrData) i12]]))
+                                            [(builtin unConstrData) field_10]]))
                                       (error))))
                                 (error)))
-                            (force [[(force (builtin trace)) i0] (delay (error))])
+                            (force [[(force (builtin trace)) message_23] (delay (error))])
                             (con unit ()))))))
-                    [(builtin unConstrData) i6]])
-                  i3]))))])
-      (lam i1 i1)])
+                    [(builtin unConstrData) match_8]])
+                  r_3]))))])
+      (lam value_20 value_20)])
     (con string "assertion failed")])
+--- optimized Core
+\datum#26 : Main.Option Data r#27 : Main.A Main.B outputRef#28 : Data transaction#29 : Data -> let projection#31 : pair int (list Data) = unConstrData r#27 in
+case@Pair projection#31 of
+  Pair tag#32 fields#33 -> let anf#46 : bool = case@Tag tag#32 of
+    0 -> false
+    1 -> case@List fields#33 of
+      Cons ignored#34 fieldTail#35 -> case@List fieldTail#35 of
+        Cons field#36 fieldTail#37 -> let projection#38 : pair int (list Data) = unConstrData field#36 in
+        case@Pair projection#38 of
+          Pair tag#39 fields#40 -> case@List fields#40 of
+            Cons field#41 fieldTail#42 -> let anf#45 : Main.Void = constrData 0 (con (list data) []) in
+            equalsData field#41 anf#45 in
+  case@Bool anf#46 of
+    True -> ()
+    False -> trace "assertion failed" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_19
+    (lam datum_1
+      (lam r_2
+        (lam outputRef_3
+          (lam transaction_4
+            [(lam projection_5
+              (case
+                projection_5
+                (lam tag_6
+                  (lam fields_7
+                    [(lam anf_18
+                      (case
+                        anf_18
+                        (force [[builtin_19 (con string "assertion failed")] (delay (error))])
+                        (con unit ())))
+                      (case
+                        tag_6
+                        (con bool False)
+                        (case
+                          fields_7
+                          (lam ignored_8
+                            (lam fieldTail_9
+                              (case
+                                fieldTail_9
+                                (lam field_10
+                                  (lam fieldTail_11
+                                    [(lam projection_12
+                                      (case
+                                        projection_12
+                                        (lam tag_13
+                                          (lam fields_14
+                                            (case
+                                              fields_14
+                                              (lam field_15
+                                                (lam fieldTail_16
+                                                  [(lam anf_17 [[(builtin equalsData) field_15] anf_17])
+                                                    [[(builtin constrData) (con integer 0)] (con (list data) [])]]))
+                                              (error))))))
+                                      [(builtin unConstrData) field_10]]))
+                                (error))))
+                          (error)))]))))
+              [(builtin unConstrData) r_2]])))))
+    (force (builtin trace))])

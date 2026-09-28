@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\npass f x = f x\nmain = pass eq () ()\n"
 ---
---- core
+--- unoptimized Core
 let pass#2 : ('erased -> 'erased) -> 'erased -> 'erased = \(f#5 : 'erased -> 'erased) x#6 : 'erased -> f#5 x#6 in
 let fromBool#9 : bool -> bool = \value#13 : bool -> value#13 in
 let eq#3 : unit -> unit -> bool = \arg#7 : unit arg#8 : unit -> let match#11 : unit = arg#7 in
@@ -11,7 +12,7 @@ fromBool#9 true in
 let fromUnit#4 : unit -> unit = \value#12 : unit -> value#12 in
 let main#1 : bool = pass#2 eq#3 (fromUnit#4 ()) (fromUnit#4 ()) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam pass_2
     [(lam fromBool_9
@@ -23,6 +24,10 @@ main#1
         (lam arg_7 (lam arg_8 (case arg_7 (case arg_8 [fromBool_9 (con bool True)]))))])
       (lam value_13 value_13)])
     (lam f_5 (lam x_6 [f_5 x_6]))])
+--- optimized Core
+true
+--- optimized UPLC
+(program 1.1.0 (con bool True))
 --- result
 (con bool True)
 --- logs

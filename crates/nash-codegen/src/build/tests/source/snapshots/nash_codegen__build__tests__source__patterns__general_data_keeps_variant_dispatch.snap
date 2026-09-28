@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 920
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nclassify : Data -> int\nclassify value = case value of\n    Constr _ -> 0\n    Map _ -> 1\n    List _ -> 2\n    I _ -> 3\n    B _ -> 4\nmain : (int, int, int, int, int)\nmain = (classify (Builtin.constrData 0 []), classify (Map []), classify (List []), classify (I 42), classify (B #\"aa\"))\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#16 : int -> value#16 in
 let classify#2 : Data -> int = \value#9 : Data -> let match#10 : Data = value#9 in
 case@Data match#10 of
@@ -14,7 +15,7 @@ case@Data match#10 of
 let fromBytes#8 : bytes -> bytes = \value#17 : bytes -> value#17 in
 let main#1 : (int, int, int, int, int) = constr 0 (classify#2 (constrData (fromInt#3 0) (con (list data) []))) (classify#2 ((\field#4 : list (pair Data Data) -> mapData field#4) (con (list (pair data data)) []))) (classify#2 ((\field#5 : list Data -> listData field#5) (con (list data) []))) (classify#2 ((\field#6 : int -> iData field#6) (fromInt#3 42))) (classify#2 ((\field#7 : bytes -> bData field#7) (fromBytes#8 (con bytestring #aa)))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam classify_2
@@ -44,6 +45,56 @@ main#1
             match_10])
           value_9])])
     (lam value_16 value_16)])
+--- optimized Core
+let classify#27 : Data -> int = \value#20 : Data -> case@Data value#20 of
+  DataConstr field#22 -> 0
+  DataMap field#23 -> 1
+  DataList field#24 -> 2
+  DataI field#25 -> 3
+  DataB field#26 -> 4 in
+let anf#36 : Data = constrData 0 (con (list data) []) in
+let anf#37 : int = classify#27 anf#36 in
+let anf#38 : Data = mapData (con (list (pair data data)) []) in
+let anf#39 : int = classify#27 anf#38 in
+let anf#40 : Data = listData (con (list data) []) in
+let anf#41 : int = classify#27 anf#40 in
+let anf#43 : Data = iData 42 in
+let anf#44 : int = classify#27 anf#43 in
+let anf#46 : Data = bData (con bytestring #aa) in
+let anf#47 : int = classify#27 anf#46 in
+constr 0 anf#37 anf#39 anf#41 anf#44 anf#47
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_19
+    [(lam classify_7
+      [(lam anf_8
+        [(lam anf_9
+          [(lam anf_10
+            [(lam anf_11
+              [(lam anf_12
+                [(lam anf_13
+                  [(lam anf_14
+                    [(lam anf_15
+                      [(lam anf_16
+                        [(lam anf_17 (constr 0 anf_9 anf_11 anf_13 anf_15 anf_17)) [classify_7 anf_16]])
+                        [(builtin bData) (con bytestring #aa)]])
+                      [classify_7 anf_14]])
+                    [(builtin iData) (con integer 42)]])
+                  [classify_7 anf_12]])
+                [(builtin listData) (con (list data) [])]])
+              [classify_7 anf_10]])
+            [(builtin mapData) (con (list (pair data data)) [])]])
+          [classify_7 anf_8]])
+        [[(builtin constrData) (con integer 0)] (con (list data) [])]])
+      (lam value_1
+        [(lam generated_18
+          (force
+            [[[[[[builtin_19 generated_18] (delay (con integer 0))] (delay (con integer 1))]
+              (delay (con integer 2))]
+              (delay (con integer 3))]
+              (delay (con integer 4))]))
+          value_1])])
+    (force (builtin chooseData))])
 --- result
 (constr 0
   (con integer 0)

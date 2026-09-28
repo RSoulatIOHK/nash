@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1508
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\nselect : list int -> bool\nselect xs =\n    let\n        first = Builtin.dropList 2 xs\n        second = Builtin.dropList 3 xs\n    in\n    if Builtin.nullList first then Builtin.nullList second else False\nmain = select [1]\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> int = \value#8 : int -> value#8 in
 let fromBool#7 : bool -> bool = \value#9 : bool -> value#9 in
 let select#2 : list int -> bool = \xs#4 : list int -> let second#5 : list int = dropList (fromInt#3 3) xs#4 in
@@ -12,7 +13,7 @@ case@Bool nullList first#6 of
   False -> fromBool#7 false in
 let main#1 : bool = select#2 (mkCons (fromInt#3 1) (con (list integer) [])) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam fromBool_7
@@ -31,6 +32,30 @@ main#1
             [[(force (builtin dropList)) [fromInt_3 (con integer 3)]] xs_4]])])
       (lam value_9 value_9)])
     (lam value_8 value_8)])
+--- optimized Core
+let anf#23 : list int = mkCons 1 (con (list integer) []) in
+let second#15 : list int = dropList 3 anf#23 in
+let first#16 : list int = dropList 2 anf#23 in
+let anf#21 : bool = nullList first#16 in
+case@Bool anf#21 of
+  True -> nullList second#15
+  False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam builtin_6
+      [(lam builtin_7
+        [(lam anf_1
+          [(lam second_2
+            [(lam first_3
+              [(lam anf_4 (case anf_4 (con bool False) [builtin_5 second_2]))
+                [builtin_5 first_3]])
+              [[builtin_6 (con integer 2)] anf_1]])
+            [[builtin_6 (con integer 3)] anf_1]])
+          [[builtin_7 (con integer 1)] (con (list integer) [])]])
+        (force (builtin mkCons))])
+      (force (builtin dropList))])
+    (force (builtin nullList))])
 --- result
 (con bool True)
 --- logs

@@ -1,8 +1,14 @@
 ---
 source: crates/nash-codegen/src/decision_tree_tests.rs
+assertion_line: 858
 description: "let match#1 : List Int = (con data (List [I 1, I 2])) in\ncase@List unListData match#1 of\n  Nil -> error\n  Cons field#2 listTail#4 -> 42"
 ---
---- uplc
+--- unoptimized Core
+let match#1 : List Int = (con data (List [I 1, I 2])) in
+case@List unListData match#1 of
+  Nil -> error
+  Cons field#2 listTail#4 -> 42
+--- unoptimized UPLC
 (program 1.1.0
   [(lam match_1
     (case
@@ -10,6 +16,15 @@ description: "let match#1 : List Int = (con data (List [I 1, I 2])) in\ncase@Lis
       (lam field_2 (lam listTail_4 (con integer 42)))
       (error)))
     (con data (List [I 1, I 2]))])
+--- optimized Core
+let anf#7 : list Int = unListData (con data (List [I 1, I 2])) in
+case@List anf#7 of
+  Nil -> error
+  Cons field#5 listTail#6 -> 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam anf_1 (case anf_1 (lam field_2 (lam listTail_3 (con integer 42))) (error)))
+    [(builtin unListData) (con data (List [I 1, I 2]))]])
 --- result
 (con integer 42)
 --- logs

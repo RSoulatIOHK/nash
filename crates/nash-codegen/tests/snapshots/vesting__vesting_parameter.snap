@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/tests/vesting.rs
-assertion_line: 203
+assertion_line: 243
 description: "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n\nvalidator module VestingParam exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : int -> Datum -> Redeemer -> Data -> unit\nmain minimumLock datum redeemer ctx =\n    case redeemer of\n        Claim ->\n            assert\n                (Builtin.lessThanInteger\n                    (Builtin.addInteger (lower datum.deadline) minimumLock)\n                    (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n"
 ---
---- core
+--- unoptimized Core
 let message#109 : string = "assertion failed" in
 let lower#6 : Int -> int = \value#22 : Int -> unIData value#22 in
 let currentSlot#13 : Data -> int = \ctx#23 : Data -> let match#25 : Data = ctx#23 in
@@ -67,149 +67,353 @@ case@Pair projection#106 of
           True -> ()
           False -> trace message#109 in error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0
-    [(lam i1
-      [(lam i2
-        [(lam i3
-          [(lam i4
-            [(lam i5 i5)
-              (lam i5
-                (lam i6
-                  (lam i7
-                    (lam i8
-                      [(lam i9
-                        [(lam i10
+  [(lam message_109
+    [(lam lower_6
+      [(lam currentSlot_13
+        [(lam lower_66
+          [(lam signedBy_14
+            [(lam main_1 main_1)
+              (lam minimumLock_2
+                (lam datum_3
+                  (lam redeemer_4
+                    (lam ctx_5
+                      [(lam match_19
+                        [(lam projection_106
                           (case
-                            i10
-                            (lam i11
-                              (lam i12
+                            projection_106
+                            (lam tag_20
+                              (lam fields_21
                                 (case
-                                  i11
-                                  [(lam i13
+                                  tag_20
+                                  [(lam projection_107
                                     (case
-                                      i13
-                                      (lam i14
-                                        (lam i15
+                                      projection_107
+                                      (lam tag_7
+                                        (lam fields_8
                                           (case
-                                            i15
-                                            (lam i16
-                                              (lam i17
+                                            fields_8
+                                            (lam head_9
+                                              (lam tail_10
                                                 (case
-                                                  i17
-                                                  (lam i18
-                                                    (lam i19
+                                                  tail_10
+                                                  (lam head_11
+                                                    (lam tail_12
                                                       (case
-                                                        [[(builtin lessThanInteger) [[(builtin addInteger) [i1 i18]] i5]] [i2 i8]]
-                                                        (force [[(force (builtin trace)) i0] (delay (error))])
+                                                        [[(builtin lessThanInteger)
+                                                          [[(builtin addInteger) [lower_6 head_11]] minimumLock_2]]
+                                                          [currentSlot_13 ctx_5]]
+                                                        (force [[(force (builtin trace)) message_109] (delay (error))])
                                                         (con unit ()))))
                                                   (error))))
                                             (error))))))
-                                    [(builtin unConstrData) i6]]
-                                  [(lam i13
+                                    [(builtin unConstrData) datum_3]]
+                                  [(lam projection_108
                                     (case
-                                      i13
-                                      (lam i14
-                                        (lam i15
+                                      projection_108
+                                      (lam tag_15
+                                        (lam fields_16
                                           (case
-                                            i15
-                                            (lam i16
-                                              (lam i17
+                                            fields_16
+                                            (lam head_17
+                                              (lam tail_18
                                                 (case
-                                                  [[i4 i8] i16]
-                                                  (force [[(force (builtin trace)) i0] (delay (error))])
+                                                  [[signedBy_14 ctx_5] head_17]
+                                                  (force [[(force (builtin trace)) message_109] (delay (error))])
                                                   (con unit ()))))
                                             (error))))))
-                                    [(builtin unConstrData) i6]])))))
-                          [(builtin unConstrData) i9]])
-                        i7]))))])
-            (lam i4
-              (lam i5
-                [(lam i6
-                  [(lam i7
-                    [(lam i8
+                                    [(builtin unConstrData) datum_3]])))))
+                          [(builtin unConstrData) match_19]])
+                        redeemer_4]))))])
+            (lam ctx_63
+              (lam owner_64
+                [(lam match_67
+                  [(lam leaf_86
+                    [(lam generated_110
                       (force
-                        [[[[[[(force (builtin chooseData)) i8]
+                        [[[[[[(force (builtin chooseData)) generated_110]
                           (delay
-                            [(lam i9
+                            [(lam field_87
                               (case
-                                i9
-                                (lam i10
-                                  (lam i11
+                                field_87
+                                (lam field_88
+                                  (lam field_89
                                     (case
-                                      i11
-                                      (lam i12
-                                        (lam i13
+                                      field_89
+                                      (lam field_90
+                                        (lam field_91
                                           (case
-                                            i13
-                                            (lam i14
-                                              (lam i15
-                                                [(lam i16
+                                            field_91
+                                            (lam field_92
+                                              (lam field_93
+                                                [(lam generated_111
                                                   (force
-                                                    [[[[[[(force (builtin chooseData)) i16] (delay (force i7))] (delay (force i7))]
-                                                      (delay (force i7))]
-                                                      (delay (force i7))]
+                                                    [[[[[[(force (builtin chooseData)) generated_111] (delay (force leaf_86))]
+                                                      (delay (force leaf_86))]
+                                                      (delay (force leaf_86))]
+                                                      (delay (force leaf_86))]
                                                       (delay
-                                                        [(lam i17
+                                                        [(lam field_98
                                                           (case
-                                                            i15
-                                                            (lam i18 (lam i19 (force i7)))
-                                                            [(lam i18 [[(builtin equalsByteString) i18] [i3 i5]]) i17]))
-                                                          [(builtin unBData) i16]])]))
-                                                  i14]))
-                                            (force i7))))
-                                      (force i7))))))
-                              [(builtin unConstrData) i8]])]
-                          (delay (force i7))]
-                          (delay (force i7))]
-                          (delay (force i7))]
-                          (delay (force i7))]))
-                      i6])
+                                                            field_93
+                                                            (lam field_99 (lam field_100 (force leaf_86)))
+                                                            [(lam signer_65 [[(builtin equalsByteString) signer_65] [lower_66 owner_64]])
+                                                              field_98]))
+                                                          [(builtin unBData) generated_111]])]))
+                                                  field_92]))
+                                            (force leaf_86))))
+                                      (force leaf_86))))))
+                              [(builtin unConstrData) generated_110]])]
+                          (delay (force leaf_86))]
+                          (delay (force leaf_86))]
+                          (delay (force leaf_86))]
+                          (delay (force leaf_86))]))
+                      match_67])
                     (delay (error))])
-                  i4]))])
-          (lam i3 [(builtin unBData) i3])])
-        (lam i2
-          [(lam i3
-            [(lam i4
-              [(lam i5
+                  ctx_63]))])
+          (lam value_105 [(builtin unBData) value_105])])
+        (lam ctx_23
+          [(lam match_25
+            [(lam leaf_44
+              [(lam generated_112
                 (force
-                  [[[[[[(force (builtin chooseData)) i5]
+                  [[[[[[(force (builtin chooseData)) generated_112]
                     (delay
-                      [(lam i6
+                      [(lam field_45
                         (case
-                          i6
-                          (lam i7
-                            (lam i8
+                          field_45
+                          (lam field_46
+                            (lam field_47
                               (case
-                                i8
-                                (lam i9
-                                  (lam i10
-                                    [(lam i11
+                                field_47
+                                (lam field_48
+                                  (lam field_49
+                                    [(lam generated_113
                                       (force
-                                        [[[[[[(force (builtin chooseData)) i11] (delay (force i4))] (delay (force i4))]
-                                          (delay (force i4))]
+                                        [[[[[[(force (builtin chooseData)) generated_113] (delay (force leaf_44))]
+                                          (delay (force leaf_44))]
+                                          (delay (force leaf_44))]
                                           (delay
-                                            [(lam i12
+                                            [(lam field_53
                                               (case
-                                                i10
-                                                (lam i13
-                                                  (lam i14 (case i14 (lam i15 (lam i16 (force i4))) [(lam i15 i15) i12])))
-                                                (force i4)))
-                                              [(builtin unIData) i11]])]
-                                          (delay (force i4))]))
-                                      i9]))
-                                (force i4))))))
-                        [(builtin unConstrData) i5]])]
-                    (delay (force i4))]
-                    (delay (force i4))]
-                    (delay (force i4))]
-                    (delay (force i4))]))
-                i3])
+                                                field_49
+                                                (lam field_54
+                                                  (lam field_55
+                                                    (case
+                                                      field_55
+                                                      (lam field_56 (lam field_57 (force leaf_44)))
+                                                      [(lam slot_24 slot_24) field_53])))
+                                                (force leaf_44)))
+                                              [(builtin unIData) generated_113]])]
+                                          (delay (force leaf_44))]))
+                                      field_48]))
+                                (force leaf_44))))))
+                        [(builtin unConstrData) generated_112]])]
+                    (delay (force leaf_44))]
+                    (delay (force leaf_44))]
+                    (delay (force leaf_44))]
+                    (delay (force leaf_44))]))
+                match_25])
               (delay (error))])
-            i2])])
-      (lam i1 [(builtin unIData) i1])])
+            ctx_23])])
+      (lam value_22 [(builtin unIData) value_22])])
     (con string "assertion failed")])
+--- optimized Core
+let message#26 : string = "assertion failed" in
+\minimumLock#126 : int datum#127 : VestingParam.Datum redeemer#128 : VestingParam.Redeemer ctx#129 : Data -> let projection#131 : pair int (list Data) = unConstrData redeemer#128 in
+case@Pair projection#131 of
+  Pair tag#132 fields#133 -> case@Tag tag#132 of
+    0 -> let projection#134 : pair int (list Data) = unConstrData datum#127 in
+    case@Pair projection#134 of
+      Pair tag#135 fields#136 -> case@List fields#136 of
+        Cons head#137 tail#138 -> case@List tail#138 of
+          Cons head#139 tail#140 -> let anf#148 : int = unIData head#139 in
+          let anf#149 : int = addInteger anf#148 minimumLock#126 in
+          let leaf#31 : @delay int = delay error in
+          let anf#150 : int = case@Data ctx#129 of
+            DataConstr field#32 -> case@Pair field#32 of
+              Pair field#33 field#34 -> case@List field#34 of
+                Nil -> force leaf#31
+                Cons field#35 field#36 -> case@Data field#35 of
+                  DataConstr field#37 -> force leaf#31
+                  DataMap field#38 -> force leaf#31
+                  DataList field#39 -> force leaf#31
+                  DataI field#40 -> case@List field#36 of
+                    Nil -> force leaf#31
+                    Cons field#41 field#42 -> case@List field#42 of
+                      Nil -> field#40
+                      Cons field#68 field#69 -> force leaf#31
+                  DataB field#70 -> force leaf#31
+            DataMap field#71 -> force leaf#31
+            DataList field#72 -> force leaf#31
+            DataI field#73 -> force leaf#31
+            DataB field#74 -> force leaf#31 in
+          let anf#151 : bool = lessThanInteger anf#149 anf#150 in
+          case@Bool anf#151 of
+            True -> ()
+            False -> trace message#26 in error
+    1 -> let projection#141 : pair int (list Data) = unConstrData datum#127 in
+    case@Pair projection#141 of
+      Pair tag#142 fields#143 -> case@List fields#143 of
+        Cons head#144 tail#145 -> let leaf#81 : @delay bool = delay error in
+        let anf#152 : bool = case@Data ctx#129 of
+          DataConstr field#82 -> case@Pair field#82 of
+            Pair field#83 field#84 -> case@List field#84 of
+              Nil -> force leaf#81
+              Cons field#85 field#110 -> case@List field#110 of
+                Nil -> force leaf#81
+                Cons field#111 field#112 -> case@Data field#111 of
+                  DataConstr field#113 -> force leaf#81
+                  DataMap field#114 -> force leaf#81
+                  DataList field#115 -> force leaf#81
+                  DataI field#116 -> force leaf#81
+                  DataB field#117 -> case@List field#112 of
+                    Nil -> let anf#147 : bytes = unBData head#144 in
+                    equalsByteString field#117 anf#147
+                    Cons field#119 field#120 -> force leaf#81
+          DataMap field#121 -> force leaf#81
+          DataList field#122 -> force leaf#81
+          DataI field#123 -> force leaf#81
+          DataB field#124 -> force leaf#81 in
+        case@Bool anf#152 of
+          True -> ()
+          False -> trace message#26 in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_90
+    [(lam builtin_93
+      [(lam message_1
+        (lam minimumLock_2
+          (lam datum_3
+            (lam redeemer_4
+              (lam ctx_5
+                [(lam projection_6
+                  (case
+                    projection_6
+                    (lam tag_7
+                      (lam fields_8
+                        (case
+                          tag_7
+                          [(lam projection_9
+                            (case
+                              projection_9
+                              (lam tag_10
+                                (lam fields_11
+                                  (case
+                                    fields_11
+                                    (lam head_12
+                                      (lam tail_13
+                                        (case
+                                          tail_13
+                                          (lam head_14
+                                            (lam tail_15
+                                              [(lam anf_16
+                                                [(lam anf_17
+                                                  [(lam leaf_18
+                                                    [(lam anf_50
+                                                      [(lam anf_51
+                                                        (case anf_51 (force [[builtin_90 message_1] (delay (error))]) (con unit ())))
+                                                        [[(builtin lessThanInteger) anf_17] anf_50]])
+                                                      [(lam generated_91
+                                                        (force
+                                                          [[[[[[builtin_93 generated_91]
+                                                            (delay
+                                                              [(lam field_19
+                                                                (case
+                                                                  field_19
+                                                                  (lam field_20
+                                                                    (lam field_21
+                                                                      (case
+                                                                        field_21
+                                                                        (lam field_22
+                                                                          (lam field_23
+                                                                            [(lam generated_92
+                                                                              (force
+                                                                                [[[[[[builtin_93 generated_92] (delay (force leaf_18))] (delay (force leaf_18))]
+                                                                                  (delay (force leaf_18))]
+                                                                                  (delay
+                                                                                    [(lam field_28
+                                                                                      (case
+                                                                                        field_23
+                                                                                        (lam field_29
+                                                                                          (lam field_30
+                                                                                            (case field_30 (lam field_43 (lam field_44 (force leaf_18))) field_28)))
+                                                                                        (force leaf_18)))
+                                                                                      [(builtin unIData) generated_92]])]
+                                                                                  (delay (force leaf_18))]))
+                                                                              field_22]))
+                                                                        (force leaf_18))))))
+                                                                [(builtin unConstrData) generated_91]])]
+                                                            (delay (force leaf_18))]
+                                                            (delay (force leaf_18))]
+                                                            (delay (force leaf_18))]
+                                                            (delay (force leaf_18))]))
+                                                        ctx_5]])
+                                                    (delay (error))])
+                                                  [[(builtin addInteger) anf_16] minimumLock_2]])
+                                                [(builtin unIData) head_14]]))
+                                          (error))))
+                                    (error))))))
+                            [(builtin unConstrData) datum_3]]
+                          [(lam projection_52
+                            (case
+                              projection_52
+                              (lam tag_53
+                                (lam fields_54
+                                  (case
+                                    fields_54
+                                    (lam head_55
+                                      (lam tail_56
+                                        [(lam leaf_57
+                                          [(lam anf_89
+                                            (case anf_89 (force [[builtin_90 message_1] (delay (error))]) (con unit ())))
+                                            [(lam generated_94
+                                              (force
+                                                [[[[[[builtin_93 generated_94]
+                                                  (delay
+                                                    [(lam field_58
+                                                      (case
+                                                        field_58
+                                                        (lam field_59
+                                                          (lam field_60
+                                                            (case
+                                                              field_60
+                                                              (lam field_61
+                                                                (lam field_62
+                                                                  (case
+                                                                    field_62
+                                                                    (lam field_63
+                                                                      (lam field_64
+                                                                        [(lam generated_95
+                                                                          (force
+                                                                            [[[[[[builtin_93 generated_95] (delay (force leaf_57))] (delay (force leaf_57))]
+                                                                              (delay (force leaf_57))]
+                                                                              (delay (force leaf_57))]
+                                                                              (delay
+                                                                                [(lam field_76
+                                                                                  (case
+                                                                                    field_64
+                                                                                    (lam field_78 (lam field_79 (force leaf_57)))
+                                                                                    [(lam anf_77 [[(builtin equalsByteString) field_76] anf_77])
+                                                                                      [(builtin unBData) head_55]]))
+                                                                                  [(builtin unBData) generated_95]])]))
+                                                                          field_63]))
+                                                                    (force leaf_57))))
+                                                              (force leaf_57))))))
+                                                      [(builtin unConstrData) generated_94]])]
+                                                  (delay (force leaf_57))]
+                                                  (delay (force leaf_57))]
+                                                  (delay (force leaf_57))]
+                                                  (delay (force leaf_57))]))
+                                              ctx_5]])
+                                          (delay (error))]))
+                                    (error))))))
+                            [(builtin unConstrData) datum_3]])))))
+                  [(builtin unConstrData) redeemer_4]])))))
+        (con string "assertion failed")])
+      (force (builtin chooseData))])
+    (force (builtin trace))])
 --- scenario
 claim after deadline
 --- result

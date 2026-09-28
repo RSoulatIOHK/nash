@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nloop : bool -> unit\nloop =\n    if trace \"condition\" True then\n        trace \"selected\" (\\flag -> if flag then () else loop True)\n    else\n        trace \"unselected\" (\\flag -> loop flag)\nmain = loop False\n"
 ---
---- core
+--- unoptimized Core
 let message#11 : string = "condition" in
 let message#12 : string = "selected" in
 let message#13 : string = "unselected" in
@@ -11,15 +11,19 @@ let fromBool#3 : bool -> bool = \value#8 : bool -> value#8 in
 let fromString#5 : string -> string = \value#9 : string -> value#9 in
 let fromUnit#7 : unit -> unit = \value#10 : unit -> value#10 in
 case@Bool (trace (fromString#5 message#11) in fromBool#3 true) of
-  True -> trace (fromString#5 message#12) in let loop#2 : bool -> unit = (\self#14 : @self (bool -> unit) -> self#14 self#14) (\self#14 : @self (bool -> unit) flag#6 : bool -> case@Bool flag#6 of
-    True -> fromUnit#7 ()
-    False -> self#14 self#14 (fromBool#3 true)) in
+  True -> trace (fromString#5 message#12) in letrec
+    loop#2 : bool -> unit [static []] = \flag#6 : bool -> case@Bool flag#6 of
+      True -> fromUnit#7 ()
+      False -> loop#2 (fromBool#3 true)
+  in
   let main#1 : unit = loop#2 (fromBool#3 false) in
   main#1
-  False -> trace (fromString#5 message#13) in let loop#2 : bool -> unit = \flag#4 : bool -> force ((\self#16 : @self (@delay unit) -> self#16 self#16) (\self#16 : @self (@delay unit) -> delay force (self#16 self#16))) in
+  False -> trace (fromString#5 message#13) in letrec
+    loop#2 : bool -> unit [static [0]] = \flag#4 : bool -> loop#2 flag#4
+  in
   let main#1 : unit = loop#2 (fromBool#3 false) in
   main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_11
     [(lam message_12
@@ -56,6 +60,39 @@ case@Bool (trace (fromString#5 message#11) in fromBool#3 true) of
         (con string "unselected")])
       (con string "selected")])
     (con string "condition")])
+--- optimized Core
+let anf#32 : bool = trace "condition" in true in
+case@Bool anf#32 of
+  True -> trace "selected" in letrec
+    loop#23 : bool -> unit [static []] = \flag#24 : bool -> case@Bool flag#24 of
+      True -> ()
+      False -> loop#23 true
+  in
+  loop#23 false
+  False -> trace "unselected" in letrec
+    worker#29 : @delay unit [static []] = \ -> delay (force worker#29)
+  in
+  force worker#29
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_12
+    [(lam anf_4
+      (case
+        anf_4
+        (force
+          [[builtin_12 (con string "unselected")]
+            (delay
+              [(lam worker_11 (force worker_11))
+                [(lam self_9 [self_9 self_9]) (lam self_10 (delay (force [self_10 self_10])))]])])
+        (force
+          [[builtin_12 (con string "selected")]
+            (delay
+              [(lam loop_8 [loop_8 (con bool False)])
+                [(lam self_5 [self_5 self_5])
+                  (lam self_6
+                    (lam flag_7 (case flag_7 [[self_6 self_6] (con bool True)] (con unit ()))))]])])))
+      (force [[builtin_12 (con string "condition")] (delay (con bool True))])])
+    (force (builtin trace))])
 --- result
 (con unit ())
 --- logs

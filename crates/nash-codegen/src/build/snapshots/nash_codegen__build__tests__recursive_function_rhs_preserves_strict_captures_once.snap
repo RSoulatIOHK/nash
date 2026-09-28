@@ -1,20 +1,22 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nloop : bool -> unit\nloop =\n    let\n        captured = trace \"capture\" ()\n    in\n    \\flag -> if flag then captured else loop True\nmain = loop False\n"
 ---
---- core
+--- unoptimized Core
 let message#11 : string = "capture" in
 let fromBool#3 : bool -> bool = \value#8 : bool -> value#8 in
 let fromUnit#6 : unit -> unit = \value#9 : unit -> value#9 in
 let fromString#7 : string -> string = \value#10 : string -> value#10 in
 let captured#5 : 'erased = trace (fromString#7 message#11) in fromUnit#6 () in
-let loop#2 : bool -> unit = (\self#12 : @self (bool -> unit) -> self#12 self#12) (\self#12 : @self (bool -> unit) flag#4 : bool -> case@Bool flag#4 of
-  True -> captured#5
-  False -> self#12 self#12 (fromBool#3 true)) in
+letrec
+  loop#2 : bool -> unit [static []] = \flag#4 : bool -> case@Bool flag#4 of
+    True -> captured#5
+    False -> loop#2 (fromBool#3 true)
+in
 let main#1 : unit = loop#2 (fromBool#3 false) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_11
     [(lam fromBool_3
@@ -33,6 +35,24 @@ main#1
         (lam value_9 value_9)])
       (lam value_8 value_8)])
     (con string "capture")])
+--- optimized Core
+let captured#19 : 'erased = trace "capture" in () in
+letrec
+  loop#20 : bool -> unit [static []] = \flag#21 : bool -> case@Bool flag#21 of
+    True -> captured#19
+    False -> loop#20 true
+in
+loop#20 false
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_8
+    [(lam captured_3
+      [(lam loop_7 [loop_7 (con bool False)])
+        [(lam self_4 [self_4 self_4])
+          (lam self_5
+            (lam flag_6 (case flag_6 [[self_5 self_5] (con bool True)] captured_3)))]])
+      (force [[builtin_8 (con string "capture")] (delay (con unit ()))])])
+    (force (builtin trace))])
 --- result
 (con unit ())
 --- logs

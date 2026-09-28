@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1441
 description: "module Main exposing (..)\nimport Primitive exposing (..)\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nselect : Record -> (Int, Int, Int, Int, Int)\nselect record = (record.a, record.b, record.c, record.d, record.c)\nmain = select { a = 10, b = 20, c = 30, d = 40 }\n"
 ---
---- core
+--- unoptimized Core
 let select#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> (Int, Int, Int, Int, Int) = \record#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let projection#17 : list Data = unListData record#4 in
 case@List projection#17 of
   Cons head#5 tail#6 -> case@List tail#6 of
@@ -12,7 +13,7 @@ case@List projection#17 of
 let fromInt#3 : int -> Int = iData in
 let main#1 : (Int, Int, Int, Int, Int) = select#2 (listData (mkCons (fromInt#3 10) (mkCons (fromInt#3 20) (mkCons (fromInt#3 30) (mkCons (fromInt#3 40) (con (list data) [])))))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam select_2
     [(lam fromInt_3
@@ -46,6 +47,68 @@ main#1
                 (error))))
           (error)))
         [(builtin unListData) record_4]])])
+--- optimized Core
+let fromInt#25 : int -> Int = iData in
+let anf#27 : Int = fromInt#25 10 in
+let anf#28 : Int = fromInt#25 20 in
+let anf#29 : Int = fromInt#25 30 in
+let anf#30 : Int = fromInt#25 40 in
+let anf#31 : list Data = mkCons anf#30 (con (list data) []) in
+let anf#32 : list Data = mkCons anf#29 anf#31 in
+let anf#33 : list Data = mkCons anf#28 anf#32 in
+let anf#34 : list Data = mkCons anf#27 anf#33 in
+let anf#35 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#34 in
+let projection#8 : list Data = unListData anf#35 in
+case@List projection#8 of
+  Cons head#15 tail#16 -> case@List tail#16 of
+    Cons head#18 tail#19 -> case@List tail#19 of
+      Cons head#20 tail#21 -> case@List tail#21 of
+        Cons head#22 tail#23 -> constr 0 head#15 head#18 head#20 head#22 head#20
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_39
+    [(lam fromInt_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4
+            [(lam anf_5
+              [(lam anf_6
+                [(lam anf_7
+                  [(lam anf_9
+                    [(lam anf_10
+                      [(lam anf_11
+                        [(lam projection_12
+                          (case
+                            projection_12
+                            (lam head_13
+                              (lam tail_14
+                                (case
+                                  tail_14
+                                  (lam head_17
+                                    (lam tail_24
+                                      (case
+                                        tail_24
+                                        (lam head_26
+                                          (lam tail_36
+                                            (case
+                                              tail_36
+                                              (lam head_37 (lam tail_38 (constr 0 head_13 head_17 head_26 head_37 head_26)))
+                                              (error))))
+                                        (error))))
+                                  (error))))
+                            (error)))
+                          [(builtin unListData) anf_11]])
+                        [(builtin listData) anf_10]])
+                      [[builtin_39 anf_2] anf_9]])
+                    [[builtin_39 anf_3] anf_7]])
+                  [[builtin_39 anf_4] anf_6]])
+                [[builtin_39 anf_5] (con (list data) [])]])
+              [fromInt_1 (con integer 40)]])
+            [fromInt_1 (con integer 30)]])
+          [fromInt_1 (con integer 20)]])
+        [fromInt_1 (con integer 10)]])
+      (builtin iData)])
+    (force (builtin mkCons))])
 --- result
 (constr 0
   (con data (I 10))

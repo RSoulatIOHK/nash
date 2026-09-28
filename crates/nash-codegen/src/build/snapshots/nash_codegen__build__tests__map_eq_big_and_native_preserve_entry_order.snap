@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nentries : list (pair Int Int)\nentries = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]\nreversed : list (pair Int Int)\nreversed = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]\nmain =\n    ( eq (Builtin.mapData entries) (Builtin.mapData entries)\n    , eq (Builtin.mapData entries) (Builtin.mapData reversed)\n    , eq entries entries\n    , eq entries reversed\n    )\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#5 : int -> Int = iData in
 let entries#2 : list (pair Int Int) = mkCons (mkPairData (fromInt#5 1) (fromInt#5 2)) (mkCons (mkPairData (fromInt#5 1) (fromInt#5 3)) (con (list (pair data data)) [])) in
 let reversed#3 : list (pair Int Int) = mkCons (mkPairData (fromInt#5 1) (fromInt#5 3)) (mkCons (mkPairData (fromInt#5 1) (fromInt#5 2)) (con (list (pair data data)) [])) in
@@ -27,25 +27,27 @@ case@Pair match#30 of
       let secondB#44 : 'erased = field#37 in
       equalsData secondA#39 secondB#44
       False -> false in
-let eq#4 : list 'erased -> list 'erased -> bool = (\self#41 : @self (list 'erased -> list 'erased -> bool) -> self#41 self#41) (\self#41 : @self (list 'erased -> list 'erased -> bool) xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
-case@List match#20 of
-  Nil -> let match#9 : list 'erased = ys#7 in
-  case@List match#9 of
-    Nil -> fromBool#8 true
-    Cons field#10 field#11 -> fromBool#8 false
-  Cons field#21 field#22 -> let x#12 : 'erased = field#21 in
-  let restX#13 : list 'erased = field#22 in
-  let match#17 : list 'erased = ys#7 in
-  case@List match#17 of
-    Nil -> fromBool#8 false
-    Cons field#18 field#19 -> let y#14 : 'erased = field#18 in
-    let restY#15 : list 'erased = field#19 in
-    case@Bool eq#16 x#12 y#14 of
-      True -> self#41 self#41 restX#13 restY#15
-      False -> false) in
+letrec
+  eq#4 : list 'erased -> list 'erased -> bool [static []] = \xs#6 : list 'erased ys#7 : list 'erased -> let match#20 : list 'erased = xs#6 in
+  case@List match#20 of
+    Nil -> let match#9 : list 'erased = ys#7 in
+    case@List match#9 of
+      Nil -> fromBool#8 true
+      Cons field#10 field#11 -> fromBool#8 false
+    Cons field#21 field#22 -> let x#12 : 'erased = field#21 in
+    let restX#13 : list 'erased = field#22 in
+    let match#17 : list 'erased = ys#7 in
+    case@List match#17 of
+      Nil -> fromBool#8 false
+      Cons field#18 field#19 -> let y#14 : 'erased = field#18 in
+      let restY#15 : list 'erased = field#19 in
+      case@Bool eq#16 x#12 y#14 of
+        True -> eq#4 restX#13 restY#15
+        False -> false
+in
 let main#1 : (bool, bool, bool, bool) = constr 0 (equalsData (mapData entries#2) (mapData entries#2)) (equalsData (mapData entries#2) (mapData reversed#3)) (eq#4 entries#2 entries#2) (eq#4 entries#2 reversed#3) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_5
     [(lam entries_2
@@ -148,6 +150,132 @@ main#1
           [[(builtin mkPairData) [fromInt_5 (con integer 1)]] [fromInt_5 (con integer 3)]]]
           (con (list (pair data data)) [])]]])
     (builtin iData)])
+--- optimized Core
+let fromInt#41 : int -> Int = iData in
+let anf#87 : Int = fromInt#41 1 in
+let anf#88 : Int = fromInt#41 2 in
+let anf#89 : pair Int Int = mkPairData anf#87 anf#88 in
+let anf#90 : Int = fromInt#41 1 in
+let anf#91 : Int = fromInt#41 3 in
+let anf#92 : pair Int Int = mkPairData anf#90 anf#91 in
+let anf#93 : list (pair Int Int) = mkCons anf#92 (con (list (pair data data)) []) in
+let entries#42 : list (pair Int Int) = mkCons anf#89 anf#93 in
+let anf#94 : Int = fromInt#41 1 in
+let anf#95 : Int = fromInt#41 3 in
+let anf#96 : pair Int Int = mkPairData anf#94 anf#95 in
+let anf#97 : Int = fromInt#41 1 in
+let anf#98 : Int = fromInt#41 2 in
+let anf#99 : pair Int Int = mkPairData anf#97 anf#98 in
+let anf#100 : list (pair Int Int) = mkCons anf#99 (con (list (pair data data)) []) in
+let reversed#46 : list (pair Int Int) = mkCons anf#96 anf#100 in
+letrec
+  eq#70 : list 'erased -> list 'erased -> bool [static []] = \xs#71 : list 'erased ys#72 : list 'erased -> case@List xs#71 of
+    Nil -> case@List ys#72 of
+      Nil -> true
+      Cons field#75 field#76 -> false
+    Cons field#77 field#78 -> case@List ys#72 of
+      Nil -> false
+      Cons field#82 field#83 -> let anf#102 : bool = case@Pair field#77 of
+        Pair field#54 field#55 -> case@Pair field#82 of
+          Pair field#59 field#60 -> let anf#101 : bool = equalsData field#54 field#59 in
+          case@Bool anf#101 of
+            True -> equalsData field#55 field#60
+            False -> false in
+      case@Bool anf#102 of
+        True -> eq#70 field#78 field#83
+        False -> false
+in
+let anf#103 : Map Int Int = mapData entries#42 in
+let anf#104 : Map Int Int = mapData entries#42 in
+let anf#105 : bool = equalsData anf#103 anf#104 in
+let anf#106 : Map Int Int = mapData entries#42 in
+let anf#107 : Map Int Int = mapData reversed#46 in
+let anf#108 : bool = equalsData anf#106 anf#107 in
+let anf#109 : bool = eq#70 entries#42 entries#42 in
+let anf#110 : bool = eq#70 entries#42 reversed#46 in
+constr 0 anf#105 anf#108 anf#109 anf#110
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_49
+    [(lam fromInt_4
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7
+            [(lam anf_8
+              [(lam anf_9
+                [(lam anf_10
+                  [(lam anf_11
+                    [(lam entries_12
+                      [(lam anf_13
+                        [(lam anf_14
+                          [(lam anf_15
+                            [(lam anf_16
+                              [(lam anf_17
+                                [(lam anf_18
+                                  [(lam anf_19
+                                    [(lam reversed_20
+                                      [(lam eq_37
+                                        [(lam anf_38
+                                          [(lam anf_39
+                                            [(lam anf_40
+                                              [(lam anf_43
+                                                [(lam anf_44
+                                                  [(lam anf_45
+                                                    [(lam anf_47
+                                                      [(lam anf_48 (constr 0 anf_40 anf_45 anf_47 anf_48))
+                                                        [[eq_37 entries_12] reversed_20]])
+                                                      [[eq_37 entries_12] entries_12]])
+                                                    [[(builtin equalsData) anf_43] anf_44]])
+                                                  [(builtin mapData) reversed_20]])
+                                                [(builtin mapData) entries_12]])
+                                              [[(builtin equalsData) anf_38] anf_39]])
+                                            [(builtin mapData) entries_12]])
+                                          [(builtin mapData) entries_12]])
+                                        [(lam self_21 [self_21 self_21])
+                                          (lam self_22
+                                            (lam xs_23
+                                              (lam ys_24
+                                                (case
+                                                  xs_23
+                                                  (lam field_27
+                                                    (lam field_28
+                                                      (case
+                                                        ys_24
+                                                        (lam field_29
+                                                          (lam field_30
+                                                            [(lam anf_36
+                                                              (case anf_36 (con bool False) [[[self_22 self_22] field_28] field_30]))
+                                                              (case
+                                                                field_27
+                                                                (lam field_31
+                                                                  (lam field_32
+                                                                    (case
+                                                                      field_29
+                                                                      (lam field_33
+                                                                        (lam field_34
+                                                                          [(lam anf_35
+                                                                            (case anf_35 (con bool False) [[(builtin equalsData) field_32] field_34]))
+                                                                            [[(builtin equalsData) field_31] field_33]]))))))]))
+                                                        (con bool False))))
+                                                  (case ys_24 (lam field_25 (lam field_26 (con bool False))) (con bool True))))))]])
+                                      [[builtin_49 anf_15] anf_19]])
+                                    [[builtin_49 anf_18] (con (list (pair data data)) [])]])
+                                  [[(builtin mkPairData) anf_16] anf_17]])
+                                [fromInt_4 (con integer 2)]])
+                              [fromInt_4 (con integer 1)]])
+                            [[(builtin mkPairData) anf_13] anf_14]])
+                          [fromInt_4 (con integer 3)]])
+                        [fromInt_4 (con integer 1)]])
+                      [[builtin_49 anf_7] anf_11]])
+                    [[builtin_49 anf_10] (con (list (pair data data)) [])]])
+                  [[(builtin mkPairData) anf_8] anf_9]])
+                [fromInt_4 (con integer 3)]])
+              [fromInt_4 (con integer 1)]])
+            [[(builtin mkPairData) anf_5] anf_6]])
+          [fromInt_4 (con integer 2)]])
+        [fromInt_4 (con integer 1)]])
+      (builtin iData)])
+    (force (builtin mkCons))])
 --- result
 (constr 0 (con bool True) (con bool False) (con bool True) (con bool False))
 --- logs

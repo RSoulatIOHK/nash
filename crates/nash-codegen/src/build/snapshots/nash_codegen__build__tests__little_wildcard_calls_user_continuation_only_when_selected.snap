@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype choice = Stop | Zero | One int | Two int int\nchoose : choice -> (int -> int) -> int\nchoose subject continue =\n    case trace \"subject\" subject of\n        Stop -> 0\n        _ -> trace \"fallback\" (continue 9)\nfinish : int -> int\nfinish n = trace \"continue\" (addInteger n 100)\nmain = (choose Stop (\\_ -> trace \"wrong\" fail), choose Zero finish, choose (One 2) finish, choose (Two 3 4) finish)\n"
 ---
---- core
+--- unoptimized Core
 let message#24 : string = "subject" in
 let message#25 : string = "fallback" in
 let message#26 : string = "continue" in
@@ -21,7 +21,7 @@ let finish#6 : int -> int = \n#22 : int -> trace (fromString#4 message#26) in ad
 let main#1 : (int, int, int, int) = constr 0 (choose#2 (constr 0) (\arg#3 : int -> let match#5 : int = arg#3 in
 trace (fromString#4 message#27) in error)) (choose#2 (constr 1) finish#6) (choose#2 ((\field#7 : int -> constr 2 field#7) (fromInt#8 2)) finish#6) (choose#2 ((\field#9 : int field#10 : int -> constr 3 field#9 field#10) (fromInt#8 3) (fromInt#8 4)) finish#6) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_24
     [(lam message_25
@@ -71,6 +71,65 @@ main#1
         (con string "continue")])
       (con string "fallback")])
     (con string "subject")])
+--- optimized Core
+let choose#40 : Main.choice -> (int -> int) -> int = \subject#33 : Main.choice (continue#34 : int -> int) -> let match#35 : Main.choice = trace "subject" in subject#33 in
+let leaf#36 : @delay int = delay (trace "fallback" in continue#34 9) in
+case@Tag match#35 of
+  0 -> 0
+  1 -> force leaf#36
+  2 field#37 -> force leaf#36
+  3 field#38 field#39 -> force leaf#36 in
+let finish#42 : int -> int = \n#41 : int -> trace "continue" in addInteger n#41 100 in
+let anf#54 : Main.choice = constr 0 in
+let anf#56 : int = choose#40 anf#54 (\arg#43 : int -> trace "wrong" in error) in
+let anf#57 : Main.choice = constr 1 in
+let anf#58 : int = choose#40 anf#57 finish#42 in
+let anf#60 : Main.choice = constr 2 2 in
+let anf#61 : int = choose#40 anf#60 finish#42 in
+let anf#65 : Main.choice = constr 3 3 4 in
+let anf#66 : int = choose#40 anf#65 finish#42 in
+constr 0 anf#56 anf#58 anf#61 anf#66
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_20
+    [(lam choose_8
+      [(lam finish_10
+        [(lam anf_11
+          [(lam anf_13
+            [(lam anf_14
+              [(lam anf_15
+                [(lam anf_16
+                  [(lam anf_17
+                    [(lam anf_18
+                      [(lam anf_19 (constr 0 anf_13 anf_15 anf_17 anf_19))
+                        [[choose_8 anf_18] finish_10]])
+                      (constr 3 (con integer 3) (con integer 4))])
+                    [[choose_8 anf_16] finish_10]])
+                  (constr 2 (con integer 2))])
+                [[choose_8 anf_14] finish_10]])
+              (constr 1)])
+            [[choose_8 anf_11]
+              (lam arg_12 (force [[builtin_20 (con string "wrong")] (delay (error))]))]])
+          (constr 0)])
+        (lam n_9
+          (force
+            [[builtin_20 (con string "continue")]
+              (delay [[(builtin addInteger) n_9] (con integer 100)])]))])
+      (lam subject_1
+        (lam continue_2
+          [(lam match_3
+            [(lam leaf_4
+              (case
+                match_3
+                (con integer 0)
+                (force leaf_4)
+                (lam field_5 (force leaf_4))
+                (lam field_6 (lam field_7 (force leaf_4)))))
+              (delay
+                (force
+                  [[builtin_20 (con string "fallback")] (delay [continue_2 (con integer 9)])]))])
+            (force [[builtin_20 (con string "subject")] (delay subject_1)])]))])
+    (force (builtin trace))])
 --- result
 (constr 0 (con integer 0) (con integer 109) (con integer 109) (con integer 109))
 --- logs

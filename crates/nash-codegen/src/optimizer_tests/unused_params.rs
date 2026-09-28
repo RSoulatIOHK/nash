@@ -39,14 +39,18 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, changed: bool, fails: boo
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
-        format!(
-            "--- core before\n{}\n--- core after\n{}\n--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            pretty(before),
-            pretty(after),
-            baseline.uplc,
-            candidate.uplc,
-            candidate.result,
-            candidate.logs
+        crate::harness::pass_snapshot(
+            b.arena,
+            core,
+            format!(
+                "--- core before\n{}\n--- uplc before\n{}\n--- core after\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+                pretty(before),
+                baseline.uplc,
+                pretty(after),
+                candidate.uplc,
+                candidate.result,
+                candidate.logs
+            )
         )
     );
     // Properties independent of the expected snapshot.
@@ -264,10 +268,14 @@ fn explicit_function_views_keep_their_result_annotations() {
     anf::validate(after).unwrap();
     insta::assert_snapshot!(
         "type_views",
-        format!(
-            "--- core before\n{}\n--- core after\n{}",
-            pretty(root),
-            pretty(after)
+        crate::harness::pass_snapshot(
+            b.arena,
+            root,
+            format!(
+                "--- core before\n{}\n--- core after\n{}",
+                pretty(root),
+                pretty(after)
+            )
         )
     );
 }
@@ -330,10 +338,14 @@ fn all_unused_preserves_independent_delayed_type_views() {
     anf::validate(after).unwrap();
     insta::assert_snapshot!(
         "delayed_type_views",
-        format!(
-            "--- core before\n{}\n--- core after\n{}",
-            pretty(root),
-            pretty(after)
+        crate::harness::pass_snapshot(
+            b.arena,
+            root,
+            format!(
+                "--- core before\n{}\n--- core after\n{}",
+                pretty(root),
+                pretty(after)
+            )
         )
     );
 }

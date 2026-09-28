@@ -1,44 +1,48 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/lists.rs
-assertion_line: 214
+assertion_line: 203
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Eq exposing (..)\ntype sequence 'a = Nil | Cons 'a (sequence 'a)\nunzip xs =\n    case xs of\n        Nil -> ([], [])\n        Cons (a, b) rest ->\n            let\n                (aTail, bTail) = unzip rest\n            in\n            (mkCons a aTail, mkCons b bTail)\nsame (a, b) (c, d) = if eq a c then eq b d else False\nmain =\n    let\n        x = Cons (3, #\"55\") (Cons (4, #\"7799\") Nil)\n    in\n    same (unzip x) ([3, 4], [#\"55\", #\"7799\"])\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#17 : bool -> bool = \value#48 : bool -> value#48 in
 let eq#58 : int -> int -> bool = equalsInteger in
-let eq#18 : list 'erased -> list 'erased -> bool = (\self#87 : @self (list 'erased -> list 'erased -> bool) -> self#87 self#87) (\self#87 : @self (list 'erased -> list 'erased -> bool) xs#49 : list 'erased ys#50 : list 'erased -> let match#62 : list 'erased = xs#49 in
-case@List match#62 of
-  Nil -> let match#51 : list 'erased = ys#50 in
-  case@List match#51 of
-    Nil -> fromBool#17 true
-    Cons field#52 field#53 -> fromBool#17 false
-  Cons field#63 field#64 -> let x#54 : 'erased = field#63 in
-  let restX#55 : list 'erased = field#64 in
-  let match#59 : list 'erased = ys#50 in
-  case@List match#59 of
-    Nil -> fromBool#17 false
-    Cons field#60 field#61 -> let y#56 : 'erased = field#60 in
-    let restY#57 : list 'erased = field#61 in
-    case@Bool eq#58 x#54 y#56 of
-      True -> self#87 self#87 restX#55 restY#57
-      False -> false) in
+letrec
+  eq#18 : list 'erased -> list 'erased -> bool [static []] = \xs#49 : list 'erased ys#50 : list 'erased -> let match#62 : list 'erased = xs#49 in
+  case@List match#62 of
+    Nil -> let match#51 : list 'erased = ys#50 in
+    case@List match#51 of
+      Nil -> fromBool#17 true
+      Cons field#52 field#53 -> fromBool#17 false
+    Cons field#63 field#64 -> let x#54 : 'erased = field#63 in
+    let restX#55 : list 'erased = field#64 in
+    let match#59 : list 'erased = ys#50 in
+    case@List match#59 of
+      Nil -> fromBool#17 false
+      Cons field#60 field#61 -> let y#56 : 'erased = field#60 in
+      let restY#57 : list 'erased = field#61 in
+      case@Bool eq#58 x#54 y#56 of
+        True -> eq#18 restX#55 restY#57
+        False -> false
+in
 let eq#74 : bytes -> bytes -> bool = equalsByteString in
-let eq#19 : list 'erased -> list 'erased -> bool = (\self#84 : @self (list 'erased -> list 'erased -> bool) -> self#84 self#84) (\self#84 : @self (list 'erased -> list 'erased -> bool) xs#65 : list 'erased ys#66 : list 'erased -> let match#78 : list 'erased = xs#65 in
-case@List match#78 of
-  Nil -> let match#67 : list 'erased = ys#66 in
-  case@List match#67 of
-    Nil -> fromBool#17 true
-    Cons field#68 field#69 -> fromBool#17 false
-  Cons field#79 field#80 -> let x#70 : 'erased = field#79 in
-  let restX#71 : list 'erased = field#80 in
-  let match#75 : list 'erased = ys#66 in
-  case@List match#75 of
-    Nil -> fromBool#17 false
-    Cons field#76 field#77 -> let y#72 : 'erased = field#76 in
-    let restY#73 : list 'erased = field#77 in
-    case@Bool eq#74 x#70 y#72 of
-      True -> self#84 self#84 restX#71 restY#73
-      False -> false) in
+letrec
+  eq#19 : list 'erased -> list 'erased -> bool [static []] = \xs#65 : list 'erased ys#66 : list 'erased -> let match#78 : list 'erased = xs#65 in
+  case@List match#78 of
+    Nil -> let match#67 : list 'erased = ys#66 in
+    case@List match#67 of
+      Nil -> fromBool#17 true
+      Cons field#68 field#69 -> fromBool#17 false
+    Cons field#79 field#80 -> let x#70 : 'erased = field#79 in
+    let restX#71 : list 'erased = field#80 in
+    let match#75 : list 'erased = ys#66 in
+    case@List match#75 of
+      Nil -> fromBool#17 false
+      Cons field#76 field#77 -> let y#72 : 'erased = field#76 in
+      let restY#73 : list 'erased = field#77 in
+      case@Bool eq#74 x#70 y#72 of
+        True -> eq#19 restX#71 restY#73
+        False -> false
+in
 let same#2 : ('erased, 'erased) -> ('erased, 'erased) -> bool = \arg#11 : ('erased, 'erased) arg#14 : ('erased, 'erased) -> let match#23 : ('erased, 'erased) = arg#11 in
 case@Tag match#23 of
   0 field#24 field#25 -> let a#12 : 'erased = field#24 in
@@ -50,30 +54,32 @@ case@Tag match#23 of
     case@Bool eq#18 a#12 c#15 of
       True -> eq#19 b#13 d#16
       False -> fromBool#17 false in
-let unzip#3 : Main.sequence (int, bytes) -> (list int, list bytes) = (\self#82 : @self (Main.sequence (int, bytes) -> (list int, list bytes)) -> self#82 self#82) (\self#82 : @self (Main.sequence (int, bytes) -> (list int, list bytes)) xs#26 : Main.sequence (int, bytes) -> let match#41 : Main.sequence (int, bytes) = xs#26 in
-case@Tag match#41 of
-  0 -> constr 0 (con (list integer) []) (con (list bytestring) [])
-  1 field#42 field#43 -> case@Tag field#42 of
-    0 field#44 field#45 -> let rest#29 : Main.sequence (int, bytes) = field#43 in
-    let a#27 : int = field#44 in
-    let b#28 : bytes = field#45 in
-    let destruct#30 : (list int, list bytes) = self#82 self#82 rest#29 in
-    let match#33 : (list int, list bytes) = destruct#30 in
-    let evaluated#81 : list int = mkCons a#27 (case@Tag match#33 of
-      0 field#34 field#35 -> let aTail#31 : list int = field#34 in
-      let bTail#32 : list bytes = field#35 in
-      aTail#31) in
-    let match#38 : (list int, list bytes) = destruct#30 in
-    constr 0 evaluated#81 (mkCons b#28 (case@Tag match#38 of
-      0 field#39 field#40 -> let aTail#36 : list int = field#39 in
-      let bTail#37 : list bytes = field#40 in
-      bTail#37))) in
+letrec
+  unzip#3 : Main.sequence (int, bytes) -> (list int, list bytes) [static []] = \xs#26 : Main.sequence (int, bytes) -> let match#41 : Main.sequence (int, bytes) = xs#26 in
+  case@Tag match#41 of
+    0 -> constr 0 (con (list integer) []) (con (list bytestring) [])
+    1 field#42 field#43 -> case@Tag field#42 of
+      0 field#44 field#45 -> let rest#29 : Main.sequence (int, bytes) = field#43 in
+      let a#27 : int = field#44 in
+      let b#28 : bytes = field#45 in
+      let destruct#30 : (list int, list bytes) = unzip#3 rest#29 in
+      let match#33 : (list int, list bytes) = destruct#30 in
+      let evaluated#81 : list int = mkCons a#27 (case@Tag match#33 of
+        0 field#34 field#35 -> let aTail#31 : list int = field#34 in
+        let bTail#32 : list bytes = field#35 in
+        aTail#31) in
+      let match#38 : (list int, list bytes) = destruct#30 in
+      constr 0 evaluated#81 (mkCons b#28 (case@Tag match#38 of
+        0 field#39 field#40 -> let aTail#36 : list int = field#39 in
+        let bTail#37 : list bytes = field#40 in
+        bTail#37))
+in
 let fromInt#5 : int -> int = \value#46 : int -> value#46 in
 let fromBytes#6 : bytes -> bytes = \value#47 : bytes -> value#47 in
 let x#4 : Main.sequence ('erased, 'erased) = (\field#7 : ('erased, 'erased) field#8 : Main.sequence ('erased, 'erased) -> constr 1 field#7 field#8) (constr 0 (fromInt#5 3) (fromBytes#6 (con bytestring #55))) ((\field#9 : ('erased, 'erased) field#10 : Main.sequence ('erased, 'erased) -> constr 1 field#9 field#10) (constr 0 (fromInt#5 4) (fromBytes#6 (con bytestring #7799))) (constr 0)) in
 let main#1 : bool = same#2 (unzip#3 x#4) (constr 0 (mkCons (fromInt#5 3) (mkCons (fromInt#5 4) (con (list integer) []))) (mkCons (fromBytes#6 (con bytestring #55)) (mkCons (fromBytes#6 (con bytestring #7799)) (con (list bytestring) [])))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_17
     [(lam eq_58
@@ -235,6 +241,155 @@ main#1
                   xs_49])))]])
       (builtin equalsInteger)])
     (lam value_48 value_48)])
+--- optimized Core
+letrec
+  eq#85 : list 'erased -> list 'erased -> bool [static []] = \xs#86 : list 'erased ys#87 : list 'erased -> case@List xs#86 of
+    Nil -> case@List ys#87 of
+      Nil -> true
+      Cons field#90 field#91 -> false
+    Cons field#92 field#93 -> case@List ys#87 of
+      Nil -> false
+      Cons field#97 field#98 -> let anf#163 : bool = equalsInteger field#92 field#97 in
+      case@Bool anf#163 of
+        True -> eq#85 field#93 field#98
+        False -> false
+in
+letrec
+  eq#102 : list 'erased -> list 'erased -> bool [static []] = \xs#103 : list 'erased ys#104 : list 'erased -> case@List xs#103 of
+    Nil -> case@List ys#104 of
+      Nil -> true
+      Cons field#107 field#108 -> false
+    Cons field#109 field#110 -> case@List ys#104 of
+      Nil -> false
+      Cons field#114 field#115 -> let anf#164 : bool = equalsByteString field#109 field#114 in
+      case@Bool anf#164 of
+        True -> eq#102 field#110 field#115
+        False -> false
+in
+letrec
+  unzip#131 : Main.sequence (int, bytes) -> (list int, list bytes) [static []] = \xs#132 : Main.sequence (int, bytes) -> case@Tag xs#132 of
+    0 -> constr 0 (con (list integer) []) (con (list bytestring) [])
+    1 field#134 field#135 -> case@Tag field#134 of
+      0 field#136 field#137 -> let destruct#141 : (list int, list bytes) = unzip#131 field#135 in
+      let anf#166 : list int = case@Tag destruct#141 of
+        0 field#143 field#144 -> field#143 in
+      let evaluated#147 : list int = mkCons field#136 anf#166 in
+      let anf#167 : list bytes = case@Tag destruct#141 of
+        0 field#149 field#150 -> field#150 in
+      let anf#168 : list bytes = mkCons field#137 anf#167 in
+      constr 0 evaluated#147 anf#168
+in
+let anf#171 : ('erased, 'erased) = constr 0 3 (con bytestring #55) in
+let anf#175 : ('erased, 'erased) = constr 0 4 (con bytestring #7799) in
+let anf#177 : Main.sequence ('erased, 'erased) = constr 0 in
+let anf#178 : Main.sequence ('erased, 'erased) = constr 1 anf#175 anf#177 in
+let x#161 : Main.sequence ('erased, 'erased) = constr 1 anf#171 anf#178 in
+let anf#179 : (list int, list bytes) = unzip#131 x#161 in
+let anf#183 : list int = mkCons 4 (con (list integer) []) in
+let anf#184 : list int = mkCons 3 anf#183 in
+let anf#187 : list bytes = mkCons (con bytestring #7799) (con (list bytestring) []) in
+let anf#188 : list bytes = mkCons (con bytestring #55) anf#187 in
+let anf#189 : (list int, list bytes) = constr 0 anf#184 anf#188 in
+case@Tag anf#179 of
+  0 field#121 field#122 -> case@Tag anf#189 of
+    0 field#126 field#127 -> let anf#165 : bool = eq#85 field#121 field#126 in
+    case@Bool anf#165 of
+      True -> eq#102 field#122 field#127
+      False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_66
+    [(lam eq_20
+      [(lam eq_32
+        [(lam unzip_49
+          [(lam anf_50
+            [(lam anf_51
+              [(lam anf_52
+                [(lam anf_53
+                  [(lam x_54
+                    [(lam anf_55
+                      [(lam anf_56
+                        [(lam anf_57
+                          [(lam anf_58
+                            [(lam anf_59
+                              [(lam anf_60
+                                (case
+                                  anf_55
+                                  (lam field_61
+                                    (lam field_62
+                                      (case
+                                        anf_60
+                                        (lam field_63
+                                          (lam field_64
+                                            [(lam anf_65 (case anf_65 (con bool False) [[eq_32 field_62] field_64]))
+                                              [[eq_20 field_61] field_63]])))))))
+                                (constr 0 anf_57 anf_59)])
+                              [[builtin_66 (con bytestring #55)] anf_58]])
+                            [[builtin_66 (con bytestring #7799)] (con (list bytestring) [])]])
+                          [[builtin_66 (con integer 3)] anf_56]])
+                        [[builtin_66 (con integer 4)] (con (list integer) [])]])
+                      [unzip_49 x_54]])
+                    (constr 1 anf_50 anf_53)])
+                  (constr 1 anf_51 anf_52)])
+                (constr 0)])
+              (constr 0 (con integer 4) (con bytestring #7799))])
+            (constr 0 (con integer 3) (con bytestring #55))])
+          [(lam self_33 [self_33 self_33])
+            (lam self_34
+              (lam xs_35
+                (case
+                  xs_35
+                  (constr 0 (con (list integer) []) (con (list bytestring) []))
+                  (lam field_36
+                    (lam field_37
+                      (case
+                        field_36
+                        (lam field_38
+                          (lam field_39
+                            [(lam destruct_40
+                              [(lam anf_43
+                                [(lam evaluated_44
+                                  [(lam anf_47
+                                    [(lam anf_48 (constr 0 evaluated_44 anf_48)) [[builtin_66 field_39] anf_47]])
+                                    (case destruct_40 (lam field_45 (lam field_46 field_46)))])
+                                  [[builtin_66 field_38] anf_43]])
+                                (case destruct_40 (lam field_41 (lam field_42 field_41)))])
+                              [[self_34 self_34] field_37]]))))))))]])
+        [(lam self_21 [self_21 self_21])
+          (lam self_22
+            (lam xs_23
+              (lam ys_24
+                (case
+                  xs_23
+                  (lam field_27
+                    (lam field_28
+                      (case
+                        ys_24
+                        (lam field_29
+                          (lam field_30
+                            [(lam anf_31
+                              (case anf_31 (con bool False) [[[self_22 self_22] field_28] field_30]))
+                              [[(builtin equalsByteString) field_27] field_29]]))
+                        (con bool False))))
+                  (case ys_24 (lam field_25 (lam field_26 (con bool False))) (con bool True))))))]])
+      [(lam self_9 [self_9 self_9])
+        (lam self_10
+          (lam xs_11
+            (lam ys_12
+              (case
+                xs_11
+                (lam field_15
+                  (lam field_16
+                    (case
+                      ys_12
+                      (lam field_17
+                        (lam field_18
+                          [(lam anf_19
+                            (case anf_19 (con bool False) [[[self_10 self_10] field_16] field_18]))
+                            [[(builtin equalsInteger) field_15] field_17]]))
+                      (con bool False))))
+                (case ys_12 (lam field_13 (lam field_14 (con bool False))) (con bool True))))))]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

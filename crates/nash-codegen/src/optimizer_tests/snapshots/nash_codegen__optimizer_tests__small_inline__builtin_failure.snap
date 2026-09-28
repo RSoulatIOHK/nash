@@ -1,19 +1,45 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline uplc\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 37
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline uplc\\n{}\\n--- core after\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
+--- unoptimized Core
+let divide#2 : int -> int = \x#1 : int -> divideInteger 10 x#1 in
+addInteger (divide#2 (trace "zero" in 0)) (divide#2 (trace "cold" in 1))
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam divide_2
+    [[(builtin addInteger)
+      [divide_2
+        (force [[(force (builtin trace)) (con string "zero")] (delay (con integer 0))])]]
+      [divide_2
+        (force [[(force (builtin trace)) (con string "cold")] (delay (con integer 1))])]])
+    (lam x_1 [[(builtin divideInteger) (con integer 10)] x_1])])
+--- optimized Core
+let anf#5 : int = trace "zero" in 0 in
+let anf#6 : int = divideInteger 10 anf#5 in
+let anf#7 : int = trace "cold" in 1 in
+let anf#8 : int = divideInteger 10 anf#7 in
+addInteger anf#6 anf#8
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam partial_6
+      [(lam anf_1
+        [(lam anf_2
+          [(lam anf_3 [(lam anf_4 [[(builtin addInteger) anf_2] anf_4]) [partial_6 anf_3]])
+            (force [[builtin_5 (con string "cold")] (delay (con integer 1))])])
+          [partial_6 anf_1]])
+        (force [[builtin_5 (con string "zero")] (delay (con integer 0))])])
+      [(builtin divideInteger) (con integer 10)]])
+    (force (builtin trace))])
+--- isolated pass
 --- core before
 let divide#2 : int -> int = \x#1 : int -> divideInteger 10 x#1 in
 let anf#3 : int = trace "zero" in 0 in
 let anf#4 : int = divide#2 anf#3 in
 let anf#5 : int = trace "cold" in 1 in
 let anf#6 : int = divide#2 anf#5 in
-addInteger anf#4 anf#6
---- core after
-let anf#3 : int = trace "zero" in 0 in
-let anf#4 : int = divideInteger 10 anf#3 in
-let anf#5 : int = trace "cold" in 1 in
-let anf#6 : int = divideInteger 10 anf#5 in
 addInteger anf#4 anf#6
 --- baseline uplc
 (program 1.1.0
@@ -25,6 +51,12 @@ addInteger anf#4 anf#6
         [divide_2 anf_3]])
       (force [[(force (builtin trace)) (con string "zero")] (delay (con integer 0))])])
     (lam x_1 [[(builtin divideInteger) (con integer 10)] x_1])])
+--- core after
+let anf#3 : int = trace "zero" in 0 in
+let anf#4 : int = divideInteger 10 anf#3 in
+let anf#5 : int = trace "cold" in 1 in
+let anf#6 : int = divideInteger 10 anf#5 in
+addInteger anf#4 anf#6
 --- optimized uplc
 (program 1.1.0
   [(lam anf_3

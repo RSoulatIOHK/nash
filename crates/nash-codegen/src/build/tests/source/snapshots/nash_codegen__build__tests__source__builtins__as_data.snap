@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
+assertion_line: 260
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (ToData)\ntype Foo = Foo Int\ntype Bar = Bar Int\nmain : bool\nmain =\n    if Builtin.nullList [toData (Foo 14), toData (Bar 42)] then False\n    else True\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#2 : bool -> bool = \value#7 : bool -> value#7 in
 let toData#3 : 'erased -> Data = \coerce#8 : 'erased -> coerce#8 in
 let fromInt#5 : int -> Int = iData in
@@ -10,7 +11,7 @@ let main#1 : bool = case@Bool nullList (mkCons (toData#3 ((\field#4 : Int -> con
   True -> fromBool#2 false
   False -> fromBool#2 true in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_2
     [(lam toData_3
@@ -36,6 +37,47 @@ main#1
         (builtin iData)])
       (lam coerce_8 coerce_8)])
     (lam value_7 value_7)])
+--- optimized Core
+let fromInt#13 : int -> Int = iData in
+let anf#18 : Int = fromInt#13 14 in
+let anf#17 : list Data = mkCons anf#18 (con (list data) []) in
+let anf#19 : Main.Foo = constrData 0 anf#17 in
+let anf#22 : Int = fromInt#13 42 in
+let anf#21 : list Data = mkCons anf#22 (con (list data) []) in
+let anf#23 : Main.Bar = constrData 0 anf#21 in
+let anf#25 : list Data = mkCons anf#23 (con (list data) []) in
+let anf#26 : list Data = mkCons anf#19 anf#25 in
+let anf#27 : bool = nullList anf#26 in
+case@Bool anf#27 of
+  True -> false
+  False -> true
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_11
+    [(lam builtin_12
+      [(lam partial_13
+        [(lam fromInt_1
+          [(lam anf_2
+            [(lam anf_3
+              [(lam anf_4
+                [(lam anf_5
+                  [(lam anf_6
+                    [(lam anf_7
+                      [(lam anf_8
+                        [(lam anf_9
+                          [(lam anf_10 (case anf_10 (con bool True) (con bool False))) [builtin_11 anf_9]])
+                          [[builtin_12 anf_4] anf_8]])
+                        [[builtin_12 anf_7] (con (list data) [])]])
+                      [partial_13 anf_6]])
+                    [[builtin_12 anf_5] (con (list data) [])]])
+                  [fromInt_1 (con integer 42)]])
+                [partial_13 anf_3]])
+              [[builtin_12 anf_2] (con (list data) [])]])
+            [fromInt_1 (con integer 14)]])
+          (builtin iData)])
+        [(builtin constrData) (con integer 0)]])
+      (force (builtin mkCons))])
+    (force (builtin nullList))])
 --- result
 (con bool True)
 --- logs

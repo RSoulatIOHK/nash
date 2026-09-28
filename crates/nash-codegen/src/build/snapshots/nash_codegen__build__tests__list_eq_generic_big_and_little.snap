@@ -1,31 +1,33 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 234
+assertion_line: 239
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Literal exposing (..)\nimport Eq exposing (..)\nsame : Eq (list 'a) => list 'a -> list 'a -> bool\nsame xs ys = eq xs ys\nbig : list Int\nbig = [1, 2]\nsmall : list int\nsmall = [1, 2]\nmain = if same big big then same small small else False\n"
 ---
---- core
+--- unoptimized Core
 let fromBool#2 : bool -> bool = \value#7 : bool -> value#7 in
 let eq#10 : list 'erased -> list 'erased -> bool = \xs#16 : list 'erased ys#17 : list 'erased -> equalsData (listData xs#16) (listData ys#17) in
 let same#3 : list 'erased -> list 'erased -> bool = \xs#8 : list 'erased ys#9 : list 'erased -> eq#10 xs#8 ys#9 in
 let fromInt#11 : int -> Int = iData in
 let big#4 : list Int = mkCons (fromInt#11 1) (mkCons (fromInt#11 2) (con (list data) [])) in
 let eq#27 : int -> int -> bool = equalsInteger in
-let eq#14 : list 'erased -> list 'erased -> bool = (\self#35 : @self (list 'erased -> list 'erased -> bool) -> self#35 self#35) (\self#35 : @self (list 'erased -> list 'erased -> bool) xs#18 : list 'erased ys#19 : list 'erased -> let match#31 : list 'erased = xs#18 in
-case@List match#31 of
-  Nil -> let match#20 : list 'erased = ys#19 in
-  case@List match#20 of
-    Nil -> fromBool#2 true
-    Cons field#21 field#22 -> fromBool#2 false
-  Cons field#32 field#33 -> let x#23 : 'erased = field#32 in
-  let restX#24 : list 'erased = field#33 in
-  let match#28 : list 'erased = ys#19 in
-  case@List match#28 of
-    Nil -> fromBool#2 false
-    Cons field#29 field#30 -> let y#25 : 'erased = field#29 in
-    let restY#26 : list 'erased = field#30 in
-    case@Bool eq#27 x#23 y#25 of
-      True -> self#35 self#35 restX#24 restY#26
-      False -> false) in
+letrec
+  eq#14 : list 'erased -> list 'erased -> bool [static []] = \xs#18 : list 'erased ys#19 : list 'erased -> let match#31 : list 'erased = xs#18 in
+  case@List match#31 of
+    Nil -> let match#20 : list 'erased = ys#19 in
+    case@List match#20 of
+      Nil -> fromBool#2 true
+      Cons field#21 field#22 -> fromBool#2 false
+    Cons field#32 field#33 -> let x#23 : 'erased = field#32 in
+    let restX#24 : list 'erased = field#33 in
+    let match#28 : list 'erased = ys#19 in
+    case@List match#28 of
+      Nil -> fromBool#2 false
+      Cons field#29 field#30 -> let y#25 : 'erased = field#29 in
+      let restY#26 : list 'erased = field#30 in
+      case@Bool eq#27 x#23 y#25 of
+        True -> eq#14 restX#24 restY#26
+        False -> false
+in
 let same#5 : list 'erased -> list 'erased -> bool = \xs#12 : list 'erased ys#13 : list 'erased -> eq#14 xs#12 ys#13 in
 let fromInt#15 : int -> int = \value#34 : int -> value#34 in
 let small#6 : list int = mkCons (fromInt#15 1) (mkCons (fromInt#15 2) (con (list integer) [])) in
@@ -33,7 +35,7 @@ let main#1 : bool = case@Bool same#3 big#4 big#4 of
   True -> same#5 small#6 small#6
   False -> fromBool#2 false in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromBool_2
     [(lam eq_10
@@ -99,6 +101,74 @@ main#1
         (lam ys_17
           [[(builtin equalsData) [(builtin listData) xs_16]] [(builtin listData) ys_17]]))])
     (lam value_7 value_7)])
+--- optimized Core
+let fromInt#43 : int -> Int = iData in
+let anf#71 : Int = fromInt#43 1 in
+let anf#72 : Int = fromInt#43 2 in
+let anf#73 : list Int = mkCons anf#72 (con (list data) []) in
+let big#44 : list Int = mkCons anf#71 anf#73 in
+letrec
+  eq#46 : list 'erased -> list 'erased -> bool [static []] = \xs#47 : list 'erased ys#48 : list 'erased -> case@List xs#47 of
+    Nil -> case@List ys#48 of
+      Nil -> true
+      Cons field#51 field#52 -> false
+    Cons field#53 field#54 -> case@List ys#48 of
+      Nil -> false
+      Cons field#58 field#59 -> let anf#74 : bool = equalsInteger field#53 field#58 in
+      case@Bool anf#74 of
+        True -> eq#46 field#54 field#59
+        False -> false
+in
+let anf#77 : list int = mkCons 2 (con (list integer) []) in
+let small#67 : list int = mkCons 1 anf#77 in
+let anf#69 : List 'erased = listData big#44 in
+let anf#70 : List 'erased = listData big#44 in
+let anf#78 : bool = equalsData anf#69 anf#70 in
+case@Bool anf#78 of
+  True -> eq#46 small#67 small#67
+  False -> false
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_26
+    [(lam fromInt_4
+      [(lam anf_5
+        [(lam anf_6
+          [(lam anf_7
+            [(lam big_8
+              [(lam eq_20
+                [(lam anf_21
+                  [(lam small_22
+                    [(lam anf_23
+                      [(lam anf_24
+                        [(lam anf_25 (case anf_25 (con bool False) [[eq_20 small_22] small_22]))
+                          [[(builtin equalsData) anf_23] anf_24]])
+                        [(builtin listData) big_8]])
+                      [(builtin listData) big_8]])
+                    [[builtin_26 (con integer 1)] anf_21]])
+                  [[builtin_26 (con integer 2)] (con (list integer) [])]])
+                [(lam self_9 [self_9 self_9])
+                  (lam self_10
+                    (lam xs_11
+                      (lam ys_12
+                        (case
+                          xs_11
+                          (lam field_15
+                            (lam field_16
+                              (case
+                                ys_12
+                                (lam field_17
+                                  (lam field_18
+                                    [(lam anf_19
+                                      (case anf_19 (con bool False) [[[self_10 self_10] field_16] field_18]))
+                                      [[(builtin equalsInteger) field_15] field_17]]))
+                                (con bool False))))
+                          (case ys_12 (lam field_13 (lam field_14 (con bool False))) (con bool True))))))]])
+              [[builtin_26 anf_5] anf_7]])
+            [[builtin_26 anf_6] (con (list data) [])]])
+          [fromInt_4 (con integer 2)]])
+        [fromInt_4 (con integer 1)]])
+      (builtin iData)])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

@@ -1,13 +1,14 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 1223
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : int\nmain =\n    let\n        x = 1\n    in\n    (\\y -> Builtin.addInteger x y) 2\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#4 : int -> int = \value#5 : int -> value#5 in
 let x#3 : 'erased = fromInt#4 1 in
 let main#1 : int = (\y#2 : int -> addInteger x#3 y#2) (fromInt#4 2) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_4
     [(lam x_3
@@ -15,6 +16,10 @@ main#1
         [(lam y_2 [[(builtin addInteger) x_3] y_2]) [fromInt_4 (con integer 2)]]])
       [fromInt_4 (con integer 1)]])
     (lam value_5 value_5)])
+--- optimized Core
+addInteger 1 2
+--- optimized UPLC
+(program 1.1.0 [[(builtin addInteger) (con integer 1)] (con integer 2)])
 --- result
 (con integer 3)
 --- logs

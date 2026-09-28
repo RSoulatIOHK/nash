@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 1758
+assertion_line: 1720
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int, c : Int, d : Int }\nupdate : Record -> int\nupdate r =\n    let\n        first = { r | a = 10 }\n    in\n    let\n        second = { r | a = 10, b = 20 }\n    in\n    let\n        third = { r | a = 10, b = 20, c = 30 }\n    in\n    Builtin.addInteger (Builtin.unIData first.a)\n        (Builtin.addInteger (Builtin.unIData second.b) (Builtin.unIData third.c))\nmain = update { a = 1, b = 2, c = 3, d = 4 }\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#3 : int -> Int = iData in
 let update#2 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> int = \r#4 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } -> let base#18 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = r#4 in
 let evaluated#22 : Int = fromInt#3 10 in
@@ -34,7 +34,7 @@ case@List projection#21 of
               Cons head#14 tail#15 -> addInteger evaluated#37 (addInteger evaluated#36 (unIData head#14)) in
 let main#1 : int = update#2 (listData (mkCons (fromInt#3 1) (mkCons (fromInt#3 2) (mkCons (fromInt#3 3) (mkCons (fromInt#3 4) (con (list data) [])))))) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_3
     [(lam update_2
@@ -127,6 +127,158 @@ main#1
             [fromInt_3 (con integer 10)]])
           r_4])])
     (builtin iData)])
+--- optimized Core
+let fromInt#38 : int -> Int = iData in
+let anf#83 : Int = fromInt#38 1 in
+let anf#84 : Int = fromInt#38 2 in
+let anf#85 : Int = fromInt#38 3 in
+let anf#86 : Int = fromInt#38 4 in
+let anf#87 : list Data = mkCons anf#86 (con (list data) []) in
+let anf#88 : list Data = mkCons anf#85 anf#87 in
+let anf#89 : list Data = mkCons anf#84 anf#88 in
+let anf#90 : list Data = mkCons anf#83 anf#89 in
+let anf#91 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#90 in
+let evaluated#41 : Int = fromInt#38 10 in
+let projection#42 : list Data = unListData anf#91 in
+case@List projection#42 of
+  Cons head#43 tail#44 -> let anf#75 : list Data = mkCons evaluated#41 tail#44 in
+  let first#45 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#75 in
+  let evaluated#47 : Int = fromInt#38 10 in
+  let evaluated#48 : Int = fromInt#38 20 in
+  case@List tail#44 of
+    Cons head#49 tail#50 -> let anf#76 : list Data = mkCons evaluated#48 tail#50 in
+    let anf#77 : list Data = mkCons evaluated#47 anf#76 in
+    let second#51 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#77 in
+    let evaluated#53 : Int = fromInt#38 10 in
+    let evaluated#54 : Int = fromInt#38 20 in
+    let evaluated#55 : Int = fromInt#38 30 in
+    case@List tail#50 of
+      Cons head#56 tail#57 -> let anf#78 : list Data = mkCons evaluated#55 tail#57 in
+      let anf#79 : list Data = mkCons evaluated#54 anf#78 in
+      let anf#80 : list Data = mkCons evaluated#53 anf#79 in
+      let third#58 : { _0 : Int, _1 : Int, _2 : Int, _3 : Int } = listData anf#80 in
+      let projection#59 : list Data = unListData first#45 in
+      case@List projection#59 of
+        Cons head#60 tail#61 -> let evaluated#62 : int = unIData head#60 in
+        let projection#63 : list Data = unListData second#51 in
+        case@List projection#63 of
+          Cons head#64 tail#65 -> case@List tail#65 of
+            Cons head#66 tail#67 -> let evaluated#68 : int = unIData head#66 in
+            let projection#69 : list Data = unListData third#58 in
+            let projection#70 : list Data = dropList 2 projection#69 in
+            case@List projection#70 of
+              Cons head#71 tail#72 -> let anf#81 : int = unIData head#71 in
+              let anf#82 : int = addInteger evaluated#68 anf#81 in
+              addInteger evaluated#62 anf#82
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_97
+    [(lam builtin_98
+      [(lam fromInt_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam anf_6
+                  [(lam anf_7
+                    [(lam anf_8
+                      [(lam anf_9
+                        [(lam anf_10
+                          [(lam evaluated_11
+                            [(lam projection_12
+                              (case
+                                projection_12
+                                (lam head_13
+                                  (lam tail_14
+                                    [(lam anf_15
+                                      [(lam first_16
+                                        [(lam evaluated_17
+                                          [(lam evaluated_18
+                                            (case
+                                              tail_14
+                                              (lam head_19
+                                                (lam tail_20
+                                                  [(lam anf_21
+                                                    [(lam anf_22
+                                                      [(lam second_23
+                                                        [(lam evaluated_24
+                                                          [(lam evaluated_25
+                                                            [(lam evaluated_26
+                                                              (case
+                                                                tail_20
+                                                                (lam head_27
+                                                                  (lam tail_28
+                                                                    [(lam anf_29
+                                                                      [(lam anf_30
+                                                                        [(lam anf_31
+                                                                          [(lam third_32
+                                                                            [(lam projection_33
+                                                                              (case
+                                                                                projection_33
+                                                                                (lam head_34
+                                                                                  (lam tail_35
+                                                                                    [(lam evaluated_36
+                                                                                      [(lam projection_37
+                                                                                        (case
+                                                                                          projection_37
+                                                                                          (lam head_39
+                                                                                            (lam tail_40
+                                                                                              (case
+                                                                                                tail_40
+                                                                                                (lam head_46
+                                                                                                  (lam tail_52
+                                                                                                    [(lam evaluated_73
+                                                                                                      [(lam projection_74
+                                                                                                        [(lam projection_92
+                                                                                                          (case
+                                                                                                            projection_92
+                                                                                                            (lam head_93
+                                                                                                              (lam tail_94
+                                                                                                                [(lam anf_95
+                                                                                                                  [(lam anf_96 [[(builtin addInteger) evaluated_36] anf_96])
+                                                                                                                    [[(builtin addInteger) evaluated_73] anf_95]])
+                                                                                                                  [(builtin unIData) head_93]]))
+                                                                                                            (error)))
+                                                                                                          [[builtin_97 (con integer 2)] projection_74]])
+                                                                                                        [(builtin unListData) third_32]])
+                                                                                                      [(builtin unIData) head_46]]))
+                                                                                                (error))))
+                                                                                          (error)))
+                                                                                        [(builtin unListData) second_23]])
+                                                                                      [(builtin unIData) head_34]]))
+                                                                                (error)))
+                                                                              [(builtin unListData) first_16]])
+                                                                            [(builtin listData) anf_31]])
+                                                                          [[builtin_98 evaluated_24] anf_30]])
+                                                                        [[builtin_98 evaluated_25] anf_29]])
+                                                                      [[builtin_98 evaluated_26] tail_28]]))
+                                                                (error)))
+                                                              [fromInt_1 (con integer 30)]])
+                                                            [fromInt_1 (con integer 20)]])
+                                                          [fromInt_1 (con integer 10)]])
+                                                        [(builtin listData) anf_22]])
+                                                      [[builtin_98 evaluated_17] anf_21]])
+                                                    [[builtin_98 evaluated_18] tail_20]]))
+                                              (error)))
+                                            [fromInt_1 (con integer 20)]])
+                                          [fromInt_1 (con integer 10)]])
+                                        [(builtin listData) anf_15]])
+                                      [[builtin_98 evaluated_11] tail_14]]))
+                                (error)))
+                              [(builtin unListData) anf_10]])
+                            [fromInt_1 (con integer 10)]])
+                          [(builtin listData) anf_9]])
+                        [[builtin_98 anf_2] anf_8]])
+                      [[builtin_98 anf_3] anf_7]])
+                    [[builtin_98 anf_4] anf_6]])
+                  [[builtin_98 anf_5] (con (list data) [])]])
+                [fromInt_1 (con integer 4)]])
+              [fromInt_1 (con integer 3)]])
+            [fromInt_1 (con integer 2)]])
+          [fromInt_1 (con integer 1)]])
+        (builtin iData)])
+      (force (builtin mkCons))])
+    (force (builtin dropList))])
 --- result
 (con integer 60)
 --- logs

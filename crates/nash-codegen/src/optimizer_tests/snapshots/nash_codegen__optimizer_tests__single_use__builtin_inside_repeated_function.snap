@@ -1,14 +1,36 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/single_use.rs
-assertion_line: 43
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- baseline\\n{}\\n--- candidate\\n{}\",\npretty(before), pretty(after), output(&baseline), output(&candidate))"
+assertion_line: 40
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
---- core before
+--- unoptimized Core
 let tracer#1 : string -> int -> int = trace in
 let repeated#3 : int -> int = \x#2 : int -> tracer#1 "tick" x#2 in
 let unused#4 : int = repeated#3 1 in
 repeated#3 42
---- core after
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam tracer_1
+    [(lam repeated_3
+      [(lam unused_4 [repeated_3 (con integer 42)]) [repeated_3 (con integer 1)]])
+      (lam x_2 [[tracer_1 (con string "tick")] x_2])])
+    (force (builtin trace))])
+--- optimized Core
+let tracer#5 : string -> int -> int = trace in
+let repeated#7 : int -> int = \x#6 : int -> tracer#5 "tick" x#6 in
+let unused#8 : int = repeated#7 1 in
+repeated#7 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_5
+    [(lam tracer_1
+      [(lam repeated_3
+        [(lam unused_4 [repeated_3 (con integer 42)]) [repeated_3 (con integer 1)]])
+        (lam x_2 [[tracer_1 (con string "tick")] x_2])])
+      builtin_5])
+    (force (builtin trace))])
+--- isolated pass
+--- core before
 let tracer#1 : string -> int -> int = trace in
 let repeated#3 : int -> int = \x#2 : int -> tracer#1 "tick" x#2 in
 let unused#4 : int = repeated#3 1 in
@@ -25,6 +47,11 @@ repeated#3 42
 (con integer 42)
 --- logs
 ["tick", "tick"]
+--- core after
+let tracer#1 : string -> int -> int = trace in
+let repeated#3 : int -> int = \x#2 : int -> tracer#1 "tick" x#2 in
+let unused#4 : int = repeated#3 1 in
+repeated#3 42
 --- candidate
 --- uplc
 (program 1.1.0

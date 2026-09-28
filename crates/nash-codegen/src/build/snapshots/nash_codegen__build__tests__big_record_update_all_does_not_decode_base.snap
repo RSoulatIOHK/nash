@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
-assertion_line: 1660
+assertion_line: 1628
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin\ntype alias Record = { a : Int, b : Int }\nreplace : Record -> Record\nreplace r = { r | a = (trace \"first\" 10), b = (trace \"second\" 20) }\nmain = Builtin.unIData (replace (Primitive.coerce ())).b\n"
 ---
---- core
+--- unoptimized Core
 let message#17 : string = "first" in
 let message#18 : string = "second" in
 let fromInt#11 : int -> Int = iData in
@@ -17,7 +17,7 @@ case@List projection#16 of
   Cons head#5 tail#6 -> case@List tail#6 of
     Cons head#7 tail#8 -> let main#1 : int = unIData head#7 in
     main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam message_17
     [(lam message_18
@@ -56,6 +56,44 @@ case@List projection#16 of
         (builtin iData)])
       (con string "second")])
     (con string "first")])
+--- optimized Core
+let fromInt#21 : int -> Int = iData in
+let anf#38 : Int = trace "first" in fromInt#21 10 in
+let anf#40 : Int = trace "second" in fromInt#21 20 in
+let anf#41 : list Data = mkCons anf#40 (con (list data) []) in
+let anf#42 : list Data = mkCons anf#38 anf#41 in
+let evaluated#30 : { _0 : Int, _1 : Int } = listData anf#42 in
+let projection#31 : list Data = unListData evaluated#30 in
+case@List projection#31 of
+  Cons head#32 tail#33 -> case@List tail#33 of
+    Cons head#34 tail#35 -> unIData head#34
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_12
+    [(lam builtin_13
+      [(lam fromInt_1
+        [(lam anf_2
+          [(lam anf_3
+            [(lam anf_4
+              [(lam anf_5
+                [(lam evaluated_6
+                  [(lam projection_7
+                    (case
+                      projection_7
+                      (lam head_8
+                        (lam tail_9
+                          (case tail_9 (lam head_10 (lam tail_11 [(builtin unIData) head_10])) (error))))
+                      (error)))
+                    [(builtin unListData) evaluated_6]])
+                  [(builtin listData) anf_5]])
+                [[builtin_12 anf_2] anf_4]])
+              [[builtin_12 anf_3] (con (list data) [])]])
+            (force
+              [[builtin_13 (con string "second")] (delay [fromInt_1 (con integer 20)])])])
+          (force [[builtin_13 (con string "first")] (delay [fromInt_1 (con integer 10)])])])
+        (builtin iData)])
+      (force (builtin trace))])
+    (force (builtin mkCons))])
 --- result
 (con integer 20)
 --- logs

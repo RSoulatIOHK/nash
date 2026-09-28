@@ -1,15 +1,30 @@
 ---
 source: crates/nash-codegen/src/build/tests.rs
+assertion_line: 333
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\ntype option 'a = None | Some 'a\nplain : 'a -> unit\nplain x = plain (Some x)\nmain = plain ()\n"
 ---
---- core
+--- unoptimized Core
 letrec
   plain#2 : 'erased -> unit [static []] = \x#4 : 'erased -> plain#2 ((\field#5 : 'erased -> constr 1 field#5) x#4)
 in
 let fromUnit#3 : unit -> unit = \value#6 : unit -> value#6 in
 let main#1 : unit = plain#2 (fromUnit#3 ()) in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam i0 [(lam i1 [(lam i2 i2) [i0 [i1 (con unit ())]]]) (lam i1 i1)])
-    [(lam i0 [i0 i0]) (lam i0 (lam i1 [[i0 i0] [(lam i2 (constr 1 i2)) i1]]))]])
+  [(lam plain_2
+    [(lam fromUnit_3 [(lam main_1 main_1) [plain_2 [fromUnit_3 (con unit ())]]])
+      (lam value_6 value_6)])
+    [(lam self_7 [self_7 self_7])
+      (lam self_7 (lam x_4 [[self_7 self_7] [(lam field_5 (constr 1 field_5)) x_4]]))]])
+--- optimized Core
+letrec
+  plain#7 : 'erased -> unit [static []] = \x#8 : 'erased -> let anf#13 : Main.option 'erased = constr 1 x#8 in
+  plain#7 anf#13
+in
+plain#7 ()
+--- optimized UPLC
+(program 1.1.0
+  [(lam plain_9 [plain_9 (con unit ())])
+    [(lam self_3 [self_3 self_3])
+      (lam self_4 (lam x_5 [(lam anf_6 [[self_4 self_4] anf_6]) (constr 1 x_5)]))]])

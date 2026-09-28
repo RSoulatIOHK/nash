@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
+assertion_line: 167
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain =\n    let\n        a : list int\n        a = [1, 2, 3]\n    in\n    case a of\n        h :: _ -> equalsInteger h h\n        _ -> fail\n"
 ---
---- core
+--- unoptimized Core
 let fromInt#7 : int -> int = \value#8 : int -> value#8 in
 let a#2 : list int = mkCons (fromInt#7 1) (mkCons (fromInt#7 2) (mkCons (fromInt#7 3) (con (list integer) []))) in
 let match#4 : list int = a#2 in
@@ -11,7 +12,7 @@ let main#1 : bool = case@List match#4 of
   Cons field#5 field#6 -> let h#3 : int = field#5 in
   equalsInteger h#3 h#3 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam fromInt_7
     [(lam a_2
@@ -27,6 +28,27 @@ main#1
         [[(force (builtin mkCons)) [fromInt_7 (con integer 2)]]
           [[(force (builtin mkCons)) [fromInt_7 (con integer 3)]] (con (list integer) [])]]]])
     (lam value_8 value_8)])
+--- optimized Core
+let anf#20 : list int = mkCons 3 (con (list integer) []) in
+let anf#21 : list int = mkCons 2 anf#20 in
+let a#11 : list int = mkCons 1 anf#21 in
+case@List a#11 of
+  Nil -> error
+  Cons field#13 field#14 -> equalsInteger field#13 field#13
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_6
+    [(lam anf_1
+      [(lam anf_2
+        [(lam a_3
+          (case
+            a_3
+            (lam field_4 (lam field_5 [[(builtin equalsInteger) field_4] field_4]))
+            (error)))
+          [[builtin_6 (con integer 1)] anf_2]])
+        [[builtin_6 (con integer 2)] anf_1]])
+      [[builtin_6 (con integer 3)] (con (list integer) [])]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

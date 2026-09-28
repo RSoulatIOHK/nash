@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/builtins.rs
-assertion_line: 351
+assertion_line: 332
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Data exposing (toData, fromData)\ninput = Map [mkPairData (B #\"aa\") (List [I 42])]\ndecoded : Map Bytes (List Int)\ndecoded = fromData input\nmain = equalsData (toData decoded) input\n"
 ---
---- core
+--- unoptimized Core
 let toData#2 : 'erased -> Data = \coerce#5 : 'erased -> coerce#5 in
 let fromBytes#9 : bytes -> bytes = \value#14 : bytes -> value#14 in
 let fromInt#12 : int -> int = \value#15 : int -> value#15 in
@@ -12,7 +12,7 @@ let fromData#6 : Data -> 'erased = \coerce#13 : Data -> coerce#13 in
 let decoded#3 : Map Bytes (List Int) = fromData#6 input#4 in
 let main#1 : bool = equalsData (toData#2 decoded#3) input#4 in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam toData_2
     [(lam fromBytes_9
@@ -35,6 +35,33 @@ main#1
         (lam value_15 value_15)])
       (lam value_14 value_14)])
     (lam coerce_5 coerce_5)])
+--- optimized Core
+let anf#32 : Data = bData (con bytestring #aa) in
+let anf#34 : Data = iData 42 in
+let anf#35 : list Data = mkCons anf#34 (con (list data) []) in
+let anf#36 : Data = listData anf#35 in
+let anf#37 : pair Data Data = mkPairData anf#32 anf#36 in
+let anf#38 : list (pair Data Data) = mkCons anf#37 (con (list (pair data data)) []) in
+let input#26 : Data = mapData anf#38 in
+equalsData input#26 input#26
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_8
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_3
+          [(lam anf_4
+            [(lam anf_5
+              [(lam anf_6
+                [(lam input_7 [[(builtin equalsData) input_7] input_7])
+                  [(builtin mapData) anf_6]])
+                [[builtin_8 anf_5] (con (list (pair data data)) [])]])
+              [[(builtin mkPairData) anf_1] anf_4]])
+            [(builtin listData) anf_3]])
+          [[builtin_8 anf_2] (con (list data) [])]])
+        [(builtin iData) (con integer 42)]])
+      [(builtin bData) (con bytestring #aa)]])
+    (force (builtin mkCons))])
 --- result
 (con bool True)
 --- logs

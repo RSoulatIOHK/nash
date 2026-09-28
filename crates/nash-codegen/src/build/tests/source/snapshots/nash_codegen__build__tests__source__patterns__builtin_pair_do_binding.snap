@@ -1,9 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/source/patterns.rs
-assertion_line: 692
+assertion_line: 663
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Option exposing (type option(..))\nimport Monad exposing (Monad)\nresult =\n    do\n        pair(tag, _) <- Some (Builtin.unConstrData (Builtin.constrData 42 []))\n        Some tag\nmain : int\nmain =\n    case result of\n        Some tag -> tag\n        None -> fail\n"
 ---
---- core
+--- unoptimized Core
 let bind#6 : nash/base:Option.option 'erased -> ('erased -> nash/base:Option.option 'erased) -> nash/base:Option.option 'erased = \value#15 : nash/base:Option.option 'erased (f#16 : 'erased -> nash/base:Option.option 'erased) -> let match#18 : nash/base:Option.option 'erased = value#15 in
 case@Tag match#18 of
   0 field#19 -> let item#17 : 'erased = field#19 in
@@ -22,7 +22,7 @@ let main#1 : int = case@Tag match#4 of
   tag#3
   1 -> error in
 main#1
---- uplc
+--- unoptimized UPLC
 (program 1.1.0
   [(lam bind_6
     [(lam fromInt_8
@@ -53,6 +53,30 @@ main#1
             (lam field_19 [(lam item_17 [f_16 item_17]) field_19])
             (constr 1)))
           value_15]))])
+--- optimized Core
+let evaluated#31 : Data = constrData 42 (con (list data) []) in
+let projection#32 : pair int (list Data) = unConstrData evaluated#31 in
+let anf#46 : nash/base:Option.option (pair int (list Data)) = constr 0 projection#32 in
+let result#40 : nash/base:Option.option int = case@Tag anf#46 of
+  0 field#26 -> case@Pair field#26 of
+    Pair field#36 field#37 -> constr 0 field#36
+  1 -> constr 1 in
+case@Tag result#40 of
+  0 field#42 -> field#42
+  1 -> error
+--- optimized UPLC
+(program 1.1.0
+  [(lam evaluated_1
+    [(lam projection_2
+      [(lam anf_3
+        [(lam result_7 (case result_7 (lam field_8 field_8) (error)))
+          (case
+            anf_3
+            (lam field_4 (case field_4 (lam field_5 (lam field_6 (constr 0 field_5)))))
+            (constr 1))])
+        (constr 0 projection_2)])
+      [(builtin unConstrData) evaluated_1]])
+    [[(builtin constrData) (con integer 42)] (con (list data) [])]])
 --- result
 (con integer 42)
 --- logs

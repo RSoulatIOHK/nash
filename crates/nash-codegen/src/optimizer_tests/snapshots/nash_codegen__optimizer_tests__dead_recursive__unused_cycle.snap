@@ -1,14 +1,41 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/dead_recursive.rs
-expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+assertion_line: 68
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
 ---
---- core before
+--- unoptimized Core
 letrec
   f#1 : int -> int [static []] = \x#3 : int -> g#2 x#3
   g#2 : int -> int [static []] = \y#4 : int -> f#1 y#4
 in
 trace "continuation" in 42
---- core after
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam dispatch_5
+    [(lam f_1
+      [(lam g_2
+        (force
+          [[(force (builtin trace)) (con string "continuation")] (delay (con integer 42))]))
+        (lam y_13 [dispatch_5 (constr 1 dispatch_5 y_13)])])
+      (lam x_14 [dispatch_5 (constr 0 dispatch_5 x_14)])])
+    (lam request_6
+      (case
+        request_6
+        (lam self_7 (lam x_3 [self_7 (constr 1 self_7 x_3)]))
+        (lam self_10 (lam y_4 [self_10 (constr 0 self_10 y_4)]))))])
+--- optimized Core
+trace "continuation" in 42
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_1
+    (force [[builtin_1 (con string "continuation")] (delay (con integer 42))]))
+    (force (builtin trace))])
+--- isolated pass
+--- core before
+letrec
+  f#1 : int -> int [static []] = \x#3 : int -> g#2 x#3
+  g#2 : int -> int [static []] = \y#4 : int -> f#1 y#4
+in
 trace "continuation" in 42
 --- uplc before
 (program 1.1.0
@@ -24,6 +51,8 @@ trace "continuation" in 42
         request_8
         (lam self_9 (lam x_3 [self_9 (constr 1 self_9 x_3)]))
         (lam self_12 (lam y_4 [self_12 (constr 0 self_12 y_4)]))))])
+--- core after
+trace "continuation" in 42
 --- uplc after
 (program 1.1.0
   (force
