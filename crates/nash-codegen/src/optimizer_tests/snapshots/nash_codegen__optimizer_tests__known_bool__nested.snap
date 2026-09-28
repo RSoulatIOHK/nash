@@ -16,16 +16,9 @@ case@Bool (case@Bool true of
     (error)
     (con integer 42)))
 --- optimized Core
-let anf#1 : bool = case@Bool true of
-  True -> true
-  False -> false in
-case@Bool anf#1 of
-  True -> 42
-  False -> error
+42
 --- optimized UPLC
-(program 1.1.0
-  [(lam anf_2 (case anf_2 (error) (con integer 42)))
-    (case (con bool True) (con bool False) (con bool True))])
+(program 1.1.0 (con integer 42))
 --- isolated pass
 --- core before
 case@Bool (case@Bool true of

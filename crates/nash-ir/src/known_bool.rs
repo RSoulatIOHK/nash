@@ -1,4 +1,4 @@
-//! Trial: select branches only for literal Boolean subjects and valid Boolean tables.
+//! Select branches only for literal Boolean subjects and valid Boolean tables.
 use crate::{
     build::Builder,
     core::{CaseKind, Core, CoreKind, Test},

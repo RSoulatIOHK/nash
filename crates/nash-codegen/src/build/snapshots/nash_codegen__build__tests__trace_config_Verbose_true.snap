@@ -31,19 +31,13 @@ main#1
       (con string "assertion failed")])
     (con string "hello")])
 --- optimized Core
-trace "hello" in case@Bool false of
-  True -> ()
-  False -> trace "assertion failed" in error
+trace "hello" in trace "assertion failed" in error
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_1
     (force
       [[builtin_1 (con string "hello")]
-        (delay
-          (case
-            (con bool False)
-            (force [[builtin_1 (con string "assertion failed")] (delay (error))])
-            (con unit ())))]))
+        (delay (force [[builtin_1 (con string "assertion failed")] (delay (error))]))]))
     (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm

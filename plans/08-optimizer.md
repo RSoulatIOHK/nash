@@ -17,8 +17,8 @@ for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
 unused-binding removal, recursive-member reachability and pre-ANF nonrecursive
 unused-parameter removal are accepted. Direct force/delay cancellation in Chunk 8
 is also accepted. Recursive unused-parameter removal is approved Chunk 6 scope
-but remains unimplemented. The user explicitly directed proceeding with the
-Chunk 7 Boolean-case trial now; retain that outstanding work visibly. Continue
+but remains unimplemented. Known Boolean case folding in Chunk 7 was accepted on 28 September 2026.
+Other Chunk 7 case-folding work remains. Continue
 with the remaining Chunk 8 rules after Chunk 7, then proceed to
 Chunks 9, 10 and 11. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
@@ -27,6 +27,11 @@ Current assembly in
 rewrites recursion and lowers directly; normal assembly does not yet call the
 accepted `nash-ir` passes.
 Reuse its existing Core, Builder, traversal and free-variable facilities.
+
+Prior experiment executables were removed on 28 September 2026 at the user's
+request. The measurements below are historical records; accepted semantic
+snapshots and the explicit budget regression runner remain. Future trial sources
+are temporary and should be removed after recording their decision.
 
 Accepted decisions (26 September 2026):
 
@@ -277,7 +282,6 @@ retains `LetRec` workers for later optimization. An all-static worker is explici
 delayed and forced per call, without adding a dummy parameter or memoization.
 The original wrapper retains its arity and argument evaluation behavior.
 Genuine partial/escaping self uses and mutual groups retain the existing policy.
-
 
 Revised measurements used `/tmp/nash-static-lift-measure.rs`, outside Cargo test
 discovery, on candidate code revision `1a516a43fbef5d42dbffc9ce02f1843e7f0d82a9`.
@@ -583,11 +587,7 @@ binary were removed after recording the results; semantic tests and snapshots re
 
 The first of three concrete experiments is `\x -> x`. It is measured before
 choosing any size threshold; builtin wrappers and conditional helpers remain
-separate, pending experiments. The temporary explicit command is:
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial
-```
+separate experiments in this historical trial.
 
 The trial selects a fixture binding by unique ID, freshens its lambda at each
 fully applied direct call, and reuses the accepted rules 1–3 loop. It removes the
@@ -621,16 +621,12 @@ polymorphic-inlining claim is made by this first trial.
 
 The review has moved on to the builtin-wrapper experiment below. No general
 inlining rule or threshold is accepted yet.
-Delete the temporary example after recording the decision or replace it with
-appropriate semantic coverage when implementing a retained general rule.
+The temporary example was removed after recording the decision; accepted rules
+retain semantic snapshot coverage.
 
 ### Rule 4 trial 2 — multiple-use builtin wrapper
 
-The same temporary harness also measures `\x -> addInteger x 1`:
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- builtin-wrapper
-```
+The same temporary harness also measured `\x -> addInteger x 1`.
 
 It uses the same selected-binding rewrite, accepted baseline, semantic checks,
 measurement settings and six call patterns as trial 1. Only the helper body and
@@ -654,11 +650,7 @@ third (conditional-helper) experiment; no size threshold follows from this alone
 ### Rule 4 — applying the accepted identity case to source workloads
 
 The user kept all measured identity and builtin-wrapper cases, including the
-small size growth. The explicit experiment now also supports:
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- source-cases
-```
+small size growth. The experiment also measured source workloads.
 
 This compiles the existing `booleanHelpers` and `staticRecursion` workloads,
 selects each fixture's outer literal-conversion helper binding, and applies the
@@ -679,11 +671,7 @@ and decrement. The permanent baseline and production pipeline remain unchanged.
 ### Rule 4 trial 3 — smallest comparison-based conditional helper
 
 Measured `nonNegative x = if lessThanInteger x 0 then 0 else x` through the same
-explicit selected-helper experiment:
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- conditional
-```
+explicit selected-helper experiment.
 
 This is one comparison and one conditional, with only a literal and a variable
 in its branches. Body size is fixed. No constant evaluation or case folding is
@@ -731,10 +719,6 @@ At the user's request, the same conditional is inlined only at direct call sites
 inside `LetRec` function bodies. The `LetRec` continuation is not selected. This
 is a syntactic trial restriction, not a loop-frequency estimate or a production
 policy. Identity and builtin-wrapper acceptance is unchanged.
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example identity_trial -- conditional --recursive-matrix --recursive-only
-```
 
 The matrix uses 1/2/4/8/16 sites and 0/1/4/8 iterations, with two outside calls
 so the shared helper remains after normal rules 1–3 cleanup. It also covers
@@ -848,12 +832,6 @@ forces, lowering-generated Data/Trace builtins, unchanged zero-force builtins,
 trace/failure order, unselected branches, and discarded Bool/List/Data defaults.
 De Bruijn conversion checks closed scope; repeated lowering checks determinism.
 
-Explicit experiment:
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example builtin_sharing
-```
-
 CPU/memory/Flat-byte deltas versus identical lowering without sharing (positive
 means extra cost). Both programs include a validator argument and are applied:
 
@@ -915,11 +893,7 @@ arguments, noncommutative operations, unary saturation, selected/unselected
 failure, trace timing, delays, returned partials, polymorphic trace calls,
 validator/lambda scopes, ternary builtins and discarded defaults.
 
-Measure against Step 1, independently of the accepted baseline:
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example constant_sharing
-```
+Measured against Step 1, independently of the accepted baseline:
 
 52-case experiment, 27 September 2026: every result and trace matched. The six
 successful source workloads (list traversal, countdown, Data hit/miss, decoding,
@@ -968,7 +942,7 @@ remain deferred. Chunk 5's retained scope is complete.
 Integration: the candidate semantic harness and explicit performance runner now
 use both accepted sharing steps. The permanent baseline has 23 rows: all original
 20 rows are unchanged, plus two-use, cold and loop constant-prefix regressions.
-The isolated experiment now also runs those three sources (55 cases total).
+The completed experiment also ran those three sources (55 cases total).
 Their Step 2 deltas match the review: +16000 CPU/+100 memory for two uses,
 +80000/+500 for cold uses, and -432000/-2700 for the eight-iteration loop.
 The loop's combined optimized cost is still 144000 CPU/900 memory above O0;
@@ -977,7 +951,6 @@ remaining gap is retained in the baseline, not hidden by changing O0.
 Integration validation: 481 IR/codegen tests, all 23 explicit baselines, formatting,
 and strict workspace/performance-runner Clippy pass; the expanded 55-case
 experiment preserves results and traces. Existing semantic snapshots are unchanged.
-
 
 ## Chunk 6 — Dead bindings, functions and parameters
 
@@ -998,8 +971,6 @@ rules 1–4 until the cleanup loop reaches a fixed point, before recursion rewri
 Recursive-member removal is retained below; nonrecursive parameter removal has
 a separate trial below.
 
-Explicit experiment: `cargo run --locked --manifest-path
- tools/optimizer-perf/Cargo.toml --example dead_bindings` (one shell command).
 Across 15 cases, unused literal/closure/delay removal saves 48,000 CPU and 300
 memory; the partial-builtin example saves 80,000 CPU and 500 memory. Flat sizes
 fall by 2–5 bytes. Strict trace/saturated-call cases and all nine existing source
@@ -1034,8 +1005,6 @@ Semantic snapshots cover unreachable self/mutual cycles,
 transitive reachability and retention order, live mutual recursion, failures,
 partial/returned/suspended uses, nested groups, cold references, delayed workers,
 and mutual-to-singleton capture/static-metadata preservation.
-
-Explicit experiment: `cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_recursive`.
 
 Measured 30 cases: 21 direct Core scenarios and nine source workloads. No CPU,
 memory or Flat-size regressions occurred. Representative savings:
@@ -1075,8 +1044,8 @@ the definition becomes a delay and each original full call becomes a force.
 That preserves cold bodies and repeated trace/failure behavior without introducing
 empty lambdas or zero-argument applications.
 
-The trial is separate from the accepted pipeline. The explicit experiment is
-`cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example unused_params`.
+This historical trial was separate from the accepted pipeline. Its experiment
+executable was removed after review.
 It compares 24 direct Core cases, nine existing source workloads and four targeted
 source fixtures. Ordinary source literal conversions can make ANF stage a full
 call into partial applications that cleanup does not rejoin. This trial deliberately
@@ -1117,7 +1086,7 @@ retain each argument's type view. Empty-parameter lambdas are computations and
 must still execute when passed as discarded arguments. The pass makes one traversal;
 it is not a general fixed-point removal of newly exposed signatures.
 
-The explicit `unused_params_pre_anf` example compares accepted cleanup, late
+The completed `unused_params_pre_anf` experiment compared accepted cleanup, late
 removal, and early removal across 39 cases, checking results and trace logs.
 Unlike the earlier direct-Core experiment, every comparison includes accepted
 cleanup. Savings against accepted cleanup for newly handled source calls:
@@ -1193,14 +1162,13 @@ benefit; refresh recursion metadata before rewriting.
 
 Optimization semantic tests are grouped in
 `crates/nash-codegen/src/optimizer_tests/`, with colocated snapshots.
-Source-to-optimized snapshots live in `crates/nash-codegen/src/build/tests/optimizer.rs`
-and reuse the existing Base fixture compiler. They record source Core, accepted
-Core, trial-optimized Core, paired UPLC, results and traces; budgets remain in
-the explicit-only performance workspace. The test-layout cleanup moved 13 modules
-and 176 snapshots without changing snapshot bodies, and added source snapshots
-for the Boolean helper, a cold trace and a retained strict trace.
+All executable codegen snapshots show original Core and O0 UPLC followed by
+accepted optimized Core and UPLC through the shared test-only pipeline.
+Pass fixtures retain isolated transformation evidence after that comparison.
+Source fixtures reuse the Base compiler, including Boolean helpers, a cold trace
+and a retained strict trace. Budgets remain in the explicit performance workspace.
 
-**First trial (27 September 2026), pending review: known Boolean subjects.**
+**Known Boolean subjects: trial 27 September 2026, accepted 28 September 2026.**
 `known_bool::reduce` selects the actual True/False branch or default only for a
 literal Boolean subject. It validates the local Boolean table before folding:
 no field binders, no non-Boolean tests and no duplicate alternatives. Missing
@@ -1209,10 +1177,12 @@ It retains the case result type view and neither evaluates nor moves the subject
 Earlier strict lets remain in place. Bottom-up traversal can expose another
 literal Boolean case; accepted cleanup can expose further matches, so the
 experiment also compares a cleanup/folding fixed point without another ANF pass.
-The trial remains outside the accepted pipeline.
+The keep decision adds folding to the accepted cleanup fixed point after
+force/delay cancellation and before beta cleanup. Source snapshots now use the
+shared accepted pipeline directly; no extra Boolean-only loop is needed.
 
-The explicit `known_bool` experiment compares accepted cleanup, one folding pass,
-and repeated folding with cleanup across 40 cases. Fourteen improve and 26 stay
+The completed `known_bool` experiment compared frozen pre-adoption cleanup, one
+folding pass, and accepted cleanup with Boolean folding across 40 cases. Fourteen improve and 26 stay
 unchanged, with no measured CPU, memory or Flat-size regressions. The actual base
 `booleanHelpers` fixture changes from 160,100 CPU / 1,100 memory / 18 bytes to
 16,100 / 200 / 5 with repeated cleanup (one folding pass alone: 96,100 / 700 / 11).
@@ -1221,10 +1191,22 @@ helper bindings as well as the case. `constantPrefixCold` changes from
 128,100 / 900 / 30 to 16,100 / 200 / 6. Other existing source workloads are unchanged.
 These are fixture results, not claims about a real-validator distribution.
 
-Validation: 524 IR/codegen nextest tests passed, including 15 reviewed new
+Trial validation: 524 IR/codegen nextest tests passed, including 15 reviewed new
 Core/UPLC and malformed-table snapshots. Root and isolated strict Clippy and
-formatting passed; all 23 accepted baseline cases still match. No production
-pipeline or permanent baseline changes are included in this trial.
+formatting passed; all 23 accepted baseline cases still matched. The original
+trial changed neither production assembly nor the permanent baseline.
+
+Adoption measurements reproduce 14 improvements and 26 unchanged cases, with
+no CPU, memory or Flat-size regressions. The frozen control and accepted cleanup
+start from the same normalized Core. The permanent 23-row baseline now records
+the Boolean-helper and cold constant-prefix improvements above; other rows,
+O0 programs, results and logs remain unchanged. The explicit baseline check passes.
+
+Adoption validation: 528 focused IR/codegen tests and all 3,746 workspace tests
+passed. Reviewed 58 updated snapshots and one new runtime-conditional snapshot;
+the original O0 sections and recorded outcomes are unchanged. Root and isolated
+strict Clippy and formatting pass. Prior experiment executables were removed
+after recording these results; semantic snapshots and budget regression checks remain.
 
 Fold cases on known native constructors, booleans, integers, bytes, lists and Data
 shapes using their actual branch tests, binders and defaults. Keep strict subject
@@ -1253,7 +1235,7 @@ or hoisting. The inverse `Delay(Force(x))` is not included. Invalid standalone
 forces are untouched. This standalone trial runs after accepted Core cleanup;
 existing cleanup can flatten newly exposed nested lets without another ANF pass.
 
-The explicit `force_delay` performance example compares accepted pre-ANF
+The completed `force_delay` performance experiment compared accepted pre-ANF
 parameter removal against cancellation alone and cancellation followed by cleanup.
 Across 39 cases, the single-call all-unused hot helper saves 32,000 CPU, 200 memory
 and one Flat byte, exactly removing the regression from early parameter removal.

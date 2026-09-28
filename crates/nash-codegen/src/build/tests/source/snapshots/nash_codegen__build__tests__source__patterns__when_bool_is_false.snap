@@ -18,11 +18,9 @@ main#1
       [fromBool_2 (con bool False)]])
     (lam value_4 value_4)])
 --- optimized Core
-case@Bool false of
-  False -> error
-  True -> true
+error
 --- optimized UPLC
-(program 1.1.0 (case (con bool False) (error) (con bool True)))
+(program 1.1.0 (error))
 --- result
 error: ExplicitErrorTerm
 --- logs

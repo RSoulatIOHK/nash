@@ -13,12 +13,9 @@ case@Bool true of
   [(lam ignored_1 (case (con bool True) (error) (con integer 42))) (error)])
 --- optimized Core
 let ignored#2 : int = error in
-case@Bool true of
-  True -> 42
-  False -> error
+42
 --- optimized UPLC
-(program 1.1.0
-  [(lam ignored_1 (case (con bool True) (error) (con integer 42))) (error)])
+(program 1.1.0 [(lam ignored_1 (con integer 42)) (error)])
 --- isolated pass
 --- core before
 let ignored#1 : int = error in

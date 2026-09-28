@@ -15,18 +15,11 @@ expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core 
     (lam p_1 (force [[(force (builtin trace)) (con string "called")] (delay p_1)])))
     (con integer 42)])
 --- optimized Core
-let anf#3 : int -> int = case@Bool true of
-  True -> \p#2 : int -> trace "called" in p#2
-  False -> error in
-anf#3 42
+trace "called" in 42
 --- optimized UPLC
 (program 1.1.0
-  [(lam builtin_5
-    [(lam anf_4 [anf_4 (con integer 42)])
-      (case
-        (con bool True)
-        (error)
-        (lam p_1 (force [[builtin_5 (con string "called")] (delay p_1)])))])
+  [(lam builtin_1
+    (force [[builtin_1 (con string "called")] (delay (con integer 42))]))
     (force (builtin trace))])
 --- isolated pass
 --- core before

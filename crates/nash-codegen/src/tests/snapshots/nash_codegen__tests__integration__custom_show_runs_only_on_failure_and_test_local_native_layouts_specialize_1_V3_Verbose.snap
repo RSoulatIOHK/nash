@@ -1075,16 +1075,11 @@ ordinary#1
       (lam value_3 value_3)])
     (con string "assertion failed")])
 --- optimized Core
-case@Bool false of
-  True -> ()
-  False -> trace "assertion failed" in error
+trace "assertion failed" in error
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_1
-    (case
-      (con bool False)
-      (force [[builtin_1 (con string "assertion failed")] (delay (error))])
-      (con unit ())))
+    (force [[builtin_1 (con string "assertion failed")] (delay (error))]))
     (force (builtin trace))])
 --- encoded target UPLC
 (program 1.1.0

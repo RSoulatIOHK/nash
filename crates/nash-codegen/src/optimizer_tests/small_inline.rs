@@ -174,7 +174,7 @@ fn unselected_call_stays_unselected() {
     );
 }
 #[test]
-fn conditional_body_is_excluded() {
+fn known_conditional_becomes_identity() {
     let a = Arena::new();
     let b = Builder::new(&a);
     let x = bind(&b, "x", INT);
@@ -188,7 +188,7 @@ fn conditional_body_is_excluded() {
     );
     let f = bind(&b, "conditional", value.ty);
     check(
-        "conditional_excluded",
+        "known_conditional_becomes_identity",
         &b,
         b.let_(
             f,
@@ -196,6 +196,39 @@ fn conditional_body_is_excluded() {
             b.builtin(
                 F::AddInteger,
                 &[call(&b, f, &[b.int(20)]), call(&b, f, &[b.int(22)])],
+                INT,
+            ),
+        ),
+        false,
+    );
+}
+#[test]
+fn runtime_conditional_body_is_excluded() {
+    let a = Arena::new();
+    let b = Builder::new(&a);
+    let x = bind(&b, "x", INT);
+    let value = b.lam(
+        &[x],
+        b.if_(
+            b.builtin(
+                F::LessThanInteger,
+                &[b.int(0), b.var(x.name, INT)],
+                Ty::Const(&ConstTy::Bool),
+            ),
+            b.var(x.name, INT),
+            b.int(0),
+        ),
+    );
+    let f = bind(&b, "conditional", value.ty);
+    check(
+        "runtime_conditional_excluded",
+        &b,
+        b.let_(
+            f,
+            value,
+            b.builtin(
+                F::AddInteger,
+                &[call(&b, f, &[b.int(20)]), call(&b, f, &[b.int(-22)])],
                 INT,
             ),
         ),

@@ -20,20 +20,13 @@ case@Bool true of
           [[(force (builtin trace)) (con string "chosen")] (delay (con integer 41))])]))
     (lam x_1 [[(builtin addInteger) x_1] (con integer 1)])])
 --- optimized Core
-case@Bool true of
-  True -> let anf#5 : int = trace "chosen" in 41 in
-  addInteger anf#5 1
-  False -> let anf#6 : int = trace "cold" in error in
-  addInteger anf#6 1
+let anf#5 : int = trace "chosen" in 41 in
+addInteger anf#5 1
 --- optimized UPLC
 (program 1.1.0
-  [(lam builtin_3
-    (case
-      (con bool True)
-      [(lam anf_2 [[(builtin addInteger) anf_2] (con integer 1)])
-        (force [[builtin_3 (con string "cold")] (delay (error))])]
-      [(lam anf_1 [[(builtin addInteger) anf_1] (con integer 1)])
-        (force [[builtin_3 (con string "chosen")] (delay (con integer 41))])]))
+  [(lam builtin_2
+    [(lam anf_1 [[(builtin addInteger) anf_1] (con integer 1)])
+      (force [[builtin_2 (con string "chosen")] (delay (con integer 41))])])
     (force (builtin trace))])
 --- isolated pass
 --- core before
@@ -55,20 +48,13 @@ case@Bool true of
           [[(force (builtin trace)) (con string "chosen")] (delay (con integer 41))])]))
     (lam x_1 [[(builtin addInteger) x_1] (con integer 1)])])
 --- core after
-case@Bool true of
-  True -> let anf#3 : int = trace "chosen" in 41 in
-  addInteger anf#3 1
-  False -> let anf#4 : int = trace "cold" in error in
-  addInteger anf#4 1
+let anf#3 : int = trace "chosen" in 41 in
+addInteger anf#3 1
 --- optimized uplc
 (program 1.1.0
-  (case
-    (con bool True)
-    [(lam anf_4 [[(builtin addInteger) anf_4] (con integer 1)])
-      (force [[(force (builtin trace)) (con string "cold")] (delay (error))])]
-    [(lam anf_3 [[(builtin addInteger) anf_3] (con integer 1)])
-      (force
-        [[(force (builtin trace)) (con string "chosen")] (delay (con integer 41))])]))
+  [(lam anf_3 [[(builtin addInteger) anf_3] (con integer 1)])
+    (force
+      [[(force (builtin trace)) (con string "chosen")] (delay (con integer 41))])])
 --- result
 (con integer 42)
 --- logs

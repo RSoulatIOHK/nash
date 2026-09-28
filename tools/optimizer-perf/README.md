@@ -27,7 +27,7 @@ validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
 The `before` pipeline is O0 (recursion rewrite and lowering). The `after` pipeline
-is the accepted static lifting, pre-ANF unused-parameter removal, one ANF normalization and rules 1+2+3+4 plus safe dead-binding, recursive-reachability and force/delay cleanup,
+is the accepted static lifting, pre-ANF unused-parameter removal, one ANF normalization and rules 1+2+3+4 plus safe dead-binding, recursive-reachability, force/delay and known-Boolean cleanup,
 then recursion rewrite, binder freshening and lowering with both Chunk 5 sharing steps. No second normalization
 or ANF-dependent cleanup runs after recursion rewriting. Rule 3 was accepted on 27 September 2026. These figures record current behavior, including overhead
 from ANF; they are not a claim that the incomplete optimizer beats O0 everywhere.
@@ -91,118 +91,10 @@ Verify isolation after changing workspace manifests using root `cargo metadata
 `cargo nextest list --workspace --all-features --message-format json`. None may
 include the `nash-optimizer-perf` package/binary. Run root tests normally as well.
 
-Chunk 5 force-sharing measurements (isolated from Core optimizations):
+## Completed experiments
 
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example builtin_sharing
-```
-
-This compares one-force and two-force builtin references across single/repeated
-sites, loops with 0/1/8/64 calls, and an unselected branch. It checks results and
-traces, and reports CPU, memory and raw Flat bytes. It is an explicit experiment,
-not a root Cargo test. The permanent baseline also includes forced-builtin sharing
-in optimized lowering; O0 still uses structural lowering without sharing.
-
-Chunk 5 constant-prefix sharing (accepted at two or more occurrences):
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example constant_sharing
-```
-
-This compares force sharing alone with additional sharing of one repeated leading
-literal argument. It covers 1/2/3/8 call sites, cold and exclusive branches,
-recursive calls, an unused lambda, small/large byte strings, and nine successful
-source workloads after the accepted Core passes. Synthetic cases isolate lowering;
-they do not run the Core optimizer. Size is Flat bytes of the supplied root,
-including explicit applications where present. Failed outcomes have semantic
-snapshot coverage separately. This is an explicit-only experiment, not a root test.
-
-The permanent optimized baseline includes both Chunk 5 steps. The example keeps
-Step 1 as its comparison so Step 2's individual costs remain visible.
-
-## Chunk 6 unused-binding trial
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_bindings
-```
-
-Compares accepted lowering with/without conservative unused-let elimination
-before recursion rewriting: six direct Core cases and nine source workloads.
-The source workloads run accepted Core cleanup first. Results and traces must
-match; CPU, memory and Flat bytes are printed separately. Dead-binding removal is now accepted in the Core cleanup loop; source workloads
-already include it, while the direct Core cases isolate its effect. This experiment
-does not update the permanent baseline. It is outside root test
-discovery, like the other explicit experiments.
-
-## Chunk 6 recursive reachability experiment
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example dead_recursive
-```
-
-Compares accepted lowering with/without recursive-member pruning before recursion
-rewriting. Includes groups of 1/2/4/8 members with none, one or all reachable;
-countdown loops in groups of 2/8 with 0/1/8/64 recursive calls; live/dead delayed
-workers; and nine source workloads after accepted Core cleanup. Results and
-trace logs must match. CPU, memory and Flat bytes are printed separately. This
-experiment is outside root test discovery. Recursive reachability is accepted
-in the cleanup loop, so source cases already include it; direct Core cases isolate
-its effects. The experiment does not update the permanent baseline.
-
-## Chunk 6 nonrecursive unused-parameter trial
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example unused_params
-```
-
-Compares a standalone exact-call-only pass after ANF. Direct Core fixtures vary
-first/middle/last/all unused parameters, 1/2/8 call sites and selected/cold paths.
-Nine existing source workloads and four targeted source fixtures run accepted
-cleanup first. The pass leaves partial, escaping, staged and oversaturated uses
-unchanged. All-unused helpers become delays forced at each call. The explicit
-runner verifies results/logs and prints CPU, memory and Flat sizes; it changes
-neither the accepted pipeline nor the baseline and stays outside root tests.
-
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example unused_params_pre_anf
-```
-
-Compares three full pipelines: accepted cleanup, removal after cleanup, and
-removal after static lifting but before ANF and cleanup. Each normalizes once.
-Runs 24 synthetic cases, nine existing source workloads and six targeted source
-fixtures, including ordinary literals and effectful retained/discarded arguments.
-Results/logs must match; CPU, memory and Flat size are reported for all three.
-This 39-case trial is explicit-only and does not change the accepted baseline.
-The single-call all-unused case exposes missing force/delay cancellation; keep
-that regression visible while evaluating placement.
-
-Pre-ANF removal was accepted on 27 September 2026 and is now included in the
-main measured pipeline. The two placement examples retain their original
-comparison pipelines so their experiments remain reproducible.
-
-## Chunk 8 direct force/delay trial
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example force_delay
-```
-
-Runs the same 39 placement fixtures with accepted pre-ANF parameter removal,
-then compares direct cancellation alone and cancellation plus existing cleanup.
-Each pipeline normalizes once. Results and logs must agree. The experiment
-reports CPU, memory and Flat size, stays outside root tests, and never updates
-the accepted baseline.
-
-Direct force/delay cancellation is accepted in the cleanup loop. Its standalone
-experiment keeps a frozen pre-cancellation control for comparison.
-
-## Chunk 7 known Boolean case trial
-
-```sh
-cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example known_bool
-```
-
-Compares accepted cleanup, direct Boolean folding, and repeated folding with
-accepted cleanup across 40 cases, including the base-library Boolean helper
-fixture. Each pipeline normalizes once. Results/logs must agree; CPU, memory
-and Flat size are reported separately. Root tests do not discover this runner.
+Prior per-optimization experiment executables were removed on 28 September 2026.
+Their measured findings and keep/defer decisions remain in `plans/08-optimizer.md`;
+accepted behavior retains semantic snapshots and the explicit budget baseline.
+Use the temporary experiment runner above for future trials, then remove trial
+source once its decision is recorded.

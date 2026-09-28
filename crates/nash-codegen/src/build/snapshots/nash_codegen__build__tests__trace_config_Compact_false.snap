@@ -28,19 +28,13 @@ main#1
       (con string "Main:5:23")])
     (con string "Main:5:8")])
 --- optimized Core
-trace "Main:5:8" in case@Bool false of
-  True -> ()
-  False -> trace "Main:5:23" in error
+trace "Main:5:8" in trace "Main:5:23" in error
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_1
     (force
       [[builtin_1 (con string "Main:5:8")]
-        (delay
-          (case
-            (con bool False)
-            (force [[builtin_1 (con string "Main:5:23")] (delay (error))])
-            (con unit ())))]))
+        (delay (force [[builtin_1 (con string "Main:5:23")] (delay (error))]))]))
     (force (builtin trace))])
 --- result
 error: ExplicitErrorTerm

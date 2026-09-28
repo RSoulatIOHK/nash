@@ -25,17 +25,7 @@ main#1
       (lam value_6 value_6)])
     (con string "assertion failed")])
 --- optimized Core
-\redeemer#11 : Data policyId#12 : Bytes transaction#13 : Data -> case@Bool true of
-  True -> ()
-  False -> trace "assertion failed" in error
+\redeemer#11 : Data policyId#12 : Bytes transaction#13 : Data -> ()
 --- optimized UPLC
 (program 1.1.0
-  [(lam builtin_4
-    (lam redeemer_1
-      (lam policyId_2
-        (lam transaction_3
-          (case
-            (con bool True)
-            (force [[builtin_4 (con string "assertion failed")] (delay (error))])
-            (con unit ()))))))
-    (force (builtin trace))])
+  (lam redeemer_1 (lam policyId_2 (lam transaction_3 (con unit ())))))

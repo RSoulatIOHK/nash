@@ -3,19 +3,19 @@ use crate::{
     analysis,
     build::Builder,
     core::{Binder, Core, CoreKind},
-    dead_bindings, dead_recursive, force_delay, propagate, single_use,
+    dead_bindings, dead_recursive, force_delay, known_bool, propagate, single_use,
 };
 use std::{collections::HashSet, ptr};
 
-/// Compose rules 1–4, dead-code cleanup and force/delay cancellation to a fixed point.
+/// Compose rules 1–4, dead-code cleanup, force/delay cancellation and known Boolean folding.
 /// Input is typed ANF with globally unique binders.
 /// Conditional bodies, partial calls and indirect calls are not selected by rule 4.
 pub fn simplify<'a>(b: &Builder<'a>, mut core: &'a Core<'a>) -> &'a Core<'a> {
     loop {
         // Beta cleanup flattens lets exposed by cancellation before other ANF rules.
         let core_without_delays = force_delay::reduce(b, core);
-        let next =
-            dead_bindings::simplify(b, inline(b, single_use::simplify(b, core_without_delays)));
+        let selected = known_bool::reduce(b, core_without_delays);
+        let next = dead_bindings::simplify(b, inline(b, single_use::simplify(b, selected)));
         let next = dead_recursive::prune(b, next);
         if ptr::eq(core, next) {
             return next;

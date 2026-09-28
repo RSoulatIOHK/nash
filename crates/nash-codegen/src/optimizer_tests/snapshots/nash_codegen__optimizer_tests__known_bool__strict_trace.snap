@@ -15,13 +15,11 @@ case@Bool true of
       [[(force (builtin trace)) (con string "before")] (delay (con integer 0))])])
 --- optimized Core
 let ignored#2 : int = trace "before" in 0 in
-case@Bool true of
-  True -> 42
-  False -> error
+42
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_2
-    [(lam ignored_1 (case (con bool True) (error) (con integer 42)))
+    [(lam ignored_1 (con integer 42))
       (force [[builtin_2 (con string "before")] (delay (con integer 0))])])
     (force (builtin trace))])
 --- isolated pass

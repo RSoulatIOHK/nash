@@ -1,6 +1,6 @@
 //! Source-to-optimized snapshots reuse the normal Base fixture compiler.
 use super::*;
-use nash_ir::{anf, build::Builder, hygiene, known_bool, pretty::pretty, small_inline};
+use nash_ir::{anf, build::Builder, hygiene, pretty::pretty};
 
 macro_rules! boolean_case_snapshot {
     ($name:ident, $source:literal) => {
@@ -10,13 +10,7 @@ macro_rules! boolean_case_snapshot {
             with_base(source, |arena, build, root| {
                 let compiled = build.compile(arena, root, None, TraceConfig::default()).expect("source compiles to Core");
                 let b = Builder::new(arena);
-                let accepted = crate::snapshot_optimizer::optimize(arena, compiled.core);
-                let mut after = accepted;
-                loop {
-                    let next = small_inline::simplify(&b, known_bool::reduce(&b, after));
-                    if std::ptr::eq(after, next) { break; }
-                    after = next;
-                }
+                let after = crate::snapshot_optimizer::optimize(arena, compiled.core);
                 // O0 includes only the recursion encoding required by lowering.
                 let baseline_core = crate::recursion::rewrite(&b, compiled.core).unwrap();
                 let baseline = crate::harness::eval_core_raw(arena, baseline_core);

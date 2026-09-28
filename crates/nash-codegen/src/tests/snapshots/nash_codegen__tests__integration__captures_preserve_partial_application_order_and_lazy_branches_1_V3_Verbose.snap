@@ -382,27 +382,9 @@ case@Bool (case@Bool assert_value#2 of
       (con string "\0assert\0\48")])
     (con string "unselected")])
 --- optimized Core
-let anf#30 : bool = case@Bool false of
-  True -> trace "unselected" in error
-  False -> true in
-case@Bool anf#30 of
-  True -> ()
-  False -> let anf#27 : unit -> unit = trace "\0assert\00" (\unit#26 : unit -> error) in
-  anf#27 ()
+()
 --- optimized UPLC
-(program 1.1.0
-  [(lam builtin_4
-    [(lam anf_1
-      (case
-        anf_1
-        [(lam anf_3 [anf_3 (con unit ())])
-          [[builtin_4 (con string "\0assert\0\48")] (lam unit_2 (error))]]
-        (con unit ())))
-      (case
-        (con bool False)
-        (con bool True)
-        (force [[builtin_4 (con string "unselected")] (delay (error))]))])
-    (force (builtin trace))])
+(program 1.1.0 (con unit ()))
 --- encoded target UPLC
 (program 1.1.0
   [(lam i0
@@ -470,27 +452,9 @@ case@Bool (case@Bool assert_value#2 of
       (con string "\0assert\0\48")])
     (con string "unselected")])
 --- optimized Core
-let anf#37 : bool = case@Bool true of
-  True -> true
-  False -> trace "unselected" in error in
-case@Bool anf#37 of
-  True -> ()
-  False -> let anf#34 : unit -> unit = trace "\0assert\00" (\unit#32 : unit -> error) in
-  anf#34 ()
+()
 --- optimized UPLC
-(program 1.1.0
-  [(lam builtin_4
-    [(lam anf_1
-      (case
-        anf_1
-        [(lam anf_3 [anf_3 (con unit ())])
-          [[builtin_4 (con string "\0assert\0\48")] (lam unit_2 (error))]]
-        (con unit ())))
-      (case
-        (con bool True)
-        (force [[builtin_4 (con string "unselected")] (delay (error))])
-        (con bool True))])
-    (force (builtin trace))])
+(program 1.1.0 (con unit ()))
 --- encoded target UPLC
 (program 1.1.0
   [(lam i0
@@ -595,9 +559,7 @@ case@Bool (case@Bool assert_value#5 of
 --- optimized Core
 let assertAt#48 : string -> (unit -> unit) -> unit = \marker#46 : string (rest#47 : unit -> unit) -> let anf#64 : unit -> unit = trace marker#46 rest#47 in
 anf#64 () in
-let assert_value#54 : bool = case@Bool false of
-  True -> trace "unselected" in error
-  False -> false in
+let assert_value#54 : bool = false in
 let anf#68 : bool = case@Bool assert_value#54 of
   True -> false
   False -> true in
@@ -624,10 +586,7 @@ case@Bool anf#68 of
                   (case assert_value_5 (con string "False") (con string "True"))])]
             (con unit ())))
           (case assert_value_5 (con bool True) (con bool False))])
-        (case
-          (con bool False)
-          (con bool False)
-          (force [[builtin_11 (con string "unselected")] (delay (error))]))])
+        (con bool False)])
       (lam marker_1
         (lam rest_2 [(lam anf_3 [anf_3 (con unit ())]) [[builtin_11 marker_1] rest_2]]))])
     (force (builtin trace))])
@@ -713,25 +672,9 @@ ordinary#1
       (con string "wrong")])
     (con string "unselected")])
 --- optimized Core
-let anf#28 : bool = case@Bool true of
-  True -> true
-  False -> trace "unselected" in error in
-case@Bool anf#28 of
-  True -> ()
-  False -> trace "wrong" in error
+()
 --- optimized UPLC
-(program 1.1.0
-  [(lam builtin_2
-    [(lam anf_1
-      (case
-        anf_1
-        (force [[builtin_2 (con string "wrong")] (delay (error))])
-        (con unit ())))
-      (case
-        (con bool True)
-        (force [[builtin_2 (con string "unselected")] (delay (error))])
-        (con bool True))])
-    (force (builtin trace))])
+(program 1.1.0 (con unit ()))
 --- encoded target UPLC
 (program 1.1.0
   [(lam i0

@@ -450,9 +450,10 @@ operands or literals already approved for duplication by rule 1. Only fully
 applied direct calls are copied; each copy gets fresh parameters and existing
 beta reduction preserves strict argument evaluation. Partial and escaping uses
 remain shared. Conditional bodies and broader size heuristics are deferred.
-`small_inline::simplify` composes rules 1–4 and safe dead-binding removal to a
-fixed point in the candidate and
-explicit performance pipelines. This does not change the normal build default.
+`small_inline::simplify` composes rules 1–4, safe dead-binding removal, recursive
+reachability, force/delay cancellation and known Boolean folding to a fixed point
+in the accepted candidate and explicit performance pipelines. This does not
+change the normal build default.
 
 Chunk 5 force sharing is implemented in `lower::lower_with_builtin_sharing`.
 During lowering, references to each builtin requiring forces share one fresh
@@ -920,7 +921,10 @@ argument evaluation and consistent worker/static-parameter metadata. The current
 accepted nonrecursive pass does not implement that scope.
 
 
-Chunk 7 has a standalone `known_bool::reduce` trial. A literal Boolean subject
+Chunk 7 includes accepted `known_bool::reduce` cleanup. A literal Boolean subject
 selects its matching branch or default while retaining the case result type.
 Malformed Boolean tables, unmatched cases without defaults and nonliteral
-subjects stay unchanged. This pass is not yet in the accepted pipeline.
+subjects stay unchanged. It runs inside the accepted fixed-point loop after
+force/delay cancellation and before beta cleanup. This lets cleanup expose new
+literal subjects and remove dead branch helpers, without another ANF pass.
+Production assembly remains O0 until optimizer integration.

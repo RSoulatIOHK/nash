@@ -31,9 +31,7 @@ case@Data anf#11 of
   DataList unused#8 -> 42
   DataI unused#9 -> 42
   DataB unused#10 -> 42
-  _ -> case@Bool true of
-    True -> trace "never" in error
-    _ -> error
+  _ -> trace "never" in error
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_15

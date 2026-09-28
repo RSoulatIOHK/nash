@@ -16,20 +16,9 @@ addInteger ((case@Bool true of
       [identity_2 (con integer 22)]])
     (lam x_1 x_1)])
 --- optimized Core
-let identity#4 : int -> int = \x#3 : int -> x#3 in
-let anf#5 : int -> int = case@Bool true of
-  True -> identity#4
-  False -> identity#4 in
-let anf#6 : int = anf#5 20 in
-addInteger anf#6 22
+addInteger 20 22
 --- optimized UPLC
-(program 1.1.0
-  [(lam identity_2
-    [(lam anf_7
-      [(lam anf_8 [[(builtin addInteger) anf_8] (con integer 22)])
-        [anf_7 (con integer 20)]])
-      (case (con bool True) identity_2 identity_2)])
-    (lam x_1 x_1)])
+(program 1.1.0 [[(builtin addInteger) (con integer 20)] (con integer 22)])
 --- isolated pass
 --- core before
 let identity#2 : int -> int = \x#1 : int -> x#1 in
@@ -49,20 +38,9 @@ addInteger anf#4 anf#5
       (case (con bool True) identity_2 identity_2)])
     (lam x_1 x_1)])
 --- core after
-let identity#2 : int -> int = \x#1 : int -> x#1 in
-let anf#3 : int -> int = case@Bool true of
-  True -> identity#2
-  False -> identity#2 in
-let anf#4 : int = anf#3 20 in
-addInteger anf#4 22
+addInteger 20 22
 --- optimized uplc
-(program 1.1.0
-  [(lam identity_2
-    [(lam anf_3
-      [(lam anf_4 [[(builtin addInteger) anf_4] (con integer 22)])
-        [anf_3 (con integer 20)]])
-      (case (con bool True) identity_2 identity_2)])
-    (lam x_1 x_1)])
+(program 1.1.0 [[(builtin addInteger) (con integer 20)] (con integer 22)])
 --- result
 (con integer 42)
 --- logs

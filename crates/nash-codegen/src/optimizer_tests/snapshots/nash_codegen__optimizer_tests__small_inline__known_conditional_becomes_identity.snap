@@ -15,20 +15,9 @@ addInteger (conditional#2 20) (conditional#2 22)
       [conditional_2 (con integer 22)]])
     (lam x_1 (case (con bool True) (con integer 0) x_1))])
 --- optimized Core
-let conditional#4 : int -> int = \x#3 : int -> case@Bool true of
-  True -> x#3
-  False -> 0 in
-let anf#5 : int = conditional#4 20 in
-let anf#6 : int = conditional#4 22 in
-addInteger anf#5 anf#6
+addInteger 20 22
 --- optimized UPLC
-(program 1.1.0
-  [(lam conditional_2
-    [(lam anf_7
-      [(lam anf_8 [[(builtin addInteger) anf_7] anf_8])
-        [conditional_2 (con integer 22)]])
-      [conditional_2 (con integer 20)]])
-    (lam x_1 (case (con bool True) (con integer 0) x_1))])
+(program 1.1.0 [[(builtin addInteger) (con integer 20)] (con integer 22)])
 --- isolated pass
 --- core before
 let conditional#2 : int -> int = \x#1 : int -> case@Bool true of
@@ -46,20 +35,9 @@ addInteger anf#3 anf#4
       [conditional_2 (con integer 20)]])
     (lam x_1 (case (con bool True) (con integer 0) x_1))])
 --- core after
-let conditional#2 : int -> int = \x#1 : int -> case@Bool true of
-  True -> x#1
-  False -> 0 in
-let anf#3 : int = conditional#2 20 in
-let anf#4 : int = conditional#2 22 in
-addInteger anf#3 anf#4
+addInteger 20 22
 --- optimized uplc
-(program 1.1.0
-  [(lam conditional_2
-    [(lam anf_3
-      [(lam anf_4 [[(builtin addInteger) anf_3] anf_4])
-        [conditional_2 (con integer 22)]])
-      [conditional_2 (con integer 20)]])
-    (lam x_1 (case (con bool True) (con integer 0) x_1))])
+(program 1.1.0 [[(builtin addInteger) (con integer 20)] (con integer 22)])
 --- result
 (con integer 42)
 --- logs

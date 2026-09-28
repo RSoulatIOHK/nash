@@ -18,17 +18,13 @@ force worker#1
         (delay (case (con bool True) (force [self_2 self_2]) (con integer 42))))]])
 --- optimized Core
 letrec
-  worker#2 : @delay int [static []] = \ -> delay (case@Bool true of
-    True -> 42
-    False -> force worker#2)
+  worker#2 : @delay int [static []] = \ -> delay 42
 in
 force worker#2
 --- optimized UPLC
 (program 1.1.0
   [(lam worker_5 (force worker_5))
-    [(lam self_3 [self_3 self_3])
-      (lam self_4
-        (delay (case (con bool True) (force [self_4 self_4]) (con integer 42))))]])
+    [(lam self_3 [self_3 self_3]) (lam self_4 (delay (con integer 42)))]])
 --- isolated pass
 --- core before
 letrec

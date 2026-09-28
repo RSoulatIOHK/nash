@@ -10,11 +10,9 @@ case@Bool true of
 --- unoptimized UPLC
 (program 1.1.0 (case (con bool True) (con integer 0) (con integer 42)))
 --- optimized Core
-case@Bool true of
-  False -> 0
-  _ -> 42
+42
 --- optimized UPLC
-(program 1.1.0 (case (con bool True) (con integer 0) (con integer 42)))
+(program 1.1.0 (con integer 42))
 --- isolated pass
 --- core before
 case@Bool true of

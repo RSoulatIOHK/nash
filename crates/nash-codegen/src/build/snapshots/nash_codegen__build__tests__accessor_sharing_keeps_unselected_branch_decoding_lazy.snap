@@ -30,17 +30,6 @@ main#1
       (lam value_9 value_9)])
     (lam value_8 value_8)])
 --- optimized Core
-\d#15 : { _0 : Int, _1 : Int } -> case@Bool false of
-  True -> let projection#16 : list Data = unListData d#15 in
-  case@List projection#16 of
-    Cons head#17 tail#18 -> ()
-  False -> ()
+\d#15 : { _0 : Int, _1 : Int } -> ()
 --- optimized UPLC
-(program 1.1.0
-  (lam d_1
-    (case
-      (con bool False)
-      (con unit ())
-      [(lam projection_2
-        (case projection_2 (lam head_3 (lam tail_4 (con unit ()))) (error)))
-        [(builtin unListData) d_1]])))
+(program 1.1.0 (lam d_1 (con unit ())))

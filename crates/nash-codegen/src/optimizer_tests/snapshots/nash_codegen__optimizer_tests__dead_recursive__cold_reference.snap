@@ -15,16 +15,9 @@ case@Bool true of
   [(lam outer_1 (case (con bool True) [outer_1 (con integer 0)] (con integer 42)))
     [(lam self_2 [self_2 self_2]) (lam self_2 (lam x_3 (error)))]])
 --- optimized Core
-letrec
-  outer#2 : int -> int [static []] = \x#4 : int -> error
-in
-case@Bool true of
-  True -> 42
-  False -> outer#2 0
+42
 --- optimized UPLC
-(program 1.1.0
-  [(lam outer_8 (case (con bool True) [outer_8 (con integer 0)] (con integer 42)))
-    [(lam self_5 [self_5 self_5]) (lam self_6 (lam x_7 (error)))]])
+(program 1.1.0 (con integer 42))
 --- isolated pass
 --- core before
 letrec

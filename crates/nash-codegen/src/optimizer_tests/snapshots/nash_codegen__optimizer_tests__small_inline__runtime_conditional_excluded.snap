@@ -1,0 +1,76 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/small_inline.rs
+assertion_line: 37
+expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline uplc\\n{}\\n--- core after\\n{}\\n--- optimized uplc\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), baseline.uplc, pretty(after), candidate.uplc,\ncandidate.result, candidate.logs))"
+---
+--- unoptimized Core
+let conditional#2 : int -> int = \x#1 : int -> case@Bool lessThanInteger 0 x#1 of
+  True -> x#1
+  False -> 0 in
+addInteger (conditional#2 20) (conditional#2 -22)
+--- unoptimized UPLC
+(program 1.1.0
+  [(lam conditional_2
+    [[(builtin addInteger) [conditional_2 (con integer 20)]]
+      [conditional_2 (con integer -22)]])
+    (lam x_1
+      (case [[(builtin lessThanInteger) (con integer 0)] x_1] (con integer 0) x_1))])
+--- optimized Core
+let conditional#4 : int -> int = \x#3 : int -> let anf#5 : bool = lessThanInteger 0 x#3 in
+case@Bool anf#5 of
+  True -> x#3
+  False -> 0 in
+let anf#6 : int = conditional#4 20 in
+let anf#7 : int = conditional#4 -22 in
+addInteger anf#6 anf#7
+--- optimized UPLC
+(program 1.1.0
+  [(lam conditional_8
+    [(lam anf_9
+      [(lam anf_10 [[(builtin addInteger) anf_9] anf_10])
+        [conditional_8 (con integer -22)]])
+      [conditional_8 (con integer 20)]])
+    (lam x_1
+      [(lam anf_2 (case anf_2 (con integer 0) x_1))
+        [[(builtin lessThanInteger) (con integer 0)] x_1]])])
+--- isolated pass
+--- core before
+let conditional#2 : int -> int = \x#1 : int -> let anf#3 : bool = lessThanInteger 0 x#1 in
+case@Bool anf#3 of
+  True -> x#1
+  False -> 0 in
+let anf#4 : int = conditional#2 20 in
+let anf#5 : int = conditional#2 -22 in
+addInteger anf#4 anf#5
+--- baseline uplc
+(program 1.1.0
+  [(lam conditional_2
+    [(lam anf_4
+      [(lam anf_5 [[(builtin addInteger) anf_4] anf_5])
+        [conditional_2 (con integer -22)]])
+      [conditional_2 (con integer 20)]])
+    (lam x_1
+      [(lam anf_3 (case anf_3 (con integer 0) x_1))
+        [[(builtin lessThanInteger) (con integer 0)] x_1]])])
+--- core after
+let conditional#2 : int -> int = \x#1 : int -> let anf#3 : bool = lessThanInteger 0 x#1 in
+case@Bool anf#3 of
+  True -> x#1
+  False -> 0 in
+let anf#4 : int = conditional#2 20 in
+let anf#5 : int = conditional#2 -22 in
+addInteger anf#4 anf#5
+--- optimized uplc
+(program 1.1.0
+  [(lam conditional_2
+    [(lam anf_4
+      [(lam anf_5 [[(builtin addInteger) anf_4] anf_5])
+        [conditional_2 (con integer -22)]])
+      [conditional_2 (con integer 20)]])
+    (lam x_1
+      [(lam anf_3 (case anf_3 (con integer 0) x_1))
+        [[(builtin lessThanInteger) (con integer 0)] x_1]])])
+--- result
+(con integer 20)
+--- logs
+[]

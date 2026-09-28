@@ -32,8 +32,6 @@ main#1
     (lam value_9
       (case [(lam identity_10 identity_10) value_9] (con bool True) (con bool False)))])
 --- optimized Core
-case@Bool true of
-  True -> false
-  False -> true
+false
 --- optimized UPLC
-(program 1.1.0 (case (con bool True) (con bool True) (con bool False)))
+(program 1.1.0 (con bool False))

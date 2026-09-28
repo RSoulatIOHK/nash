@@ -28,9 +28,7 @@ same#1 (trace "argument" in 42)
 --- optimized Core
 let anf#6 : int = trace "argument" in 42 in
 letrec
-  worker#5 : @delay int [static []] = \ -> delay (case@Bool true of
-    True -> trace "selected" in anf#6
-    False -> force worker#5)
+  worker#5 : @delay int [static []] = \ -> delay (trace "selected" in anf#6)
 in
 force worker#5
 --- optimized UPLC
@@ -39,12 +37,7 @@ force worker#5
     [(lam anf_2
       [(lam worker_7 (force worker_7))
         [(lam self_3 [self_3 self_3])
-          (lam self_4
-            (delay
-              (case
-                (con bool True)
-                (force [self_4 self_4])
-                (force [[builtin_8 (con string "selected")] (delay anf_2)]))))]])
+          (lam self_4 (delay (force [[builtin_8 (con string "selected")] (delay anf_2)])))]])
       (force [[builtin_8 (con string "argument")] (delay (con integer 42))])])
     (force (builtin trace))])
 --- isolated pass

@@ -33,19 +33,9 @@ main#1
       (lam value_8 value_8)])
     (con string "unselected conversion")])
 --- optimized Core
-case@Bool true of
-  True -> true
-  False -> let lower#19 : bool -> bool = trace "unselected conversion" in error in
-  lower#19 false
+true
 --- optimized UPLC
-(program 1.1.0
-  [(lam builtin_2
-    (case
-      (con bool True)
-      [(lam lower_1 [lower_1 (con bool False)])
-        (force [[builtin_2 (con string "unselected conversion")] (delay (error))])]
-      (con bool True)))
-    (force (builtin trace))])
+(program 1.1.0 (con bool True))
 --- result
 (con bool True)
 --- logs

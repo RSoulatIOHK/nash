@@ -3169,18 +3169,13 @@ case@Bool assert_value#2 assert_value#4 of
       (lam value_7 value_7)])
     (con string "\0assert\0\48")])
 --- optimized Core
-case@Bool false of
-  True -> ()
-  False -> let anf#25 : unit -> unit = trace "\0assert\00" (\unit#24 : unit -> error) in
-  anf#25 ()
+let anf#25 : unit -> unit = trace "\0assert\00" (\unit#24 : unit -> error) in
+anf#25 ()
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_3
-    (case
-      (con bool False)
-      [(lam anf_2 [anf_2 (con unit ())])
-        [[builtin_3 (con string "\0assert\0\48")] (lam unit_1 (error))]]
-      (con unit ())))
+    [(lam anf_2 [anf_2 (con unit ())])
+      [[builtin_3 (con string "\0assert\0\48")] (lam unit_1 (error))]])
     (force (builtin trace))])
 --- encoded target UPLC
 (program 1.1.0

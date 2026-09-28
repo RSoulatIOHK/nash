@@ -29,19 +29,9 @@ case@Bool fromBool#1 true of
       (lam value_4 value_4)])
     (con string "\0assert\0\48")])
 --- optimized Core
-case@Bool true of
-  True -> ()
-  False -> let anf#19 : unit -> unit = trace "\0assert\00" (\unit#18 : unit -> error) in
-  anf#19 ()
+()
 --- optimized UPLC
-(program 1.1.0
-  [(lam builtin_3
-    (case
-      (con bool True)
-      [(lam anf_2 [anf_2 (con unit ())])
-        [[builtin_3 (con string "\0assert\0\48")] (lam unit_1 (error))]]
-      (con unit ())))
-    (force (builtin trace))])
+(program 1.1.0 (con unit ()))
 --- encoded target UPLC
 (program 1.1.0
   [(lam i0
@@ -78,18 +68,13 @@ case@Bool fromBool#1 false of
       (lam value_4 value_4)])
     (con string "\0assert\0\48")])
 --- optimized Core
-case@Bool false of
-  True -> ()
-  False -> let anf#19 : unit -> unit = trace "\0assert\00" (\unit#18 : unit -> error) in
-  anf#19 ()
+let anf#19 : unit -> unit = trace "\0assert\00" (\unit#18 : unit -> error) in
+anf#19 ()
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_3
-    (case
-      (con bool False)
-      [(lam anf_2 [anf_2 (con unit ())])
-        [[builtin_3 (con string "\0assert\0\48")] (lam unit_1 (error))]]
-      (con unit ())))
+    [(lam anf_2 [anf_2 (con unit ())])
+      [[builtin_3 (con string "\0assert\0\48")] (lam unit_1 (error))]])
     (force (builtin trace))])
 --- encoded target UPLC
 (program 1.1.0

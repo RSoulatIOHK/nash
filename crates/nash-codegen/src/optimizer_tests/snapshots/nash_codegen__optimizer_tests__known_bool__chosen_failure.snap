@@ -14,16 +14,10 @@ case@Bool true of
     (con integer 42)
     (force [[(force (builtin trace)) (con string "chosen")] (delay (error))])))
 --- optimized Core
-case@Bool true of
-  True -> trace "chosen" in error
-  False -> 42
+trace "chosen" in error
 --- optimized UPLC
 (program 1.1.0
-  [(lam builtin_1
-    (case
-      (con bool True)
-      (con integer 42)
-      (force [[builtin_1 (con string "chosen")] (delay (error))])))
+  [(lam builtin_1 (force [[builtin_1 (con string "chosen")] (delay (error))]))
     (force (builtin trace))])
 --- isolated pass
 --- core before

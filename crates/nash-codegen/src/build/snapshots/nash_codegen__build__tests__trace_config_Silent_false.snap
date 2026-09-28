@@ -15,11 +15,9 @@ main#1
     [(lam main_1 main_1) (case [fromBool_2 (con bool False)] (error) (con unit ()))])
     (lam value_3 value_3)])
 --- optimized Core
-case@Bool false of
-  True -> ()
-  False -> error
+error
 --- optimized UPLC
-(program 1.1.0 (case (con bool False) (error) (con unit ())))
+(program 1.1.0 (error))
 --- result
 error: ExplicitErrorTerm
 --- logs

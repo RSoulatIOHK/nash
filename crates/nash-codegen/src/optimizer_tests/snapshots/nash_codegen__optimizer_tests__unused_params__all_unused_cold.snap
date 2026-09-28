@@ -15,17 +15,9 @@ case@Bool true of
     (lam x_1
       (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
 --- optimized Core
-case@Bool true of
-  True -> 42
-  False -> trace "body" in 21
+42
 --- optimized UPLC
-(program 1.1.0
-  [(lam builtin_1
-    (case
-      (con bool True)
-      (force [[builtin_1 (con string "body")] (delay (con integer 21))])
-      (con integer 42)))
-    (force (builtin trace))])
+(program 1.1.0 (con integer 42))
 --- isolated pass
 --- core before
 let helper#2 : int -> int = \x#1 : int -> trace "body" in 21 in

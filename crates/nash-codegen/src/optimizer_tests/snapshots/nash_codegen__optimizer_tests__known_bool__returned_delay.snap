@@ -17,18 +17,11 @@ force (case@Bool true of
         (force
           [[(force (builtin trace)) (con string "forced")] (delay (con integer 42))])))))
 --- optimized Core
-let anf#1 : @delay int = case@Bool true of
-  True -> delay (trace "forced" in 42)
-  False -> error in
-force anf#1
+trace "forced" in 42
 --- optimized UPLC
 (program 1.1.0
-  [(lam builtin_3
-    [(lam anf_2 (force anf_2))
-      (case
-        (con bool True)
-        (error)
-        (delay (force [[builtin_3 (con string "forced")] (delay (con integer 42))])))])
+  [(lam builtin_1
+    (force [[builtin_1 (con string "forced")] (delay (con integer 42))]))
     (force (builtin trace))])
 --- isolated pass
 --- core before

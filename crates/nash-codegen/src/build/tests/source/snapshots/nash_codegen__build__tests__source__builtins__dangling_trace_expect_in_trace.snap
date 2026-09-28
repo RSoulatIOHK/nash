@@ -37,22 +37,13 @@ main#1
       (con string "bar")])
     (con string "foo")])
 --- optimized Core
-trace "foo" in trace "bar" in case@Bool true of
-  True -> ()
-  False -> trace "assertion failed" in error
+trace "foo" in trace "bar" in ()
 --- optimized UPLC
 (program 1.1.0
   [(lam builtin_1
     (force
       [[builtin_1 (con string "foo")]
-        (delay
-          (force
-            [[builtin_1 (con string "bar")]
-              (delay
-                (case
-                  (con bool True)
-                  (force [[builtin_1 (con string "assertion failed")] (delay (error))])
-                  (con unit ())))]))]))
+        (delay (force [[builtin_1 (con string "bar")] (delay (con unit ()))]))]))
     (force (builtin trace))])
 --- result
 (con unit ())

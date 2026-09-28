@@ -2,4 +2,4 @@
 cargo/nash-ir: minor
 ---
 
-Add a standalone Core pass for cases with known Boolean subjects.
+Add known Boolean case folding to the Core optimizer cleanup fixed point.
