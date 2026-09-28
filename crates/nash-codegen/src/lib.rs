@@ -46,3 +46,6 @@ mod dead_bindings_tests;
 
 #[cfg(test)]
 mod dead_recursive_tests;
+
+#[cfg(test)]
+mod unused_params_tests;

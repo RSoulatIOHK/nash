@@ -13,6 +13,7 @@ pub mod single_use;
 pub mod small_inline;
 pub mod static_lift;
 pub mod ty;
+pub mod unused_params;
 
 mod traverse;
 

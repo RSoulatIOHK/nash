@@ -1,0 +1,34 @@
+---
+source: crates/nash-codegen/src/unused_params_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let helper#10 : int -> int -> int -> int = \x#7 : int y#8 : int z#9 : int -> addInteger x#7 z#9 in
+let anf#11 : int = helper#10 10 20 30 in
+let anf#12 : int = helper#10 10 20 30 in
+addInteger anf#11 anf#12
+--- core after
+let helper#10 : int -> int -> int = \x#7 : int z#9 : int -> addInteger x#7 z#9 in
+let anf#11 : int = helper#10 10 30 in
+let anf#12 : int = helper#10 10 30 in
+addInteger anf#11 anf#12
+--- uplc before
+(program 1.1.0
+  [(lam helper_10
+    [(lam anf_11
+      [(lam anf_12 [[(builtin addInteger) anf_11] anf_12])
+        [[[helper_10 (con integer 10)] (con integer 20)] (con integer 30)]])
+      [[[helper_10 (con integer 10)] (con integer 20)] (con integer 30)]])
+    (lam x_7 (lam y_8 (lam z_9 [[(builtin addInteger) x_7] z_9])))])
+--- uplc after
+(program 1.1.0
+  [(lam helper_10
+    [(lam anf_11
+      [(lam anf_12 [[(builtin addInteger) anf_11] anf_12])
+        [[helper_10 (con integer 10)] (con integer 30)]])
+      [[helper_10 (con integer 10)] (con integer 30)]])
+    (lam x_7 (lam z_9 [[(builtin addInteger) x_7] z_9]))])
+--- result
+(con integer 80)
+--- logs
+[]

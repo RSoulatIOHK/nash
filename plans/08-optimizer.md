@@ -989,8 +989,8 @@ forced failures, saturated builtin calls and strict partial-call arguments.
 The diverging recursive-call fixture checks exact retained Core without running
 an infinite program. The pass runs inside `small_inline::simplify` alongside
 rules 1–4 until the cleanup loop reaches a fixed point, before recursion rewriting.
-Recursive-member removal is retained below; parameter removal remains
-unimplemented.
+Recursive-member removal is retained below; nonrecursive parameter removal has
+a separate trial below.
 
 Explicit experiment: `cargo run --locked --manifest-path
  tools/optimizer-perf/Cargo.toml --example dead_bindings` (one shell command).
@@ -1049,6 +1049,55 @@ Validation after integration: 499 IR/codegen nextest tests passed. The original
 16 paired Core/UPLC snapshots are supplemented by two paired Core snapshots
 covering cleanup of dead captures and retention of strict effectful initializers. Root and isolated strict Clippy and formatting
 passed. Read-only review found no correctness issues.
+
+**Third rule, first trial (27 September 2026), pending review: nonrecursive unused parameters.**
+`nash_ir::unused_params::reduce` shortens a let-bound lambda only when every
+reference to that binding is a direct application with exactly its declared
+arity. A parameter is unused only if its unique ID has no occurrence anywhere
+in the lambda body, including nested lambdas, delays and recursive bodies.
+Partial, staged, escaping and oversaturated uses leave the whole helper unchanged.
+Recursive binder parameters are outside this first trial.
+
+Input is typed, hygienic ANF. Call arguments are discardable atoms; any preceding
+strict argument computations remain bound at their original stage. Each function
+type view is shortened independently while retaining its own result type; views
+without the matching function shape are left untouched. If all parameters go,
+the definition becomes a delay and each original full call becomes a force.
+That preserves cold bodies and repeated trace/failure behavior without introducing
+empty lambdas or zero-argument applications.
+
+The trial is separate from the accepted pipeline. The explicit experiment is
+`cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example unused_params`.
+It compares 24 direct Core cases, nine existing source workloads and four targeted
+source fixtures. Ordinary source literal conversions can make ANF stage a full
+call into partial applications that cleanup does not rejoin. This trial deliberately
+skips those staged uses; review placement before adding any call-chain recovery.
+
+The captured source Core confirms `let stage = helper 100 in stage 1` remains
+after accepted cleanup. Naming source arguments first leaves full direct calls
+and enables the rewrite. Placement before ANF is the next design candidate;
+that variant would need to retain strict argument evaluation explicitly.
+
+Measured 37 cases, with no CPU, memory or Flat-size regressions. Representative
+savings (post-ANF trial only):
+
+| Fixture | CPU saved | Memory saved | Flat bytes saved |
+| --- | ---: | ---: | ---: |
+| One unused parameter, one direct call | 48,000 | 300 | 3 |
+| One unused parameter, eight direct calls | 384,000 | 2,400 | 22 |
+| Three unused parameters, eight direct calls | 896,000 | 5,600 | 63 |
+| Source helper with named arguments, two calls | 96,000 | 600 | 8 |
+| Source unary all-unused helper, two calls | 32,000 | 200 | 7 |
+
+Cold paths retain their CPU/memory costs and shrink in size. Nine existing source
+workloads and the literal/staged helper fixtures are unchanged. The explicit
+23-case accepted baseline remains unchanged. Do not interpret the synthetic
+wins as coverage of arbitrary source call shapes.
+
+Validation: 507 IR/codegen nextest tests passed, including eight new test
+functions and 16 reviewed snapshots. Root and isolated strict Clippy and
+formatting passed. Read-only review found no correctness defects under the
+typed ANF preconditions. The trial remains outside the accepted pipeline.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused

@@ -148,3 +148,17 @@ trace logs must match. CPU, memory and Flat bytes are printed separately. This
 experiment is outside root test discovery. Recursive reachability is accepted
 in the cleanup loop, so source cases already include it; direct Core cases isolate
 its effects. The experiment does not update the permanent baseline.
+
+## Chunk 6 nonrecursive unused-parameter trial
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example unused_params
+```
+
+Compares a standalone exact-call-only pass after ANF. Direct Core fixtures vary
+first/middle/last/all unused parameters, 1/2/8 call sites and selected/cold paths.
+Nine existing source workloads and four targeted source fixtures run accepted
+cleanup first. The pass leaves partial, escaping, staged and oversaturated uses
+unchanged. All-unused helpers become delays forced at each call. The explicit
+runner verifies results/logs and prints CPU, memory and Flat sizes; it changes
+neither the accepted pipeline nor the baseline and stays outside root tests.

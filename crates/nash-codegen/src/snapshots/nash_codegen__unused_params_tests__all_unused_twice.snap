@@ -1,0 +1,33 @@
+---
+source: crates/nash-codegen/src/unused_params_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), baseline.uplc, candidate.uplc,\ncandidate.result, candidate.logs)"
+---
+--- core before
+let helper#2 : int -> int = \x#1 : int -> trace "body" in 21 in
+let anf#3 : int = helper#2 1 in
+let anf#4 : int = helper#2 2 in
+addInteger anf#3 anf#4
+--- core after
+let helper#2 : @delay int = delay (trace "body" in 21) in
+let anf#3 : int = force helper#2 in
+let anf#4 : int = force helper#2 in
+addInteger anf#3 anf#4
+--- uplc before
+(program 1.1.0
+  [(lam helper_2
+    [(lam anf_3
+      [(lam anf_4 [[(builtin addInteger) anf_3] anf_4]) [helper_2 (con integer 2)]])
+      [helper_2 (con integer 1)]])
+    (lam x_1
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
+--- uplc after
+(program 1.1.0
+  [(lam helper_2
+    [(lam anf_3 [(lam anf_4 [[(builtin addInteger) anf_3] anf_4]) (force helper_2)])
+      (force helper_2)])
+    (delay
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))]))])
+--- result
+(con integer 42)
+--- logs
+["body", "body"]
