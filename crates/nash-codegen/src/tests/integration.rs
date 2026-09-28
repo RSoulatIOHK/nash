@@ -182,7 +182,7 @@ fn compile_selected(
         }
         .unwrap();
         let core = engine.finish_root(root).unwrap();
-        output.push_str(&crate::snapshot_optimizer::code_snapshot(&arena, core));
+        output.push_str(&crate::harness::code_snapshot(&arena, core));
         output.push_str("\n--- encoded target UPLC\n");
         match &program.programs {
             Programs::Unit { run } => output.push_str(&render(run)),

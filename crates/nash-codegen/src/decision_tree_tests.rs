@@ -848,15 +848,16 @@ fn big_list_tail_binding_is_only_reconstructed_when_used() {
             b.error(rows[0].body.ty),
         )
         .unwrap();
-        let evaluated = crate::harness::eval_core(&arena, core);
+        let fixture = crate::harness::prepare_fixture(&arena, core);
 
         insta::with_settings!({
             description => nash_ir::pretty::pretty(core),
             omit_expression => true,
             snapshot_suffix => if keep_tail { "used" } else { "ignored" },
         }, {
-            insta::assert_snapshot!(crate::harness::source_snapshot(&arena, core, &evaluated));
+            insta::assert_snapshot!(fixture.snapshot());
         });
+        fixture.assert_equivalent(&arena);
     }
 }
 

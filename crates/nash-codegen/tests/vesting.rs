@@ -7,9 +7,7 @@ use nash_ast::{PackageName, QualifiedName, primitives};
 use nash_can::{CanResult, Interface};
 use nash_codegen::{
     build::{Build, Input, TraceConfig},
-    lower,
-    program::assemble_core,
-    recursion,
+    lower, program, recursion,
 };
 use nash_plutus::{arena::Arena, data::PlutusData, pretty, term::Term};
 use nash_solve::SolvedTypes;
@@ -116,17 +114,10 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
     let compiled = build
         .compile(&arena, root, None, TraceConfig::default())
         .expect("vesting fixture compiles");
-    let code = snapshot_optimizer::code_snapshot(&arena, compiled.core);
-    let assembled =
-        assemble_core(&arena, compiled.core).expect("vesting fixture lowers to closed UPLC");
-    let optimized_core = snapshot_optimizer::candidate(&arena, compiled.core);
-    let optimized_term = lower::lower_with_constant_sharing(&arena, optimized_core).unwrap();
-    let optimized_term = nash_plutus::debruijn::to_debruijn(&arena, optimized_term).unwrap();
-    let optimized_program = nash_plutus::program::Program::new(
-        &arena,
-        nash_plutus::program::Version::plutus_v3(&arena),
-        optimized_term,
-    );
+    let prepared = snapshot_optimizer::prepare(&arena, compiled.core);
+    let code = prepared.snapshot();
+    let baseline_program = prepared.before.program;
+    let optimized_program = prepared.after.program;
     let mut outcomes = String::new();
     let mut observations = Vec::new();
     let mut boundaries = Vec::new();
@@ -154,7 +145,7 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
             ]),
         );
         for (phase, validator) in [
-            ("unoptimized", assembled.program),
+            ("unoptimized", baseline_program),
             ("optimized", optimized_program),
         ] {
             let program = if parameter {
@@ -208,7 +199,7 @@ fn baseline(source: &str, parameter: bool) -> Snapshot {
             ]),
         );
         for (minimum, expected) in [(0, true), (5, false)] {
-            for validator in [assembled.program, optimized_program] {
+            for validator in [baseline_program, optimized_program] {
                 let result = validator
                     .apply(&arena, Term::integer_from(&arena, minimum))
                     .apply(&arena, Term::data(&arena, datum))

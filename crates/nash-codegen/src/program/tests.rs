@@ -27,18 +27,16 @@ fn optimizer_substitution_preserves_free_names_at_runtime() {
     let candidate = b.let_(y, b.int(20), replaced);
     hygiene::validate(candidate, &[]).unwrap();
     let reference = b.let_(y, b.int(20), b.let_(target, b.var(y.name, y.ty), recipient));
-    let original_program = assemble_core(&arena, reference).unwrap();
+    let prepared = crate::snapshot_optimizer::prepare(&arena, reference);
+    let original_program = &prepared.before;
     let changed_program = assemble_core(&arena, candidate).unwrap();
-    insta::assert_snapshot!(crate::harness::pass_snapshot(
-        &arena,
-        reference,
-        format!(
-            "--- Core before substitution\n{}\n--- UPLC before substitution\n{}\n--- Core after substitution\n{}\n--- UPLC after substitution\n{}",
-            nash_ir::pretty::pretty(reference),
-            pretty::term(original_program.named),
-            nash_ir::pretty::pretty(candidate),
-            pretty::term(changed_program.named),
-        )
+    insta::assert_snapshot!(format!(
+        "{}\n--- isolated pass\n--- Core before substitution\n{}\n--- UPLC before substitution\n{}\n--- Core after substitution\n{}\n--- UPLC after substitution\n{}",
+        prepared.snapshot(),
+        nash_ir::pretty::pretty(reference),
+        pretty::term(original_program.named),
+        nash_ir::pretty::pretty(candidate),
+        pretty::term(changed_program.named),
     ));
     let original = original_program.program.eval(&arena);
     let changed = changed_program.program.eval(&arena);
@@ -94,30 +92,23 @@ fn optimizer_substitution_freshens_each_inserted_function() {
     let candidate = hygiene::substitute(&b, recipient, target.name.unique, replacement);
     hygiene::validate(candidate, &[]).unwrap();
     let reference = b.let_(target, replacement, recipient);
-    let original = assemble_core(&arena, reference)
-        .unwrap()
-        .program
-        .eval(&arena);
-    let changed = assemble_core(&arena, candidate)
-        .unwrap()
-        .program
-        .eval(&arena);
+    let prepared = crate::snapshot_optimizer::prepare(&arena, reference);
+    let original = prepared.before.program.eval(&arena);
+    let changed_program = assemble_core(&arena, candidate).unwrap();
+    let changed = changed_program.program.eval(&arena);
+    insta::assert_snapshot!(format!(
+        "{}\n--- isolated pass\n--- Core after substitution\n{}\n--- UPLC after substitution\n{}\n--- result\n{}\n--- logs\n{:?}",
+        prepared.snapshot(),
+        nash_ir::pretty::pretty(candidate),
+        pretty::term(changed_program.named),
+        pretty::term(changed.term.as_ref().unwrap()),
+        changed.info.logs,
+    ));
     assert_eq!(
         pretty::term(original.term.as_ref().unwrap()),
         pretty::term(changed.term.as_ref().unwrap())
     );
     assert_eq!(original.info.logs, changed.info.logs);
-    insta::assert_snapshot!(crate::harness::pass_snapshot(
-        &arena,
-        reference,
-        format!(
-            "--- Core after substitution\n{}\n--- UPLC after substitution\n{}\n--- result\n{}\n--- logs\n{:?}",
-            nash_ir::pretty::pretty(candidate),
-            pretty::term(assemble_core(&arena, candidate).unwrap().named),
-            pretty::term(changed.term.unwrap()),
-            changed.info.logs,
-        )
-    ));
 }
 
 #[test]
@@ -188,7 +179,8 @@ fn optimizer_discard_analysis_respects_runtime_staging() {
             ..unused
         };
         let core = b.let_(unused, value, b.int(42));
-        let evaluated = assemble_core(&arena, core).unwrap().program.eval(&arena);
+        let prepared = crate::snapshot_optimizer::prepare(&arena, core);
+        let evaluated = prepared.before.program.eval(&arena);
         let result = evaluated
             .term
             .map(pretty::term)
@@ -198,7 +190,7 @@ fn optimizer_discard_analysis_respects_runtime_staging() {
             assert!(evaluated.info.logs.is_empty());
         }
         results.push(format!("--- fixture\n{label}\n{}\n--- safe to discard\n{}\n--- result\n{result:?}\n--- logs\n{:?}",
-            crate::snapshot_optimizer::code_snapshot(&arena, core), safe_to_discard(value), evaluated.info.logs));
+            prepared.snapshot(), safe_to_discard(value), evaluated.info.logs));
     }
     insta::assert_snapshot!(results.join("\n"));
 }

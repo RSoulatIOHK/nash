@@ -79,28 +79,55 @@ impl std::fmt::Display for Evaluated {
 }
 
 pub fn eval_core<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Evaluated {
-    let baseline = eval_core_raw(arena, core);
-    assert_candidate_equivalent(arena, core, &baseline);
-    baseline
+    let fixture = prepare_fixture(arena, core);
+    fixture.assert_equivalent(arena);
+    fixture.evaluated
 }
 
-pub(crate) fn assert_candidate_equivalent<'a>(
-    arena: &'a Arena,
-    core: &'a Core<'a>,
-    baseline: &Evaluated,
-) {
-    let candidate = crate::optimizer_tests::anf::candidate(arena, core);
-    let named =
-        crate::lower::lower_with_constant_sharing(arena, candidate).expect("shared lowering");
-    let normalized = eval_named(arena, named);
-    assert_eq!(
-        baseline.observable, normalized.observable,
-        "candidate passes preserve ground results and error category"
-    );
-    assert_eq!(
-        baseline.logs, normalized.logs,
-        "candidate passes preserve trace order"
-    );
+/// Source compilation happens before this helper. Prepare each pipeline once.
+pub(crate) struct Fixture<'a> {
+    prepared: crate::snapshot_optimizer::Prepared<'a>,
+    pub evaluated: Evaluated,
+}
+
+pub(crate) fn prepare_fixture<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Fixture<'a> {
+    let prepared = crate::snapshot_optimizer::prepare(arena, core);
+    let evaluated = eval_compiled(arena, &prepared.before);
+    Fixture {
+        prepared,
+        evaluated,
+    }
+}
+
+impl<'a> Fixture<'a> {
+    pub fn code_snapshot(&self) -> String {
+        self.prepared.snapshot()
+    }
+
+    pub fn snapshot(&self) -> String {
+        let evaluated = &self.evaluated;
+        format!(
+            "{}\n--- result\n{}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
+            self.prepared.snapshot(),
+            evaluated.result,
+            evaluated.logs,
+            evaluated.budget.cpu,
+            evaluated.budget.mem
+        )
+    }
+
+    /// Call after the snapshot so output differences are presented first.
+    pub fn assert_equivalent(&self, arena: &'a Arena) {
+        let optimized = eval_compiled(arena, &self.prepared.after);
+        assert_eq!(
+            self.evaluated.observable, optimized.observable,
+            "candidate passes preserve ground results and error category"
+        );
+        assert_eq!(
+            self.evaluated.logs, optimized.logs,
+            "candidate passes preserve trace order"
+        );
+    }
 }
 
 pub(crate) fn eval_core_raw<'a>(arena: &'a Arena, core: &'a Core<'a>) -> Evaluated {
@@ -114,7 +141,11 @@ pub(crate) fn eval_named<'a>(
 ) -> Evaluated {
     let term = debruijn::to_debruijn(arena, named).expect("closed term");
     let program = Program::new(arena, Version::plutus_v3(arena), term);
-    let evaluation = program.eval(arena);
+    eval_compiled(arena, &crate::program::Compiled { named, program })
+}
+
+fn eval_compiled<'a>(arena: &'a Arena, compiled: &crate::program::Compiled<'a>) -> Evaluated {
+    let evaluation = compiled.program.eval(arena);
     fn ground(term: &nash_plutus::term::Term<'_, nash_plutus::binder::DeBruijn>) -> bool {
         match term {
             nash_plutus::term::Term::Constant(_) => true,
@@ -134,7 +165,10 @@ pub(crate) fn eval_named<'a>(
     };
     Evaluated {
         observable,
-        uplc: pretty::program(Program::new(arena, Version::plutus_v3(arena), named)),
+        uplc: pretty::program(&Program {
+            version: compiled.program.version,
+            term: compiled.named,
+        }),
         result: match evaluation.term {
             Ok(term) => pretty::term(term),
             Err(error) => format!("error: {error:?}"),
@@ -144,26 +178,25 @@ pub(crate) fn eval_named<'a>(
     }
 }
 
-/// Source snapshots always compare the original compiled Core with all accepted passes.
-pub(crate) fn source_snapshot<'a>(
-    arena: &'a Arena,
-    core: &'a Core<'a>,
-    evaluated: &Evaluated,
-) -> String {
-    format!(
-        "{}\n--- result\n{}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
-        crate::snapshot_optimizer::code_snapshot(arena, core),
-        evaluated.result,
-        evaluated.logs,
-        evaluated.budget.cpu,
-        evaluated.budget.mem
-    )
-}
-
 /// Keep isolated-pass evidence while every executable fixture tracks the accepted pipeline.
 pub(crate) fn pass_snapshot<'a>(arena: &'a Arena, core: &'a Core<'a>, isolated: String) -> String {
     format!(
         "{}\n--- isolated pass\n{isolated}",
-        crate::snapshot_optimizer::code_snapshot(arena, core)
+        code_snapshot(arena, core)
     )
+}
+
+pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a> {
+    let b = nash_ir::build::Builder::new(arena);
+    let optimized = crate::snapshot_optimizer::optimize_with(&b, core);
+    let rewritten = crate::recursion::rewrite(&b, optimized).unwrap();
+    // Recursion rewriting reuses self-application lambda subtrees.
+    let result = nash_ir::hygiene::freshen(&b, rewritten);
+    nash_ir::hygiene::validate(result, &[]).unwrap();
+    assert_eq!(core.ty, result.ty);
+    result
+}
+
+pub(crate) fn code_snapshot<'a>(arena: &'a Arena, core: &'a Core<'a>) -> String {
+    crate::snapshot_optimizer::prepare(arena, core).snapshot()
 }

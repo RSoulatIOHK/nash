@@ -22,11 +22,11 @@ macro_rules! case {
                 crate::build::tests::source::BASE_MODULES,
                 |arena, build, root| {
                     let compiled = build.compile(arena, root, None, $trace).expect("source compiles to Core");
-                    let core = crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core).expect("recursion rewrites");
-                    let evaluated = crate::harness::eval_core_raw(arena, core);
+                    let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+let evaluated = &fixture.evaluated;
                     assert_eq!(evaluated.result.starts_with("error:"), $fails, "unexpected evaluation category: {}", evaluated.result);
-                    insta::assert_snapshot!(stringify!($name), crate::harness::source_snapshot(arena, compiled.core, &evaluated));
-                    crate::harness::assert_candidate_equivalent(arena, compiled.core, &evaluated);
+                    insta::assert_snapshot!(stringify!($name), fixture.snapshot());
+                    fixture.assert_equivalent(arena);
                 },
             );
         }

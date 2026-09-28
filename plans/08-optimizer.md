@@ -1164,6 +1164,10 @@ Optimization semantic tests are grouped in
 `crates/nash-codegen/src/optimizer_tests/`, with colocated snapshots.
 All executable codegen snapshots show original Core and O0 UPLC followed by
 accepted optimized Core and UPLC through the shared test-only pipeline.
+Prepare each pipeline once per fixture. Snapshot rendering, target validation
+and evaluation reuse the same named and closed UPLC programs; equivalence
+checks run after the snapshot and do not repeat optimization or lowering.
+Preparation remains non-evaluating for deliberate-divergence snapshots.
 Pass fixtures retain isolated transformation evidence after that comparison.
 Source fixtures reuse the Base compiler, including Boolean helpers, a cold trace
 and a retained strict trace. Budgets remain in the explicit performance workspace.

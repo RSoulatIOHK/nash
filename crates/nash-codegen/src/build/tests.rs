@@ -44,7 +44,7 @@ fn evaluate(name: &str, source: &str) -> crate::harness::Evaluated {
 }
 
 fn compiled_output<'a>(arena: &'a Arena, core: &'a nash_ir::core::Core<'a>) -> String {
-    crate::snapshot_optimizer::code_snapshot(arena, core)
+    crate::harness::code_snapshot(arena, core)
 }
 
 #[test]
@@ -128,14 +128,12 @@ fn native_list_root_requires_an_explicit_element_instance() {
     let compiled = build
         .compile(&arena, root, Some(&[unit]), TraceConfig::default())
         .unwrap();
+    let fixture = crate::harness::prepare_fixture(&arena, compiled.core);
     insta::with_settings!({description => source, omit_expression => true}, {
-        insta::assert_snapshot!(compiled_output(&arena, compiled.core));
+        insta::assert_snapshot!(fixture.code_snapshot());
     });
-    assert!(
-        crate::harness::eval_core(&arena, compiled.core)
-            .result
-            .contains("list unit")
-    );
+    fixture.assert_equivalent(&arena);
+    assert!(fixture.evaluated.result.contains("list unit"));
 }
 
 struct Unit<'a> {
@@ -232,16 +230,10 @@ fn core_eval(name: &str, source: &str) -> crate::harness::Evaluated {
         let compiled = build
             .compile(arena, root, None, TraceConfig::default())
             .unwrap();
-        let core =
-            crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core).unwrap();
-        let result = crate::harness::eval_core_raw(arena, core);
-
-        insta::assert_snapshot!(
-            name,
-            crate::harness::source_snapshot(arena, compiled.core, &result)
-        );
-        crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
-        evaluated = Some(result);
+        let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+        insta::assert_snapshot!(name, fixture.snapshot());
+        fixture.assert_equivalent(arena);
+        evaluated = Some(fixture.evaluated);
     });
     evaluated.unwrap()
 }
@@ -339,7 +331,6 @@ fn trait_free_polymorphic_recursion_reuses_the_opaque_body() {
                     .count(),
                 1
             );
-            crate::program::assemble_core(arena, compiled.core).unwrap();
         },
     );
 }
@@ -468,14 +459,9 @@ fn source_recursive_static_arguments_are_marked() {
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
 
-            insta::assert_snapshot!(
-                "source_recursion_static",
-                compiled_output(arena, compiled.core)
-            );
-            let result = crate::program::assemble_core(arena, compiled.core)
-                .unwrap()
-                .program
-                .eval(arena);
+            let prepared = crate::snapshot_optimizer::prepare(arena, compiled.core);
+            insta::assert_snapshot!("source_recursion_static", prepared.snapshot());
+            let result = prepared.before.program.eval(arena);
             assert_eq!(
                 nash_plutus::pretty::term(result.term.unwrap()),
                 "(con integer 42)"
@@ -592,18 +578,14 @@ fn all_trace_configs_keep_compiler_and_user_messages_independent() {
                     let compiled = build
                         .compile(arena, root, None, TraceConfig { user, compiler })
                         .unwrap();
-                    let core = crate::recursion::rewrite(
-                        &nash_ir::build::Builder::new(arena),
-                        compiled.core,
-                    )
-                    .unwrap();
-                    let result = crate::harness::eval_core_raw(arena, core);
+                    let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+                    let result = &fixture.evaluated;
 
                     insta::assert_snapshot!(
                         format!("trace_config_{user:?}_{compiler}"),
-                        crate::harness::source_snapshot(arena, compiled.core, &result)
+                        fixture.snapshot()
                     );
-                    crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
+                    fixture.assert_equivalent(arena);
                     assert!(result.result.starts_with("error:"));
                 }
             }
@@ -751,7 +733,8 @@ fn empty_lists_key_the_native_element_layout_and_erase_big_nominal_names() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            insta::assert_snapshot!(compiled_output(arena, compiled.core));
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+            insta::assert_snapshot!(fixture.code_snapshot());
             assert_eq!(
                 compiled
                     .specializations
@@ -760,11 +743,9 @@ fn empty_lists_key_the_native_element_layout_and_erase_big_nominal_names() {
                     .count(),
                 2
             );
-            let core =
-                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
-                    .unwrap();
-            let result = crate::harness::eval_core_raw(arena, core);
-            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
+
+            let result = &fixture.evaluated;
+            fixture.assert_equivalent(arena);
 
             assert!(result.result.contains("list integer"), "{}", result.result);
             assert_eq!(result.result.matches("list data").count(), 2);
@@ -1139,8 +1120,9 @@ fn accessor_sharing_retains_trace_before_a_malformed_record_failure() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            insta::assert_snapshot!(compiled_output(arena, compiled.core));
-            let compiled = crate::program::assemble_core(arena, compiled.core).unwrap();
+            let prepared = crate::snapshot_optimizer::prepare(arena, compiled.core);
+            insta::assert_snapshot!(prepared.snapshot());
+            let compiled = &prepared.before;
             let malformed = nash_plutus::data::PlutusData::integer_from(arena, 0);
             let result = compiled
                 .program
@@ -1169,8 +1151,9 @@ fn accessor_sharing_keeps_unselected_branch_decoding_lazy() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            insta::assert_snapshot!(compiled_output(arena, compiled.core));
-            let compiled = crate::program::assemble_core(arena, compiled.core).unwrap();
+            let prepared = crate::snapshot_optimizer::prepare(arena, compiled.core);
+            insta::assert_snapshot!(prepared.snapshot());
+            let compiled = &prepared.before;
             let malformed = nash_plutus::data::PlutusData::integer_from(arena, 0);
             let result = compiled
                 .program
@@ -1195,10 +1178,8 @@ macro_rules! source_codegen_snapshot {
                 let compiled = build
                     .compile(arena, root, None, TraceConfig::default())
                     .unwrap();
-                let rewritten =
-                    crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
-                        .unwrap();
-                let evaluated = crate::harness::eval_core_raw(arena, rewritten);
+                let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+let evaluated = &fixture.evaluated;
                 assert_eq!(
                     evaluated.result.starts_with("error:"),
                     $fails,
@@ -1207,9 +1188,9 @@ macro_rules! source_codegen_snapshot {
                 );
                 insta::assert_snapshot!(
                     stringify!($name),
-                    crate::harness::source_snapshot(arena, compiled.core, &evaluated)
+                    fixture.snapshot()
                 );
-                crate::harness::assert_candidate_equivalent(arena, compiled.core, &evaluated);
+                fixture.assert_equivalent(arena);
             });
         }
     };
@@ -1306,14 +1287,12 @@ fn source_trace_precedes_failure() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            let evaluated = crate::harness::eval_core(arena, compiled.core);
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+            let evaluated = &fixture.evaluated;
             assert!(evaluated.result.starts_with("error:"));
 
-            insta::assert_snapshot!(crate::harness::source_snapshot(
-                arena,
-                compiled.core,
-                &evaluated
-            ));
+            insta::assert_snapshot!(fixture.snapshot());
+            fixture.assert_equivalent(arena);
         },
     );
 }
@@ -1337,17 +1316,10 @@ fn native_case_branches_evaluate_scrutinee_once_and_remain_lazy() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            let core =
-                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
-                    .unwrap();
-            let result = crate::harness::eval_core_raw(arena, core);
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
 
-            insta::assert_snapshot!(crate::harness::source_snapshot(
-                arena,
-                compiled.core,
-                &result
-            ));
-            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
+            insta::assert_snapshot!(fixture.snapshot());
+            fixture.assert_equivalent(arena);
         },
     );
 }
@@ -1383,19 +1355,13 @@ fn native_case_dispatches_lists_data_and_sparse_literals() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            let core =
-                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
-                    .unwrap();
-            let result = crate::harness::eval_core_raw(arena, core);
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+            let result = &fixture.evaluated;
 
             assert!(!result.result.starts_with("error:"), "{}", result.result);
 
-            insta::assert_snapshot!(crate::harness::source_snapshot(
-                arena,
-                compiled.core,
-                &result
-            ));
-            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
+            insta::assert_snapshot!(fixture.snapshot());
+            fixture.assert_equivalent(arena);
         },
     );
 }
@@ -1436,13 +1402,11 @@ fn consecutive_big_fields_reuse_previous_tails() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            let result = crate::harness::eval_core(arena, compiled.core);
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+            let result = &fixture.evaluated;
             assert!(!result.result.starts_with("error:"), "{}", result.result);
-            insta::assert_snapshot!(crate::harness::source_snapshot(
-                arena,
-                compiled.core,
-                &result
-            ));
+            insta::assert_snapshot!(fixture.snapshot());
+            fixture.assert_equivalent(arena);
         },
     );
 }
@@ -1844,19 +1808,13 @@ fn list_eq_little_preserves_custom_eq_and_short_circuit() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            let core =
-                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
-                    .unwrap();
-            let result = crate::harness::eval_core_raw(arena, core);
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+            let result = &fixture.evaluated;
 
             assert!(!result.result.starts_with("error:"), "{}", result.result);
 
-            insta::assert_snapshot!(crate::harness::source_snapshot(
-                arena,
-                compiled.core,
-                &result
-            ));
-            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
+            insta::assert_snapshot!(fixture.snapshot());
+            fixture.assert_equivalent(arena);
         },
     );
 }
@@ -1997,19 +1955,13 @@ fn map_eq_little_preserves_custom_eq_and_short_circuit() {
             let compiled = build
                 .compile(arena, root, None, TraceConfig::default())
                 .unwrap();
-            let core =
-                crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core)
-                    .unwrap();
-            let result = crate::harness::eval_core_raw(arena, core);
+            let fixture = crate::harness::prepare_fixture(arena, compiled.core);
+            let result = &fixture.evaluated;
 
             assert!(!result.result.starts_with("error:"), "{}", result.result);
 
-            insta::assert_snapshot!(crate::harness::source_snapshot(
-                arena,
-                compiled.core,
-                &result
-            ));
-            crate::harness::assert_candidate_equivalent(arena, compiled.core, &result);
+            insta::assert_snapshot!(fixture.snapshot());
+            fixture.assert_equivalent(arena);
         },
     );
 }

@@ -32,7 +32,7 @@ fn constr<'a>(b: &Builder<'a>, tag: u16, fields: &[&'a Core<'a>]) -> &'a Core<'a
     )
 }
 
-pub(crate) use crate::snapshot_optimizer::candidate;
+pub(crate) use crate::harness::candidate;
 
 fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, fails: bool) {
     let before = crate::recursion::rewrite(b, core).unwrap();
