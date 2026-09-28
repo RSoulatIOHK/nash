@@ -1,4 +1,4 @@
-//! Direct native-constructor case folding, independent of the accepted pipeline.
+//! Direct native-constructor case folding, including isolated-pass evidence.
 use nash_ir::{
     build::Builder,
     core::*,

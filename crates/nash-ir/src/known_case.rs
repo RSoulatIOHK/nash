@@ -1,4 +1,4 @@
-//! Known-subject case folding. Constructor folding remains a standalone trial.
+//! Known-subject case folding: Boolean cleanup and pre-ANF native constructors.
 use crate::{
     build::Builder,
     core::{CaseKind, Core, CoreKind, Test},

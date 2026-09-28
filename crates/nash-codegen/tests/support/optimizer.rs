@@ -21,7 +21,9 @@ pub(crate) fn optimize_with<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> &'a Core
     hygiene::validate(lifted, &[]).unwrap();
     let shortened = nash_ir::unused_params::reduce(b, lifted);
     hygiene::validate(shortened, &[]).unwrap();
-    let normalized = anf::normalize(b, shortened);
+    let folded = nash_ir::known_case::reduce_constr(b, shortened);
+    hygiene::validate(folded, &[]).unwrap();
+    let normalized = anf::normalize(b, folded);
     anf::validate(normalized).unwrap();
     hygiene::validate(normalized, &[]).unwrap();
     let propagated = nash_ir::small_inline::simplify(b, normalized);

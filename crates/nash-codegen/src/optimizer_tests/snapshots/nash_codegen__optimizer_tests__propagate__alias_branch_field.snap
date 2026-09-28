@@ -1,6 +1,5 @@
 ---
 source: crates/nash-codegen/src/optimizer_tests/propagate.rs
-assertion_line: 40
 expression: "crate::harness::pass_snapshot(b.arena, core,\nformat!(\"--- core before\\n{}\\n--- baseline\\n{}\\n--- core after\\n{}\\n--- candidate\\n{}\",\npretty(before), output(&baseline), pretty(after), output(&candidate)))"
 ---
 --- unoptimized Core
@@ -11,12 +10,9 @@ case@Tag constr 0 42 of
 (program 1.1.0
   (case (constr 0 (con integer 42)) (lam field_1 [(lam alias_2 alias_2) field_1])))
 --- optimized Core
-let anf#5 : @constr[0](int) = constr 0 42 in
-case@Tag anf#5 of
-  0 field#3 -> field#3
+42
 --- optimized UPLC
-(program 1.1.0
-  [(lam anf_1 (case anf_1 (lam field_2 field_2))) (constr 0 (con integer 42))])
+(program 1.1.0 (con integer 42))
 --- isolated pass
 --- core before
 let anf#3 : @constr[0](int) = constr 0 42 in

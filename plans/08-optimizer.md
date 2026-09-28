@@ -1212,7 +1212,7 @@ the original O0 sections and recorded outcomes are unchanged. Root and isolated
 strict Clippy and formatting pass. Prior experiment executables were removed
 after recording these results; semantic snapshots and budget regression checks remain.
 
-**Direct native-constructor trial (28 September 2026), pending keep decision.**
+**Direct native-constructor folding (28 September 2026), accepted.**
 `known_case::reduce_constr` folds only a direct `Constr` subject under `CaseKind::Tag`.
 It checks the same local table contract as lowering: no default, only consecutive
 unique tags starting at zero, in any source order. An absent tag or selected
@@ -1222,13 +1222,13 @@ UPLC behavior that cannot be replaced with a simple sequence of field bindings.
 With globally unique, well-scoped binders, the pass replaces the selected case
 with strict field lets in left-to-right order and the selected body, preserving
 the case result type view. Ignored fields still evaluate; unselected branches do
-not. Bottom-up traversal also folds nested direct cases. The trial runs after
+not. Bottom-up traversal also folds nested direct cases. The accepted pass runs after
 freshening/static lifting and before the single ANF normalization: ANF otherwise
 binds the constructor and changes the subject into a variable. No constructor
-fact propagation or call-chain reconstruction is included. The accepted pipeline
-and permanent budget baseline remain unchanged pending review. Boolean and
-constructor folding share `known_case.rs` with separate entry points while the
-constructor step is a trial. Unused-binding removal and recursive reachability
+fact propagation or call-chain reconstruction is included. Adoption adds this step
+after unused-parameter removal and before ANF in the shared accepted snapshot and
+performance pipelines. Boolean and constructor folding share `known_case.rs` with
+separate entry points because their pipeline placements differ. Unused-binding removal and recursive reachability
 likewise share `dead_code.rs`; their cleanup order and algorithms are unchanged.
 
 Temporary measurements compare otherwise identical accepted pipelines with and
@@ -1245,6 +1245,34 @@ wildcards, nullary/nested cases, returned functions/delays, cold construction,
 non-direct subjects, absent tags, arity mismatches and malformed tables. All
 3,754 workspace nextest tests pass with no skips, alongside strict Clippy and
 formatting. All 23 accepted performance baseline cases remain unchanged.
+
+Adoption adds the pre-ANF constructor pass to both accepted pipelines. The
+23-row performance baseline is numerically unchanged, including corrected V3
+vesting inputs; only pipeline settings/provenance change.
+
+Adoption validation: 467 codegen nextest tests pass. All 3,754 workspace unit and
+integration tests pass using `cargo test --workspace` after full nextest discovery
+stalled twice. The additional doctest phase was stopped after unit/integration
+coverage completed; it is not part of nextest coverage. Strict Clippy and
+formatting pass. Nine reviewed snapshots change
+only accepted optimized output; original Core/O0 UPLC and isolated-pass evidence,
+including results and logs, are byte-for-byte unchanged. The explicit 23-row
+budget check passes.
+
+Next proposed trial: cases on known let-bound native constructors. Source
+`decision_tree::compile` binds the subject before matching, so direct-subject
+folding alone misses this normal source shape. Track a constructor binding's tag
+and already-evaluated fields, reuse those fields at matching cases, and let
+ordinary dead-binding cleanup remove the construction only when unused. Trial
+this with ANF field bindings so effects remain evaluated once in their original
+order, including ignored fields and cases inside cold branches. Cover aliases,
+multiple matches and a constructor value that also escapes. This is a proposed
+extension, not part of the accepted direct-constructor rule.
+
+Known native-list cases (`Nil`/`Cons`) can follow. Native `CaseKind::Int`/`Bytes`
+literal folding remains in scope, but currently has no source codegen producer:
+source literal patterns call their selected conversion and equality traits.
+Do not bypass those calls to manufacture an optimization opportunity.
 
 **Future late UPLC application packing, separate from Core folding.**
 Measure replacing a chain such as `f a b c` with native

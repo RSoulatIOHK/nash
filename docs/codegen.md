@@ -929,3 +929,10 @@ subjects stay unchanged. It runs inside the accepted fixed-point loop after
 force/delay cancellation and before beta cleanup. This lets cleanup expose new
 literal subjects and remove dead branch helpers, without another ANF pass.
 Production assembly remains O0 until optimizer integration.
+
+Accepted native-constructor folding (`known_case::reduce_constr`) runs after
+static lifting and unused-parameter removal, before the single ANF pass. It
+selects a direct `Constr` subject's matching `CaseKind::Tag` branch and replaces
+field binders with strict lets in original field order. Ignored fields still
+evaluate. Malformed tables, absent tags, arity mismatches and non-direct subjects
+stay unchanged. No constructor fact propagation is included.
