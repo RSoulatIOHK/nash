@@ -955,7 +955,7 @@ experiment preserves results and traces. Existing semantic snapshots are unchang
 ## Chunk 6 — Dead bindings, functions and parameters
 
 **First rule retained (27 September 2026): safe unused nonrecursive bindings.**
-`nash_ir::dead_bindings::simplify` removes unused nonrecursive lets only when
+`nash_ir::dead_code::simplify_bindings` removes unused nonrecursive lets only when
 `analysis::safe_to_discard` proves the RHS terminates without failure or trace.
 It counts uses by unique binder identity and repeats after removal, so dead
 closures/aliases can release captured bindings. It preserves expression types
@@ -984,7 +984,7 @@ arguments and strict tracing arguments through the accepted cleanup loop. Root
 and isolated strict Clippy and formatting passed.
 
 **Second rule retained (27 September 2026): recursive reachability.**
-`nash_ir::dead_recursive::prune` visits groups bottom-up. It seeds a worklist with
+`nash_ir::dead_code::prune_recursive` visits groups bottom-up. It seeds a worklist with
 members referenced anywhere in the continuation, then follows references in
 reachable member bodies. Unreachable cycles do not seed themselves. A member
 counts as used when returned, partially applied, passed as a value, captured by
@@ -1169,7 +1169,7 @@ Source fixtures reuse the Base compiler, including Boolean helpers, a cold trace
 and a retained strict trace. Budgets remain in the explicit performance workspace.
 
 **Known Boolean subjects: trial 27 September 2026, accepted 28 September 2026.**
-`known_bool::reduce` selects the actual True/False branch or default only for a
+`known_case::reduce_bool` selects the actual True/False branch or default only for a
 literal Boolean subject. It validates the local Boolean table before folding:
 no field binders, no non-Boolean tests and no duplicate alternatives. Missing
 matches without a default remain untouched so runtime failure is preserved.
@@ -1207,6 +1207,53 @@ passed. Reviewed 58 updated snapshots and one new runtime-conditional snapshot;
 the original O0 sections and recorded outcomes are unchanged. Root and isolated
 strict Clippy and formatting pass. Prior experiment executables were removed
 after recording these results; semantic snapshots and budget regression checks remain.
+
+**Direct native-constructor trial (28 September 2026), pending keep decision.**
+`known_case::reduce_constr` folds only a direct `Constr` subject under `CaseKind::Tag`.
+It checks the same local table contract as lowering: no default, only consecutive
+unique tags starting at zero, in any source order. An absent tag or selected
+field/binder arity mismatch remains unchanged. Under- and overapplication have
+UPLC behavior that cannot be replaced with a simple sequence of field bindings.
+
+With globally unique, well-scoped binders, the pass replaces the selected case
+with strict field lets in left-to-right order and the selected body, preserving
+the case result type view. Ignored fields still evaluate; unselected branches do
+not. Bottom-up traversal also folds nested direct cases. The trial runs after
+freshening/static lifting and before the single ANF normalization: ANF otherwise
+binds the constructor and changes the subject into a variable. No constructor
+fact propagation or call-chain reconstruction is included. The accepted pipeline
+and permanent budget baseline remain unchanged pending review. Boolean and
+constructor folding share `known_case.rs` with separate entry points while the
+constructor step is a trial. Unused-binding removal and recursive reachability
+likewise share `dead_code.rs`; their cleanup order and algorithms are unchanged.
+
+Temporary measurements compare otherwise identical accepted pipelines with and
+without this pre-ANF step. Across 24 direct-constructor cases (0/1/2/3/4/8 fields,
+used/ignored fields, pure/traced fields) and 11 existing source workloads, all
+results and logs match. All 24 direct cases improve CPU, memory and Flat size;
+all 11 source workloads are unchanged. Savings range from 80,000 to 336,000 CPU,
+500 to 2,100 memory, and 5 to 28 Flat bytes. These are fixture results, not a
+real-validator distribution. Temporary measurement code is removed after recording
+results; snapshots retain the semantic evidence.
+
+Validation: 18 reviewed snapshots cover field order, ignored failure, expanded
+wildcards, nullary/nested cases, returned functions/delays, cold construction,
+non-direct subjects, absent tags, arity mismatches and malformed tables. All
+3,754 workspace nextest tests pass with no skips, alongside strict Clippy and
+formatting. All 23 accepted performance baseline cases remain unchanged.
+
+**Future late UPLC application packing, separate from Core folding.**
+Measure replacing a chain such as `f a b c` with native
+`case (constr 0 [a, b, c]) [f]` after reductions. Three or more applications is a
+proposed starting point, not an established cutoff. Core known-constructor
+folding must run earlier so it does not undo this late representation choice.
+Packing must preserve evaluation of the function itself before its arguments:
+`f` must already be a value, or be evaluated and bound before constructing them.
+It must also preserve application stages: constructing every argument first can
+move later traces/failures before an earlier function-body execution. Only pack
+when intermediate applications are proven not to execute a body (for example,
+a known lambda with enough parameters), or retain the original evaluation stages.
+Compare CPU, memory and serialized size before adopting any threshold.
 
 Fold cases on known native constructors, booleans, integers, bytes, lists and Data
 shapes using their actual branch tests, binders and defaults. Keep strict subject

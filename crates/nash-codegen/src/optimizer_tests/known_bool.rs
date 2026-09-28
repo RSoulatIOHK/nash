@@ -2,7 +2,7 @@
 use nash_ir::{
     build::Builder,
     core::*,
-    hygiene, known_bool,
+    hygiene, known_case,
     pretty::pretty,
     ty::{ConstTy, Ty},
 };
@@ -12,7 +12,7 @@ fn trace<'a>(b: &Builder<'a>, s: &'a str, x: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, s)), x)
 }
 fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, fails: bool) {
-    let after = known_bool::reduce(b, before);
+    let after = known_case::reduce_bool(b, before);
 
     hygiene::validate(after, &[]).unwrap();
     let left = crate::harness::eval_core_raw(b.arena, before);
@@ -86,7 +86,7 @@ fn defaults_missing_matches_and_reversed_order() {
         false,
     );
     let missing = b.case(CaseKind::Bool, yes, &bs, None, INT);
-    assert!(std::ptr::eq(missing, known_bool::reduce(&b, missing)));
+    assert!(std::ptr::eq(missing, known_case::reduce_bool(&b, missing)));
     check("missing", &b, missing, true);
     check(
         "reversed",
@@ -129,7 +129,7 @@ fn earlier_strict_work_remains_and_effectful_subject_is_not_folded() {
         b.int(42),
         b.error(INT),
     );
-    assert!(std::ptr::eq(c, known_bool::reduce(&b, c)));
+    assert!(std::ptr::eq(c, known_case::reduce_bool(&b, c)));
     check("effectful_subject", &b, c, false);
 }
 #[test]
@@ -209,7 +209,7 @@ fn malformed_boolean_tables_are_not_hidden() {
         ),
     ] {
         let root = b.case(CaseKind::Bool, yes, &bs, None, INT);
-        let after = known_bool::reduce(&b, root);
+        let after = known_case::reduce_bool(&b, root);
         assert!(std::ptr::eq(root, after));
         let left = crate::lower::lower(&a, root).unwrap_err();
         let right = crate::lower::lower(&a, after).unwrap_err();

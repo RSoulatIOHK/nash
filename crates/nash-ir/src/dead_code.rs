@@ -1,9 +1,44 @@
-//! Remove recursive members unreachable from their group's continuation.
+//! Remove safely discardable unused bindings and unreachable recursive members.
 use crate::{
+    analysis,
     build::Builder,
     core::{Core, CoreKind},
 };
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet},
+    ptr,
+};
+
+/// Requires globally unique, well-scoped binders. Iterate so discarding an unused
+/// closure or alias can expose dead bindings that supplied its captured values.
+/// Calls, recursive groups and parameters are not eliminated by this pass.
+pub fn simplify_bindings<'a>(b: &Builder<'a>, mut core: &'a Core<'a>) -> &'a Core<'a> {
+    loop {
+        let mut used = HashSet::new();
+        core.walk(&mut |node| {
+            if let CoreKind::Var(name) = node.kind {
+                used.insert(name.unique);
+            }
+        });
+        let next = core.map(b, &mut |node| {
+            if let CoreKind::Let {
+                binder,
+                value,
+                body,
+            } = node.kind
+                && !used.contains(&binder.name.unique)
+                && analysis::safe_to_discard(value)
+            {
+                return Some(b.with_type(body, node.ty));
+            }
+            None
+        });
+        if ptr::eq(core, next) {
+            return next;
+        }
+        core = next;
+    }
+}
 
 fn mark(
     core: &Core<'_>,
@@ -26,7 +61,7 @@ fn mark(
 /// including partial applications, escaping values and suspended captures.
 /// Function bodies are deferred; the supported singleton delayed worker is too.
 /// No call-shape analysis, static-parameter inference or parameter removal occurs.
-pub fn prune<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
+pub fn prune_recursive<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> &'a Core<'a> {
     core.map(b, &mut |node| {
         let CoreKind::LetRec { binders, body } = node.kind else {
             return None;

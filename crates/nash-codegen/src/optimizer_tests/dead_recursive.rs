@@ -2,7 +2,7 @@
 use nash_ir::{
     build::Builder,
     core::*,
-    dead_recursive, hygiene,
+    dead_code, hygiene,
     pretty::pretty,
     ty::{ConstTy, TermTy, Ty},
 };
@@ -53,12 +53,12 @@ fn count(core: &Core<'_>) -> usize {
     n
 }
 fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, members: usize, fails: bool) {
-    let after = dead_recursive::prune(b, before);
+    let after = dead_code::prune_recursive(b, before);
     hygiene::validate(before, &[]).unwrap();
     hygiene::validate(after, &[]).unwrap();
 
     let anf = nash_ir::anf::normalize(b, before);
-    nash_ir::anf::validate(dead_recursive::prune(b, anf)).unwrap();
+    nash_ir::anf::validate(dead_code::prune_recursive(b, anf)).unwrap();
     let baseline =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, before).unwrap());
     let candidate =
@@ -84,7 +84,7 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, members: usize, fails: 
     // Properties independent of the expected snapshot.
     assert_eq!(before.ty, after.ty);
     assert_eq!(count(after), members);
-    assert!(std::ptr::eq(after, dead_recursive::prune(b, after)));
+    assert!(std::ptr::eq(after, dead_code::prune_recursive(b, after)));
     assert_eq!(baseline.observable, candidate.observable);
     assert_eq!(baseline.logs, candidate.logs);
 }
@@ -149,7 +149,7 @@ fn transitive_chain_retains_order_and_drops_cycle() {
         ],
         call(&b, f, &[b.int(42)]),
     );
-    let after = dead_recursive::prune(&b, root);
+    let after = dead_code::prune_recursive(&b, root);
     let CoreKind::LetRec { binders, .. } = after.kind else {
         panic!("retained group");
     };
@@ -255,7 +255,7 @@ fn singleton_preserves_static_metadata_and_captures() {
         &[member, def(&b, dead, &[z], b.error(INT))],
         call(&b, f, &[b.int(40), b.int(3)]),
     );
-    let after = dead_recursive::prune(&b, group);
+    let after = dead_code::prune_recursive(&b, group);
     let CoreKind::LetRec {
         binders: [kept], ..
     } = after.kind
@@ -283,7 +283,7 @@ fn reachable_failure_stays() {
         &[def(&b, f, &[x], trace(&b, "failure", b.error(INT)))],
         call(&b, f, &[b.int(42)]),
     );
-    assert!(std::ptr::eq(root, dead_recursive::prune(&b, root)));
+    assert!(std::ptr::eq(root, dead_code::prune_recursive(&b, root)));
     check("reachable_failure", &b, root, 1, true);
 }
 #[test]
@@ -333,7 +333,7 @@ fn unsupported_recursive_values_stay_rejected() {
     let b = Builder::new(&a);
     let value = bind(&b, "value", INT);
     let root = b.let_rec(&[def(&b, value, &[], b.error(INT))], b.int(42));
-    let after = dead_recursive::prune(&b, root);
+    let after = dead_code::prune_recursive(&b, root);
     assert!(std::ptr::eq(root, after));
     assert_eq!(
         crate::recursion::rewrite(&b, after).unwrap_err(),
@@ -403,7 +403,7 @@ fn cold_and_nested_references_remain_live() {
             call(&b, f, &[b.int(0)]),
         ),
     );
-    assert!(std::ptr::eq(cold, dead_recursive::prune(&b, cold)));
+    assert!(std::ptr::eq(cold, dead_code::prune_recursive(&b, cold)));
     check("cold_reference", &b, cold, 1, false);
 }
 

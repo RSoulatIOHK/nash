@@ -1,0 +1,68 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/known_constr.rs
+assertion_line: 41
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), left.uplc, pretty(after), right.uplc, right.result,\nright.logs))"
+---
+--- unoptimized Core
+(case@Tag constr 0 (trace "field" in 42) of
+  0 x#1 -> \p#2 : int -> trace "body" in x#1) (trace "argument" in 0)
+--- unoptimized UPLC
+(program 1.1.0
+  [(case
+    (constr 0
+      (force
+        [[(force (builtin trace)) (con string "field")] (delay (con integer 42))]))
+    (lam x_1
+      (lam p_2 (force [[(force (builtin trace)) (con string "body")] (delay x_1)]))))
+    (force
+      [[(force (builtin trace)) (con string "argument")] (delay (con integer 0))])])
+--- optimized Core
+let anf#5 : int = trace "field" in 42 in
+let anf#6 : @constr[0](int) = constr 0 anf#5 in
+let anf#7 : int -> int = case@Tag anf#6 of
+  0 x#3 -> \p#4 : int -> trace "body" in x#3 in
+let anf#8 : int = trace "argument" in 0 in
+anf#7 anf#8
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_13
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_11
+          [(lam anf_12 [anf_11 anf_12])
+            (force [[builtin_13 (con string "argument")] (delay (con integer 0))])])
+          (case
+            anf_2
+            (lam x_9 (lam p_10 (force [[builtin_13 (con string "body")] (delay x_9)]))))])
+        (constr 0 anf_1)])
+      (force [[builtin_13 (con string "field")] (delay (con integer 42))])])
+    (force (builtin trace))])
+--- isolated pass
+--- core before
+(case@Tag constr 0 (trace "field" in 42) of
+  0 x#1 -> \p#2 : int -> trace "body" in x#1) (trace "argument" in 0)
+--- uplc before
+(program 1.1.0
+  [(case
+    (constr 0
+      (force
+        [[(force (builtin trace)) (con string "field")] (delay (con integer 42))]))
+    (lam x_1
+      (lam p_2 (force [[(force (builtin trace)) (con string "body")] (delay x_1)]))))
+    (force
+      [[(force (builtin trace)) (con string "argument")] (delay (con integer 0))])])
+--- core after
+(let x#1 : int = trace "field" in 42 in
+\p#2 : int -> trace "body" in x#1) (trace "argument" in 0)
+--- uplc after
+(program 1.1.0
+  [[(lam x_1
+    (lam p_2 (force [[(force (builtin trace)) (con string "body")] (delay x_1)])))
+    (force
+      [[(force (builtin trace)) (con string "field")] (delay (con integer 42))])]
+    (force
+      [[(force (builtin trace)) (con string "argument")] (delay (con integer 0))])])
+--- result
+(con integer 42)
+--- logs
+["field", "argument", "body"]

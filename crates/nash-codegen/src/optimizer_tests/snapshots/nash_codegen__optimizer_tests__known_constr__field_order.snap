@@ -1,0 +1,86 @@
+---
+source: crates/nash-codegen/src/optimizer_tests/known_constr.rs
+assertion_line: 41
+expression: "crate::harness::pass_snapshot(b.arena, before,\nformat!(\"--- core before\\n{}\\n--- uplc before\\n{}\\n--- core after\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), left.uplc, pretty(after), right.uplc, right.result,\nright.logs))"
+---
+--- unoptimized Core
+case@Tag constr 1 (trace "first" in 50) (trace "second" in 8) of
+  1 x#1 y#2 -> trace "body" in subtractInteger x#1 y#2
+  0 -> trace "cold" in error
+--- unoptimized UPLC
+(program 1.1.0
+  (case
+    (constr 1
+      (force
+        [[(force (builtin trace)) (con string "first")] (delay (con integer 50))])
+      (force
+        [[(force (builtin trace)) (con string "second")] (delay (con integer 8))]))
+    (force [[(force (builtin trace)) (con string "cold")] (delay (error))])
+    (lam x_1
+      (lam y_2
+        (force
+          [[(force (builtin trace)) (con string "body")]
+            (delay [[(builtin subtractInteger) x_1] y_2])])))))
+--- optimized Core
+let anf#5 : int = trace "first" in 50 in
+let anf#6 : int = trace "second" in 8 in
+let anf#7 : @constr[1](int, int) = constr 1 anf#5 anf#6 in
+case@Tag anf#7 of
+  1 x#3 y#4 -> trace "body" in subtractInteger x#3 y#4
+  0 -> trace "cold" in error
+--- optimized UPLC
+(program 1.1.0
+  [(lam builtin_11
+    [(lam anf_1
+      [(lam anf_2
+        [(lam anf_8
+          (case
+            anf_8
+            (force [[builtin_11 (con string "cold")] (delay (error))])
+            (lam x_9
+              (lam y_10
+                (force
+                  [[builtin_11 (con string "body")]
+                    (delay [[(builtin subtractInteger) x_9] y_10])])))))
+          (constr 1 anf_1 anf_2)])
+        (force [[builtin_11 (con string "second")] (delay (con integer 8))])])
+      (force [[builtin_11 (con string "first")] (delay (con integer 50))])])
+    (force (builtin trace))])
+--- isolated pass
+--- core before
+case@Tag constr 1 (trace "first" in 50) (trace "second" in 8) of
+  1 x#1 y#2 -> trace "body" in subtractInteger x#1 y#2
+  0 -> trace "cold" in error
+--- uplc before
+(program 1.1.0
+  (case
+    (constr 1
+      (force
+        [[(force (builtin trace)) (con string "first")] (delay (con integer 50))])
+      (force
+        [[(force (builtin trace)) (con string "second")] (delay (con integer 8))]))
+    (force [[(force (builtin trace)) (con string "cold")] (delay (error))])
+    (lam x_1
+      (lam y_2
+        (force
+          [[(force (builtin trace)) (con string "body")]
+            (delay [[(builtin subtractInteger) x_1] y_2])])))))
+--- core after
+let x#1 : int = trace "first" in 50 in
+let y#2 : int = trace "second" in 8 in
+trace "body" in subtractInteger x#1 y#2
+--- uplc after
+(program 1.1.0
+  [(lam x_1
+    [(lam y_2
+      (force
+        [[(force (builtin trace)) (con string "body")]
+          (delay [[(builtin subtractInteger) x_1] y_2])]))
+      (force
+        [[(force (builtin trace)) (con string "second")] (delay (con integer 8))])])
+    (force
+      [[(force (builtin trace)) (con string "first")] (delay (con integer 50))])])
+--- result
+(con integer 42)
+--- logs
+["first", "second", "body"]

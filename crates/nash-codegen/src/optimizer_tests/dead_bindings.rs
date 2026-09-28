@@ -3,7 +3,7 @@ use nash_ir::{
     analysis,
     build::Builder,
     core::*,
-    dead_bindings, hygiene,
+    dead_code, hygiene,
     pretty::pretty,
     ty::{ConstTy, TermTy, Ty},
 };
@@ -22,9 +22,9 @@ fn bind<'a>(b: &Builder<'a>, ty: Ty<'a>) -> Binder<'a> {
     }
 }
 fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, removes: bool, fails: bool) {
-    let after = dead_bindings::simplify(b, before);
+    let after = dead_code::simplify_bindings(b, before);
     let normalized = nash_ir::anf::normalize(b, before);
-    nash_ir::anf::validate(dead_bindings::simplify(b, normalized)).unwrap();
+    nash_ir::anf::validate(dead_code::simplify_bindings(b, normalized)).unwrap();
     hygiene::validate(after, &[]).unwrap();
 
     let baseline = crate::harness::eval_core_raw(b.arena, before);
@@ -49,7 +49,10 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, removes: bool, fails: b
     );
     // Properties independent of the expected snapshot.
     assert_eq!(before.ty, after.ty);
-    assert_eq!(pretty(after), pretty(dead_bindings::simplify(b, after)));
+    assert_eq!(
+        pretty(after),
+        pretty(dead_code::simplify_bindings(b, after))
+    );
     assert_eq!(
         analysis::size_estimate(after).nodes < analysis::size_estimate(before).nodes,
         removes
@@ -191,7 +194,7 @@ fn diverging_call_is_retained() {
             b.int(42),
         ),
     );
-    let after = dead_bindings::simplify(&b, root);
+    let after = dead_code::simplify_bindings(&b, root);
     // Deliberately do not run an infinite program: exact identity proves that
     // the unused recursive call and its strict evaluation remain intact.
     assert!(std::ptr::eq(root, after));

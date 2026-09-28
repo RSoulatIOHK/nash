@@ -893,7 +893,7 @@ Chunk 6 removes unused nonrecursive lets when `analysis::safe_to_discard` proves
 the RHS terminates without trace or failure. Repeating cleanup releases dead
 captures and aliases while preserving strict effectful arguments exposed by beta
 reduction. It runs before recursion rewriting; no second ANF pass is added.
-The cleanup loop also runs `dead_recursive::prune`,
+The cleanup loop also runs `dead_code::prune_recursive`,
 rooted in continuation references and their transitive member dependencies. It
 retains source order and existing metadata. Repeating cleanup releases newly
 unused safe captures while preserving effectful initializers. The accepted pre-ANF
@@ -921,7 +921,7 @@ argument evaluation and consistent worker/static-parameter metadata. The current
 accepted nonrecursive pass does not implement that scope.
 
 
-Chunk 7 includes accepted `known_bool::reduce` cleanup. A literal Boolean subject
+Chunk 7 includes accepted `known_case::reduce_bool` cleanup. A literal Boolean subject
 selects its matching branch or default while retaining the case result type.
 Malformed Boolean tables, unmatched cases without defaults and nonliteral
 subjects stay unchanged. It runs inside the accepted fixed-point loop after

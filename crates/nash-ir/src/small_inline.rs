@@ -3,7 +3,7 @@ use crate::{
     analysis,
     build::Builder,
     core::{Binder, Core, CoreKind},
-    dead_bindings, dead_recursive, force_delay, known_bool, propagate, single_use,
+    dead_code, force_delay, known_case, propagate, single_use,
 };
 use std::{collections::HashSet, ptr};
 
@@ -14,9 +14,9 @@ pub fn simplify<'a>(b: &Builder<'a>, mut core: &'a Core<'a>) -> &'a Core<'a> {
     loop {
         // Beta cleanup flattens lets exposed by cancellation before other ANF rules.
         let core_without_delays = force_delay::reduce(b, core);
-        let selected = known_bool::reduce(b, core_without_delays);
-        let next = dead_bindings::simplify(b, inline(b, single_use::simplify(b, selected)));
-        let next = dead_recursive::prune(b, next);
+        let selected = known_case::reduce_bool(b, core_without_delays);
+        let next = dead_code::simplify_bindings(b, inline(b, single_use::simplify(b, selected)));
+        let next = dead_code::prune_recursive(b, next);
         if ptr::eq(core, next) {
             return next;
         }
