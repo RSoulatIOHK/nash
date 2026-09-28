@@ -20,7 +20,7 @@ const BUDGET: ExBudget = ExBudget {
     cpu: 100_000_000,
     mem: 2_000_000,
 };
-const SETTINGS: &str = "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/ANF once/rules1+2+3+4+dead-bindings+recursive-reachability/recursion/hygiene/lower+forced-builtin-sharing+constant-prefix-sharing";
+const SETTINGS: &str = "v1; Plutus V3/PV11; UPLC 1.1.0; bundled V3 default cost model; CPU=100000000; memory=2000000; raw Flat bytes before ledger application; O0 vs static lift/unused-parameters/ANF once/rules1+2+3+4+dead-bindings+recursive-reachability/recursion/hygiene/lower+forced-builtin-sharing+constant-prefix-sharing";
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -178,6 +178,7 @@ fn accepted<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a> {
     let b = Builder::new(arena);
     let core = hygiene::freshen(&b, core);
     let core = static_lift::lift(&b, core);
+    let core = nash_ir::unused_params::reduce(&b, core);
     let core = nash_ir::small_inline::simplify(&b, anf::normalize(&b, core));
     anf::validate(core).expect("ANF before recursion rewriting");
     let core = nash_codegen::recursion::rewrite(&b, core).expect("recursion rewrite");

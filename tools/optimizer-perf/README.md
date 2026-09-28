@@ -27,7 +27,7 @@ validator bytes exclude those arguments. Ordinary expression fixtures include
 their inputs in the measured program.
 
 The `before` pipeline is O0 (recursion rewrite and lowering). The `after` pipeline
-is the accepted static lifting, one ANF normalization and rules 1+2+3+4 plus safe dead-binding and recursive-reachability cleanup,
+is the accepted static lifting, pre-ANF unused-parameter removal, one ANF normalization and rules 1+2+3+4 plus safe dead-binding and recursive-reachability cleanup,
 then recursion rewrite, binder freshening and lowering with both Chunk 5 sharing steps. No second normalization
 or ANF-dependent cleanup runs after recursion rewriting. Rule 3 was accepted on 27 September 2026. These figures record current behavior, including overhead
 from ANF; they are not a claim that the incomplete optimizer beats O0 everywhere.
@@ -176,3 +176,7 @@ Results/logs must match; CPU, memory and Flat size are reported for all three.
 This 39-case trial is explicit-only and does not change the accepted baseline.
 The single-call all-unused case exposes missing force/delay cancellation; keep
 that regression visible while evaluating placement.
+
+Pre-ANF removal was accepted on 27 September 2026 and is now included in the
+main measured pipeline. The two placement examples retain their original
+comparison pipelines so their experiments remain reproducible.

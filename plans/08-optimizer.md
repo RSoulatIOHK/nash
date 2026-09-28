@@ -14,7 +14,9 @@ experiments are deferred. The retained cases are implemented in `nash-ir::small_
 with the candidate/performance pipelines. Chunk 5 step 1 adds outermost forced-builtin
 sharing during optimized lowering. Step 2 is accepted with a two-occurrence minimum
 for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
-unused-binding removal and recursive-member reachability are accepted. Normal build defaults remain O0 pending
+unused-binding removal, recursive-member reachability and pre-ANF nonrecursive
+unused-parameter removal are accepted. Direct force/delay cancellation in Chunk 8
+is the next separate review unit. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
@@ -1101,7 +1103,7 @@ functions and 16 reviewed snapshots. Root and isolated strict Clippy and
 formatting passed. Read-only review found no correctness defects under the
 typed ANF preconditions. The trial remains outside the accepted pipeline.
 
-**Third rule, pre-ANF trial (27 September 2026), pending review.**
+**Third rule, pre-ANF trial (27 September 2026), accepted.**
 The same pass now supports raw typed Core. Trial order is freshening, static
 lifting, unused-parameter removal, one ANF normalization, then accepted cleanup.
 Bindings for argument work remain inside their original branch, delay or lambda.
@@ -1136,7 +1138,15 @@ cover strict argument order, failure at every position, repeated all-unused call
 cold branches, empty lambdas, fresh IDs/type views and structural retention of a
 diverging argument. Prior snapshots are unchanged. Root and isolated strict Clippy
 and formatting passed; all 23 accepted baseline cases still match. Read-only
-review found no correctness defects. The trial remains outside the accepted pipeline.
+review found no correctness defects.
+
+Keep decision: adopt pre-ANF removal after static lifting in the candidate pipeline
+and explicit performance harness. Preserve the measured single-call tradeoff;
+Chunk 8 already specifies direct force/delay cancellation, which is the next
+separate review unit. Production assembly remains O0 until Chunk 11. Adoption
+validation passed all 513 IR/codegen tests with no snapshot changes, root and
+isolated strict Clippy, and formatting. All 23 performance rows remain identical;
+only baseline pipeline settings and revision metadata were refreshed.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused

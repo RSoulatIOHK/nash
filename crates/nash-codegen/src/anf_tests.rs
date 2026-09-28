@@ -40,7 +40,9 @@ pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a
     hygiene::validate(fresh, &[]).unwrap();
     let lifted = nash_ir::static_lift::lift(&b, fresh);
     hygiene::validate(lifted, &[]).unwrap();
-    let normalized = anf::normalize(&b, lifted);
+    let shortened = nash_ir::unused_params::reduce(&b, lifted);
+    hygiene::validate(shortened, &[]).unwrap();
+    let normalized = anf::normalize(&b, shortened);
     anf::validate(normalized).unwrap();
     hygiene::validate(normalized, &[]).unwrap();
     let propagated = nash_ir::small_inline::simplify(&b, normalized);

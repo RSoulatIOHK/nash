@@ -895,12 +895,12 @@ reduction. It runs before recursion rewriting; no second ANF pass is added.
 The cleanup loop also runs `dead_recursive::prune`,
 rooted in continuation references and their transitive member dependencies. It
 retains source order and existing metadata. Repeating cleanup releases newly
-unused safe captures while preserving effectful initializers. A standalone
-`unused_params::reduce` trial removes unused parameters from nonrecursive
+unused safe captures while preserving effectful initializers. The accepted pre-ANF
+`unused_params::reduce` pass removes unused parameters from nonrecursive
 let-bound lambdas only when all uses are exact direct calls. It preserves strict
 argument evaluation before or after ANF: each non-atomic argument gets a
 call-local strict binding in source order, including discarded arguments. It
-uses Delay/Force when every parameter is unused. The early trial runs after static
+uses Delay/Force when every parameter is unused. The pass runs after static
 lifting and before the single ANF normalization, followed by accepted cleanup.
 Partial/staged/escaping/oversaturated uses and recursive signatures are unchanged;
-this trial is not part of the accepted pipeline.
+production assembly remains O0 until the optimizer integration chunk.
