@@ -143,7 +143,7 @@ fn exposed_let_body_needs_cleanup_but_not_another_anf_pass() {
     );
     nash_ir::anf::validate(root).unwrap();
     check("exposed_let", &b, root, &["inner"], false);
-    let after = nash_ir::small_inline::simplify(&b, force_delay::reduce(&b, root));
+    let after = nash_ir::small_inline::simplify(&b, root);
     nash_ir::anf::validate(after).unwrap();
     let before_result = crate::harness::eval_core_raw(&a, root);
     let after_result = crate::harness::eval_core_raw(&a, after);

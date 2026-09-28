@@ -16,7 +16,9 @@ sharing during optimized lowering. Step 2 is accepted with a two-occurrence mini
 for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
 unused-binding removal, recursive-member reachability and pre-ANF nonrecursive
 unused-parameter removal are accepted. Direct force/delay cancellation in Chunk 8
-is the next separate review unit. Normal build defaults remain O0 pending
+is also accepted. Resume strict chunk order at Chunk 7 known-case simplification;
+finish its retained scope before the remaining Chunk 8 rules, then proceed to
+Chunks 9, 10 and 11. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
 `nash-codegen/src/program.rs`
@@ -1142,8 +1144,7 @@ review found no correctness defects.
 
 Keep decision: adopt pre-ANF removal after static lifting in the candidate pipeline
 and explicit performance harness. Preserve the measured single-call tradeoff;
-Chunk 8 already specifies direct force/delay cancellation, which is the next
-separate review unit. Production assembly remains O0 until Chunk 11. Adoption
+The later accepted Chunk 8 force/delay cancellation removes that tradeoff. Production assembly remains O0 until Chunk 11. Adoption
 validation passed all 513 IR/codegen tests with no snapshot changes, root and
 isolated strict Clippy, and formatting. All 23 performance rows remain identical;
 only baseline pipeline settings and revision metadata were refreshed.
@@ -1183,7 +1184,7 @@ equivalence tests, measurements and a keep decision.
 
 ## Chunk 8 — Representation and force/delay cleanup
 
-**Direct force/delay trial (27 September 2026), pending review.**
+**Direct force/delay cancellation (27 September 2026), accepted.**
 `nash_ir::force_delay::reduce` replaces only a syntactic `Force(Delay(body))`
 with the body at that evaluation point, retaining the outer type view. Bottom-up
 traversal cancels nested pairs without substitution, fresh binders, duplication
@@ -1202,11 +1203,14 @@ per-call force: this pass does not duplicate their bodies.
 
 Semantic snapshots cover literal, trace, failure, nesting, selected/cold branches,
 repeated execution, strict ordering, invalid forces, suspended invalid forces and
-exposed let bodies. The trial is separate from the accepted pipeline pending a
-keep decision; permanent performance baselines and production assembly are unchanged.
+exposed let bodies. The keep decision adds cancellation to the accepted cleanup loop before beta
+cleanup, so newly exposed lets are flattened and subsequent iterations catch
+pairs exposed by single-use substitution. Production assembly remains O0.
 Validation: 519 IR/codegen nextest tests passed with 10 reviewed new snapshots.
 Root and isolated strict Clippy and formatting passed. All 23 accepted baseline
-cases still match.
+cases still match. Adoption validation also passed all 519 tests without snapshot
+changes, strict Clippy and formatting. The 23 baseline rows remain identical;
+only pipeline settings and revision metadata changed.
 
 Cancel `force (delay x)` and valid inverse builtin pairs such as
 `unIData (iData x)`. Establish preconditions per direction and representation;

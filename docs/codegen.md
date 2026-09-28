@@ -906,8 +906,9 @@ Partial/staged/escaping/oversaturated uses and recursive signatures are unchange
 production assembly remains O0 until the optimizer integration chunk.
 
 
-Chunk 8 has a standalone `force_delay::reduce` trial for direct
+Chunk 8 adds accepted `force_delay::reduce` cleanup for direct
 `force (delay body)` cancellation. The body stays at the force's evaluation point
 and keeps its outer type view. It does not cancel `delay (force x)`, move argument
 work, or duplicate shared delayed bodies. Existing cleanup can flatten exposed
-lets without another ANF pass. This trial is not yet in the accepted pipeline.
+lets without another ANF pass. Cancellation runs in the accepted fixed-point
+loop before beta cleanup.

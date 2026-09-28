@@ -1,4 +1,4 @@
-//! Trial: cancel only a syntactically adjacent force/delay pair.
+//! Cancel only a syntactically adjacent force/delay pair.
 use crate::{
     build::Builder,
     core::{Core, CoreKind},

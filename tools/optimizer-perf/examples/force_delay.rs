@@ -24,11 +24,25 @@ fn bind<'a>(b: &Builder<'a>, text: &'a str, ty: Ty<'a>) -> Binder<'a> {
         ty,
     }
 }
+// Freeze the pre-cancellation cleanup so this experiment retains its control.
+fn control<'a>(b: &Builder<'a>, mut core: &'a Core<'a>) -> &'a Core<'a> {
+    loop {
+        let next = nash_ir::dead_bindings::simplify(
+            b,
+            small_inline::inline(b, nash_ir::single_use::simplify(b, core)),
+        );
+        let next = nash_ir::dead_recursive::prune(b, next);
+        if std::ptr::eq(core, next) {
+            return next;
+        }
+        core = next;
+    }
+}
 fn measure(label: &str, a: &Arena, core: &Core<'_>) {
     let b = Builder::new(a);
     let core = hygiene::freshen(&b, core);
     let lifted = static_lift::lift(&b, core);
-    let accepted = small_inline::simplify(
+    let accepted = control(
         &b,
         anf::normalize(&b, nash_ir::unused_params::reduce(&b, lifted)),
     );
