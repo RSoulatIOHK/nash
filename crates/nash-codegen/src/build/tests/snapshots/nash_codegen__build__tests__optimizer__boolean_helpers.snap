@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/optimizer.rs
+assertion_line: 48
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Logic exposing ((&&), (||))\nmain : bool\nmain = (True && False) || (True && True)\n"
 ---
---- source Core
+--- unoptimized Core
 let fromBool#2 : bool -> bool = \value#3 : bool -> value#3 in
 let main#1 : bool = case@Bool (case@Bool fromBool#2 true of
   True -> fromBool#2 false
@@ -12,26 +13,24 @@ let main#1 : bool = case@Bool (case@Bool fromBool#2 true of
     True -> fromBool#2 true
     False -> false in
 main#1
---- Core before Boolean folding
-let anf#8 : bool = case@Bool true of
-  True -> false
-  False -> false in
-case@Bool anf#8 of
-  True -> true
-  False -> case@Bool true of
-    True -> true
-    False -> false
---- Core after Boolean folding and cleanup
-true
---- UPLC before
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam anf_8
-    (case
-      anf_8
-      (case (con bool True) (con bool False) (con bool True))
-      (con bool True)))
-    (case (con bool True) (con bool False) (con bool False))])
---- UPLC after
+  [(lam fromBool_2
+    [(lam main_1 main_1)
+      (case
+        (case
+          [fromBool_2 (con bool True)]
+          (con bool False)
+          [fromBool_2 (con bool False)])
+        (case
+          [fromBool_2 (con bool True)]
+          (con bool False)
+          [fromBool_2 (con bool True)])
+        (con bool True))])
+    (lam value_3 value_3)])
+--- optimized Core
+true
+--- optimized UPLC
 (program 1.1.0 (con bool True))
 --- result
 (con bool True)

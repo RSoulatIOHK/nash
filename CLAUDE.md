@@ -65,7 +65,11 @@ the fixture instead of compiling it again for a duplicate test.
 
 Keep test helpers local to their test module and snapshots in its `snapshots/`
 directory. Optimizer snapshots show both before and after Core or UPLC at the
-pass's layer. Optimizer performance experiments and budget regression tests
+pass's layer. Source-level optimizer snapshots group unoptimized Core then
+unoptimized UPLC, followed by optimized Core then optimized UPLC. The unoptimized
+side uses original compiled Core and ordinary lowering, with only required
+recursion encoding: no optimization passes or builtin/constant sharing.
+Optimizer performance experiments and budget regression tests
 belong in the separate `tools/optimizer-perf` workspace, outside normal test runs. Use
 `cargo nextest run --workspace` for the repository test suite.
 

@@ -1,8 +1,9 @@
 ---
 source: crates/nash-codegen/src/build/tests/optimizer.rs
+assertion_line: 68
 description: "module Main exposing (..)\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nmain : bool\nmain =\n    let\n        strict = trace \"before\" False\n    in\n    if True then strict else True\n"
 ---
---- source Core
+--- unoptimized Core
 let message#7 : string = "before" in
 let fromBool#2 : bool -> bool = \value#5 : bool -> value#5 in
 let fromString#4 : string -> string = \value#6 : string -> value#6 in
@@ -11,20 +12,23 @@ let main#1 : bool = case@Bool fromBool#2 true of
   True -> strict#3
   False -> fromBool#2 true in
 main#1
---- Core before Boolean folding
-let strict#13 : 'erased = trace "before" in false in
-case@Bool true of
-  True -> strict#13
-  False -> true
---- Core after Boolean folding and cleanup
-trace "before" in false
---- UPLC before
+--- unoptimized UPLC
 (program 1.1.0
-  [(lam builtin_14
-    [(lam strict_13 (case (con bool True) (con bool True) strict_13))
-      (force [[builtin_14 (con string "before")] (delay (con bool False))])])
-    (force (builtin trace))])
---- UPLC after
+  [(lam message_7
+    [(lam fromBool_2
+      [(lam fromString_4
+        [(lam strict_3
+          [(lam main_1 main_1)
+            (case [fromBool_2 (con bool True)] [fromBool_2 (con bool True)] strict_3)])
+          (force
+            [[(force (builtin trace)) [fromString_4 message_7]]
+              (delay [fromBool_2 (con bool False)])])])
+        (lam value_6 value_6)])
+      (lam value_5 value_5)])
+    (con string "before")])
+--- optimized Core
+trace "before" in false
+--- optimized UPLC
 (program 1.1.0
   [(lam builtin_1
     (force [[builtin_1 (con string "before")] (delay (con bool False))]))

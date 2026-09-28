@@ -23,25 +23,21 @@ macro_rules! boolean_case_snapshot {
                     if std::ptr::eq(after, next) { break; }
                     after = next;
                 }
-                anf::validate(after).unwrap();
-                hygiene::validate(after, &[]).unwrap();
-
-                let lower = |core| {
-                    let rewritten = crate::recursion::rewrite(&b, core).unwrap();
-                    let term = crate::lower::lower_with_constant_sharing(arena, rewritten).unwrap();
-                    crate::harness::eval_named(arena, term)
-                };
-                let baseline = lower(accepted);
-                let optimized = lower(after);
+                // O0 includes only the recursion encoding required by lowering.
+                let baseline_core = crate::recursion::rewrite(&b, compiled.core).unwrap();
+                let baseline = crate::harness::eval_core_raw(arena, baseline_core);
+                let optimized_core = crate::recursion::rewrite(&b, after).unwrap();
+                let term = crate::lower::lower_with_constant_sharing(arena, optimized_core).unwrap();
+                let optimized = crate::harness::eval_named(arena, term);
                 assert!(!optimized.result.starts_with("error:"), "{}", optimized.result);
-
-
 
                 insta::with_settings!({description => source, omit_expression => true}, {
                     insta::assert_snapshot!(stringify!($name), format!(
-                        "--- source Core\n{}\n--- Core before Boolean folding\n{}\n--- Core after Boolean folding and cleanup\n{}\n--- UPLC before\n{}\n--- UPLC after\n{}\n--- result\n{}\n--- logs\n{:?}",
-                        pretty(compiled.core), pretty(accepted), pretty(after), baseline.uplc, optimized.uplc, optimized.result, optimized.logs));
+                        "--- unoptimized Core\n{}\n--- unoptimized UPLC\n{}\n--- optimized Core\n{}\n--- optimized UPLC\n{}\n--- result\n{}\n--- logs\n{:?}",
+                        pretty(compiled.core), baseline.uplc, pretty(after), optimized.uplc, optimized.result, optimized.logs));
                 });
+                anf::validate(after).unwrap();
+                hygiene::validate(after, &[]).unwrap();
                 assert_eq!(compiled.core.ty, after.ty);
                 assert_eq!(baseline.observable, optimized.observable);
                 assert_eq!(baseline.logs, optimized.logs);
