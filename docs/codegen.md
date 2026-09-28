@@ -912,3 +912,9 @@ and keeps its outer type view. It does not cancel `delay (force x)`, move argume
 work, or duplicate shared delayed bodies. Existing cleanup can flatten exposed
 lets without another ANF pass. Cancellation runs in the accepted fixed-point
 loop before beta cleanup.
+
+
+Plan 08 Chunk 6 also requires recursive unused-parameter removal. This is pending
+design and implementation, including self/mutual forwarding dependencies, strict
+argument evaluation and consistent worker/static-parameter metadata. The current
+accepted nonrecursive pass does not implement that scope.

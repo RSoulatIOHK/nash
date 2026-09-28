@@ -16,8 +16,9 @@ sharing during optimized lowering. Step 2 is accepted with a two-occurrence mini
 for one leading literal; the retained Chunk 5 scope is complete. Chunk 6 safe
 unused-binding removal, recursive-member reachability and pre-ANF nonrecursive
 unused-parameter removal are accepted. Direct force/delay cancellation in Chunk 8
-is also accepted. Resume strict chunk order at Chunk 7 known-case simplification;
-finish its retained scope before the remaining Chunk 8 rules, then proceed to
+is also accepted. Chunk 6 remains incomplete: recursive unused-parameter removal
+is required and is the next rule to design and trial. Finish Chunk 6 before
+Chunk 7, then the remaining Chunk 8 rules, and proceed to
 Chunks 9, 10 and 11. Normal build defaults remain O0 pending
 Chunk 11 configuration decisions.
 Current assembly in
@@ -1054,13 +1055,14 @@ Validation after integration: 499 IR/codegen nextest tests passed. The original
 covering cleanup of dead captures and retention of strict effectful initializers. Root and isolated strict Clippy and formatting
 passed. Read-only review found no correctness issues.
 
-**Third rule, first trial (27 September 2026), pending review: nonrecursive unused parameters.**
+**Third rule, initial post-ANF trial (27 September 2026), superseded by the accepted pre-ANF placement below: nonrecursive unused parameters.**
 `nash_ir::unused_params::reduce` shortens a let-bound lambda only when every
 reference to that binding is a direct application with exactly its declared
 arity. A parameter is unused only if its unique ID has no occurrence anywhere
 in the lambda body, including nested lambdas, delays and recursive bodies.
 Partial, staged, escaping and oversaturated uses leave the whole helper unchanged.
-Recursive binder parameters are outside this first trial.
+Recursive binder parameters were outside this first trial; they are required
+in the fourth rule below.
 
 Input is typed, hygienic Core, before or after ANF. Every non-atomic argument
 gets a strict call-local binding in source order, including retained arguments,
@@ -1148,6 +1150,28 @@ The later accepted Chunk 8 force/delay cancellation removes that tradeoff. Produ
 validation passed all 513 IR/codegen tests with no snapshot changes, root and
 isolated strict Clippy, and formatting. All 23 performance rows remain identical;
 only baseline pipeline settings and revision metadata were refreshed.
+
+**Fourth rule, required scope (27 September 2026): recursive unused parameters.**
+This belongs in Chunk 6 and must be reviewed before moving to Chunk 7. It is not
+implemented or accepted yet. Cover self-recursive and mutually recursive helpers,
+including parameters only forwarded through recursive calls rather than consumed.
+Specify how parameter-use dependencies reach a fixed point across the group;
+a recursive forwarding occurrence alone is not proof that a value is needed.
+
+Design and trial this on complete calls before ANF, with an explicit ordering
+relative to static lifting. Preserve strict evaluation and source order for both
+retained and discarded arguments at entry calls and recursive calls. Keep worker
+captures, type views and static-parameter metadata consistent with any changed
+signature. All-unused recursive workers must preserve delayed entry, repeated
+execution and divergence. State conservative behavior for partial, escaping and
+oversaturated uses; do not recover ANF call chains to enable the rule.
+
+Start with a concrete self-recursive example and proposed algorithm, then cover
+mutual forwarding dependencies. Add paired Core/UPLC semantic snapshots and
+explicit-only measurements before the keep decision. Required cases include
+real parameter consumption, forwarding-only cycles, strict traces/failures in
+dropped arguments, all-unused workers, partial/escaping uses and static lifting
+interaction. Chunk 6 remains open until this rule has a reviewed outcome.
 
 Remove unused bindings only when their evaluation is safe to discard. Remove
 unreachable recursive members by continuation reachability. Remove unused
