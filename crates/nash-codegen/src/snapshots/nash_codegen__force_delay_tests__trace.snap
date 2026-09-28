@@ -1,0 +1,20 @@
+---
+source: crates/nash-codegen/src/force_delay_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+---
+--- core before
+force (delay (trace "body" in 42))
+--- core after
+trace "body" in 42
+--- uplc before
+(program 1.1.0
+  (force
+    (delay
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 42))]))))
+--- uplc after
+(program 1.1.0
+  (force [[(force (builtin trace)) (con string "body")] (delay (con integer 42))]))
+--- result
+(con integer 42)
+--- logs
+["body"]

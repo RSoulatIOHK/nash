@@ -904,3 +904,10 @@ uses Delay/Force when every parameter is unused. The pass runs after static
 lifting and before the single ANF normalization, followed by accepted cleanup.
 Partial/staged/escaping/oversaturated uses and recursive signatures are unchanged;
 production assembly remains O0 until the optimizer integration chunk.
+
+
+Chunk 8 has a standalone `force_delay::reduce` trial for direct
+`force (delay body)` cancellation. The body stays at the force's evaluation point
+and keeps its outer type view. It does not cancel `delay (force x)`, move argument
+work, or duplicate shared delayed bodies. Existing cleanup can flatten exposed
+lets without another ANF pass. This trial is not yet in the accepted pipeline.

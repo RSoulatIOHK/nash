@@ -1183,6 +1183,31 @@ equivalence tests, measurements and a keep decision.
 
 ## Chunk 8 — Representation and force/delay cleanup
 
+**Direct force/delay trial (27 September 2026), pending review.**
+`nash_ir::force_delay::reduce` replaces only a syntactic `Force(Delay(body))`
+with the body at that evaluation point, retaining the outer type view. Bottom-up
+traversal cancels nested pairs without substitution, fresh binders, duplication
+or hoisting. The inverse `Delay(Force(x))` is not included. Invalid standalone
+forces are untouched. This standalone trial runs after accepted Core cleanup;
+existing cleanup can flatten newly exposed nested lets without another ANF pass.
+
+The explicit `force_delay` performance example compares accepted pre-ANF
+parameter removal against cancellation alone and cancellation followed by cleanup.
+Across 39 cases, the single-call all-unused hot helper saves 32,000 CPU, 200 memory
+and one Flat byte, exactly removing the regression from early parameter removal.
+Its cold counterpart saves one byte with unchanged CPU/memory. The remaining
+37 cases are unchanged; no measured regression. A second cleanup adds no further
+savings in these fixtures. Shared delayed helpers remain shared and keep their
+per-call force: this pass does not duplicate their bodies.
+
+Semantic snapshots cover literal, trace, failure, nesting, selected/cold branches,
+repeated execution, strict ordering, invalid forces, suspended invalid forces and
+exposed let bodies. The trial is separate from the accepted pipeline pending a
+keep decision; permanent performance baselines and production assembly are unchanged.
+Validation: 519 IR/codegen nextest tests passed with 10 reviewed new snapshots.
+Root and isolated strict Clippy and formatting passed. All 23 accepted baseline
+cases still match.
+
 Cancel `force (delay x)` and valid inverse builtin pairs such as
 `unIData (iData x)`. Establish preconditions per direction and representation;
 `iData (unIData d)` is not an unconditional replacement for arbitrary Data.

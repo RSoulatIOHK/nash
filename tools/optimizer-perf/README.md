@@ -180,3 +180,15 @@ that regression visible while evaluating placement.
 Pre-ANF removal was accepted on 27 September 2026 and is now included in the
 main measured pipeline. The two placement examples retain their original
 comparison pipelines so their experiments remain reproducible.
+
+## Chunk 8 direct force/delay trial
+
+```sh
+cargo run --locked --manifest-path tools/optimizer-perf/Cargo.toml --example force_delay
+```
+
+Runs the same 39 placement fixtures with accepted pre-ANF parameter removal,
+then compares direct cancellation alone and cancellation plus existing cleanup.
+Each pipeline normalizes once. Results and logs must agree. The experiment
+reports CPU, memory and Flat size, stays outside root tests, and never updates
+the accepted baseline.

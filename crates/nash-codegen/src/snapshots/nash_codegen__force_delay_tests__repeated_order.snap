@@ -1,0 +1,32 @@
+---
+source: crates/nash-codegen/src/force_delay_tests.rs
+expression: "format!(\"--- core before\\n{}\\n--- core after\\n{}\\n--- uplc before\\n{}\\n--- uplc after\\n{}\\n--- result\\n{}\\n--- logs\\n{:?}\",\npretty(before), pretty(after), left.uplc, right.uplc, right.result,\nright.logs)"
+---
+--- core before
+let first#1 : int = trace "first" in 0 in
+addInteger (force (delay (trace "body" in 21))) (force (delay (trace "body" in 21)))
+--- core after
+let first#1 : int = trace "first" in 0 in
+addInteger (trace "body" in 21) (trace "body" in 21)
+--- uplc before
+(program 1.1.0
+  [(lam first_1
+    [[(builtin addInteger)
+      (force
+        (delay
+          (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])))]
+      (force
+        (delay
+          (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])))])
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 0))])])
+--- uplc after
+(program 1.1.0
+  [(lam first_1
+    [[(builtin addInteger)
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])]
+      (force [[(force (builtin trace)) (con string "body")] (delay (con integer 21))])])
+    (force [[(force (builtin trace)) (con string "first")] (delay (con integer 0))])])
+--- result
+(con integer 42)
+--- logs
+["first", "body", "body"]
