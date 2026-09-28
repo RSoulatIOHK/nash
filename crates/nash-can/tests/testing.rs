@@ -11,7 +11,7 @@ fn private_values_and_sequential_bindings() {
     let source = "module Main exposing (public)\npublic = ()\nprivate = ()\ntests\n    test \"sequence\" within (cpu 12, mem 4) = do\n        x <- private\n        x\n        ()\n";
     let bump = Bump::new();
     let can = canonicalize(&bump, Context::default(), &parse(&bump, source)).unwrap();
-    assert_eq!(can.module.tests.len(), 1);
+
     assert!(matches!(
         can.module.exports,
         nash_ast::Exports::Explicit([_])

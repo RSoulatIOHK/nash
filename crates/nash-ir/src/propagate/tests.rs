@@ -14,17 +14,21 @@ fn binder<'a>(b: &Builder<'a>, text: &'a str, ty: Ty<'a>) -> Binder<'a> {
         ty,
     }
 }
-fn snapshot<'a>(b: &Builder<'a>, before: &'a Core<'a>) -> String {
-    let after = propagate(b, before);
-    anf::validate(after).unwrap();
-    hygiene::validate(after, &[]).unwrap();
-    assert_eq!(before.ty, after.ty);
-    assert_eq!(pretty(after), pretty(propagate(b, after)));
-    format!(
-        "--- core before\n{}\n--- core after\n{}",
-        pretty(before),
-        pretty(after)
-    )
+macro_rules! assert_optimization_snapshot {
+    ($builder:expr, $input:expr $(, $name:expr)?) => {{
+        let b = $builder;
+        let before = $input;
+        let after = propagate(b, before);
+        insta::assert_snapshot!($($name,)? format!(
+            "--- core before\n{}\n--- core after\n{}",
+            pretty(before),
+            pretty(after)
+        ));
+        anf::validate(after).unwrap();
+        hygiene::validate(after, &[]).unwrap();
+        assert_eq!(before.ty, after.ty);
+        assert_eq!(pretty(after), pretty(propagate(b, after)));
+    }};
 }
 #[test]
 fn alias_chain_exposes_single_use_literal() {
@@ -42,7 +46,7 @@ fn alias_chain_exposes_single_use_literal() {
             b.let_(z, b.var(y.name, INT), b.var(z.name, INT)),
         ),
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn aliases_do_not_duplicate_shared_literal_payloads() {
@@ -68,7 +72,7 @@ fn aliases_do_not_duplicate_shared_literal_payloads() {
             ),
         ),
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn computed_values_and_delays_keep_their_bindings() {
@@ -88,7 +92,7 @@ fn computed_values_and_delays_keep_their_bindings() {
             b.let_(d, delayed, b.force(b.var(d.name, d.ty), INT)),
         ),
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn same_spelling_does_not_capture_outer_alias() {
@@ -105,7 +109,7 @@ fn same_spelling_does_not_capture_outer_alias() {
             b.lam(&[inner], b.var(alias.name, INT)),
         ),
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn occurrence_and_root_coercion_views_survive() {
@@ -134,10 +138,7 @@ fn unused_literal_is_removed_but_unused_failure_remains() {
     let b = Builder::new(&arena);
     let x = binder(&b, "literal", INT);
     let y = binder(&b, "failure", INT);
-    insta::assert_snapshot!(snapshot(
-        &b,
-        b.let_(x, b.int(1), b.let_(y, b.error(INT), b.int(42)))
-    ));
+    assert_optimization_snapshot!(&b, b.let_(x, b.int(1), b.let_(y, b.error(INT), b.int(42))));
 }
 
 fn repeated_literal<'a>(b: &Builder<'a>, value: &'a Core<'a>, func: F) -> &'a Core<'a> {
@@ -163,7 +164,7 @@ fn repeated_integer_inlines_without_a_size_cap() {
     let b = Builder::new(&arena);
     let huge=arena.alloc_integer("123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890".parse().unwrap());
     let core = repeated_literal(&b, b.lit(Constant::integer(&arena, huge)), F::AddInteger);
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn repeated_bytes_at_64_byte_limit_inline() {
@@ -174,7 +175,7 @@ fn repeated_bytes_at_64_byte_limit_inline() {
         b.lit(Constant::byte_string(&arena, &[42; 64])),
         F::AppendByteString,
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn repeated_bytes_above_limit_stay_shared() {
@@ -185,7 +186,7 @@ fn repeated_bytes_above_limit_stay_shared() {
         b.lit(Constant::byte_string(&arena, &[42; 65])),
         F::AppendByteString,
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn repeated_bls_g1_constant_inlines() {
@@ -196,7 +197,7 @@ fn repeated_bls_g1_constant_inlines() {
         b.lit(Constant::g1(&arena, arena.alloc(Default::default()))),
         F::Bls12_381_G1_Add,
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn repeated_bls_g2_constant_inlines() {
@@ -207,7 +208,7 @@ fn repeated_bls_g2_constant_inlines() {
         b.lit(Constant::g2(&arena, arena.alloc(Default::default()))),
         F::Bls12_381_G2_Add,
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn repeated_bls_ml_constant_inlines() {
@@ -218,5 +219,5 @@ fn repeated_bls_ml_constant_inlines() {
         b.lit(Constant::ml_result(&arena, arena.alloc(Default::default()))),
         F::Bls12_381_MulMlResult,
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }

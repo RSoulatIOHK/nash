@@ -54,10 +54,7 @@ fn structural_eq_rejects_big_overrides_only_for_exact_core_trait() {
             );
             if package == BASE {
                 let err = result.unwrap_err();
-                assert!(matches!(
-                    err.as_slice(),
-                    [nash_can::Error::StructuralEqOverride { .. }]
-                ));
+
                 errors.push(snapshot_support::errors(source, &err));
             } else {
                 result.unwrap();

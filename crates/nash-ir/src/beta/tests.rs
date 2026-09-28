@@ -14,23 +14,27 @@ fn binder<'a>(b: &Builder<'a>, name: &'a str, ty: Ty<'a>) -> Binder<'a> {
         ty,
     }
 }
-fn snapshot<'a>(b: &Builder<'a>, before: &'a Core<'a>) -> String {
-    anf::validate(before).unwrap();
-    hygiene::validate(before, &[]).unwrap();
-    let after = reduce(b, before);
-    let fixed = simplify(b, before);
-    for core in [after, fixed] {
-        anf::validate(core).unwrap();
-        hygiene::validate(core, &[]).unwrap();
-        assert_eq!(core.ty, before.ty);
-    }
-    assert!(std::ptr::eq(fixed, simplify(b, fixed)));
-    format!(
-        "--- core before\n{}\n--- core after beta\n{}\n--- core after rules 1 + 2\n{}",
-        pretty(before),
-        pretty(after),
-        pretty(fixed)
-    )
+macro_rules! assert_optimization_snapshot {
+    ($builder:expr, $input:expr $(, $name:expr)?) => {{
+        let b = $builder;
+        let before = $input;
+        let after = reduce(b, before);
+        let fixed = simplify(b, before);
+        insta::assert_snapshot!($($name,)? format!(
+            "--- core before\n{}\n--- core after beta\n{}\n--- core after rules 1 + 2\n{}",
+            pretty(before),
+            pretty(after),
+            pretty(fixed)
+        ));
+        anf::validate(before).unwrap();
+        hygiene::validate(before, &[]).unwrap();
+        for core in [after, fixed] {
+            anf::validate(core).unwrap();
+            hygiene::validate(core, &[]).unwrap();
+            assert_eq!(core.ty, before.ty);
+        }
+        assert!(std::ptr::eq(fixed, simplify(b, fixed)));
+    }};
 }
 #[test]
 fn beta_exposes_aliases() {
@@ -43,7 +47,7 @@ fn beta_exposes_aliases() {
         &[b.int(42)],
         INT,
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn partial_application_binds_outside_remaining_lambda() {
@@ -57,7 +61,7 @@ fn partial_application_binds_outside_remaining_lambda() {
         INT,
     );
     let ty = Ty::Term(a.alloc(TermTy::Fun(a.alloc_slice_copy(&[INT]), INT)));
-    insta::assert_snapshot!(snapshot(&b, b.app(b.lam(&[x, y], body), &[b.int(40)], ty)));
+    assert_optimization_snapshot!(&b, b.app(b.lam(&[x, y], body), &[b.int(40)], ty));
 }
 #[test]
 fn oversaturation_exposes_more_than_one_round() {
@@ -71,7 +75,7 @@ fn oversaturation_exposes_more_than_one_round() {
     let first = reduce(&b, crate::propagate::propagate(&b, core));
     let second = reduce(&b, crate::propagate::propagate(&b, first));
     assert_ne!(pretty(second), pretty(simplify(&b, core)));
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn beta_splices_nested_rhs_and_preserves_strict_computation() {
@@ -85,7 +89,7 @@ fn beta_splices_nested_rhs_and_preserves_strict_computation() {
         &[b.int(42)],
         INT,
     );
-    insta::assert_snapshot!(snapshot(&b, b.let_(y, call, b.var(y.name, INT))));
+    assert_optimization_snapshot!(&b, b.let_(y, call, b.var(y.name, INT)));
 }
 #[test]
 fn root_and_peeled_type_views_survive() {
@@ -140,7 +144,7 @@ fn recursive_prefix_is_spliced_without_crossing_its_body() {
         b.app(b.lam(&[x], body), &[b.int(42)], INT),
         b.var(result.name, INT),
     );
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 
 #[test]
@@ -159,5 +163,5 @@ fn oversaturation_temp_avoids_enclosing_ids_with_fresh_builder() {
     );
     let core = b.lam(&[outer], b.app(fun, &[b.int(1), b.int(42)], INT));
     let fresh = Builder::new(&a);
-    insta::assert_snapshot!(snapshot(&fresh, core));
+    assert_optimization_snapshot!(&fresh, core);
 }

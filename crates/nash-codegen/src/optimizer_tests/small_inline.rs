@@ -22,33 +22,17 @@ fn call<'a>(b: &Builder<'a>, f: Binder<'a>, args: &[&'a Core<'a>]) -> &'a Core<'
 fn trace<'a>(b: &Builder<'a>, text: &'a str, value: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, text)), value)
 }
-fn check<'a>(
-    name: &str,
-    b: &Builder<'a>,
-    core: &'a Core<'a>,
-    logs: &[&str],
-    fails: bool,
-) -> &'a Core<'a> {
+fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) -> &'a Core<'a> {
     let before = nash_ir::single_use::simplify(b, anf::normalize(b, core));
     // A fresh name supply must also be safe when the input already owns IDs.
     let optimizer = Builder::new(b.arena);
     let after = small_inline::simplify(&optimizer, before);
-    for term in [before, after] {
-        anf::validate(term).unwrap();
-        hygiene::validate(term, &[]).unwrap();
-        assert_eq!(term.ty, core.ty);
-    }
-    assert!(std::ptr::eq(
-        after,
-        small_inline::simplify(&optimizer, after)
-    ));
+
     let baseline =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, before).unwrap());
     let candidate =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, after).unwrap());
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -62,6 +46,18 @@ fn check<'a>(
             candidate.logs
         )
     );
+    for term in [before, after] {
+        anf::validate(term).unwrap();
+        hygiene::validate(term, &[]).unwrap();
+        assert_eq!(term.ty, core.ty);
+    }
+    // Properties independent of the expected snapshot.
+    assert!(std::ptr::eq(
+        after,
+        small_inline::simplify(&optimizer, after)
+    ));
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
     after
 }
 #[test]
@@ -80,8 +76,7 @@ fn repeated_identity() {
             INT,
         ),
     );
-    let after = check("identity", &b, root, &[], false);
-    assert!(!pretty(after).contains("identity"));
+    check("identity", &b, root, false);
 }
 #[test]
 fn captured_computation_runs_once() {
@@ -117,7 +112,6 @@ fn captured_computation_runs_once() {
                 ),
             ),
         ),
-        &["offset", "first", "second"],
         false,
     );
 }
@@ -147,7 +141,6 @@ fn unused_argument_remains_strict() {
                 INT,
             ),
         ),
-        &["failure"],
         true,
     );
 }
@@ -173,7 +166,6 @@ fn unselected_call_stays_unselected() {
                 call(&b, f, &[trace(&b, "cold", b.error(INT))]),
             ),
         ),
-        &["chosen"],
         false,
     );
 }
@@ -191,7 +183,7 @@ fn conditional_body_is_excluded() {
         ),
     );
     let f = bind(&b, "conditional", value.ty);
-    let after = check(
+    check(
         "conditional_excluded",
         &b,
         b.let_(
@@ -203,10 +195,8 @@ fn conditional_body_is_excluded() {
                 INT,
             ),
         ),
-        &[],
         false,
     );
-    assert!(pretty(after).contains("let conditional"));
 }
 #[test]
 fn partial_calls_stay_shared_while_full_call_inlines() {
@@ -231,7 +221,7 @@ fn partial_calls_stay_shared_while_full_call_inlines() {
             INT,
         )
     };
-    let after = check(
+    check(
         "partial_calls",
         &b,
         b.let_(
@@ -250,10 +240,8 @@ fn partial_calls_stay_shared_while_full_call_inlines() {
                 INT,
             ),
         ),
-        &[],
         false,
     );
-    assert!(pretty(after).contains("let add"));
 }
 #[test]
 fn repeated_and_reordered_parameters_preserve_argument_order() {
@@ -318,7 +306,6 @@ fn repeated_and_reordered_parameters_preserve_argument_order() {
                 ),
             ),
         ),
-        &["first", "second", "once"],
         false,
     );
 }
@@ -347,7 +334,6 @@ fn builtin_failure_stays_at_call() {
                 INT,
             ),
         ),
-        &["zero"],
         true,
     );
 }
@@ -363,7 +349,7 @@ fn literal_payload_boundary() {
         let x = bind(&b, "x", payload.ty);
         let value = b.lam(&[x], b.builtin(F::LengthOfByteString, &[payload], INT));
         let f = bind(&b, "length", value.ty);
-        let after = check(
+        check(
             if length == 64 {
                 "literal_64"
             } else {
@@ -379,10 +365,8 @@ fn literal_payload_boundary() {
                     INT,
                 ),
             ),
-            &[],
             false,
         );
-        assert_eq!(pretty(after).contains("let length"), length == 65);
     }
 }
 #[test]
@@ -403,7 +387,7 @@ fn escaping_uses_keep_shared_definition() {
             INT,
         )
     };
-    let after = check(
+    check(
         "escaping",
         &b,
         b.let_(
@@ -411,10 +395,8 @@ fn escaping_uses_keep_shared_definition() {
             value,
             b.builtin(F::AddInteger, &[indirect(), call(&b, f, &[b.int(22)])], INT),
         ),
-        &[],
         false,
     );
-    assert!(pretty(after).contains("let identity"));
 }
 #[test]
 fn wrapper_in_recursive_body() {
@@ -462,7 +444,6 @@ fn wrapper_in_recursive_body() {
                 call(&b, f, &[call(&b, worker, &[b.int(3)])]),
             ),
         ),
-        &[],
         false,
     );
 }

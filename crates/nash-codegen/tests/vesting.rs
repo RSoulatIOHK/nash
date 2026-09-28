@@ -137,22 +137,14 @@ fn baseline(source: &str, parameter: bool) -> String {
             "{name}: {:?}",
             evaluation.term
         );
-        if expected {
-            assert_eq!(evaluation.term.unwrap(), Term::unit(&arena));
-            assert!(evaluation.info.logs.is_empty(), "{name}");
-        } else {
-            assert!(
-                !evaluation.info.logs.is_empty(),
-                "{name}: assert must log before failing"
-            );
-        }
-        assert!(evaluation.info.consumed_budget.cpu > 0);
-        assert!(evaluation.info.consumed_budget.mem > 0);
         use std::fmt::Write;
         writeln!(
             outcomes,
             "--- scenario\n{name}\n--- result\n{}\n--- logs\n{:?}\n--- budget\ncpu: {}, memory: {}",
-            if expected { "unit" } else { "error" },
+            match &evaluation.term {
+                Ok(term) => pretty::term(term),
+                Err(error) => format!("error: {error:?}"),
+            },
             evaluation.info.logs,
             evaluation.info.consumed_budget.cpu,
             evaluation.info.consumed_budget.mem

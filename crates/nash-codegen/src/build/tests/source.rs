@@ -11,47 +11,30 @@ const BASE_MODULES: &[&str] = &[
 ];
 
 macro_rules! case {
-    ($name:ident, $source:literal, $expected:expr) => {
-        case!(
-            $name,
-            $source,
-            $expected,
-            crate::build::TraceConfig::default()
-        );
+    ($name:ident, $source:literal) => {
+        case!(@run $name, $source, false, crate::build::TraceConfig::default());
     };
-    ($name:ident, $source:literal, $expected:expr, $trace:expr) => {
+    (@run $name:ident, $source:literal, $fails:literal, $trace:expr) => {
         #[test]
         fn $name() {
             crate::build::tests::with_base_modules(
                 indoc::indoc!($source),
                 crate::build::tests::source::BASE_MODULES,
                 |arena, build, root| {
-                    let compiled = build
-                        .compile(arena, root, None, $trace)
-                        .expect("source compiles to Core");
-                    let core = crate::recursion::rewrite(
-                        &nash_ir::build::Builder::new(arena),
-                        compiled.core,
-                    )
-                    .expect("recursion rewrites");
-                    let evaluated = crate::harness::eval_core(arena, core);
+                    let compiled = build.compile(arena, root, None, $trace).expect("source compiles to Core");
+                    let core = crate::recursion::rewrite(&nash_ir::build::Builder::new(arena), compiled.core).expect("recursion rewrites");
+                    let evaluated = crate::harness::eval_core_raw(arena, core);
+                    assert_eq!(evaluated.result.starts_with("error:"), $fails, "unexpected evaluation category: {}", evaluated.result);
+                    insta::assert_snapshot!(stringify!($name), format!("--- core\n{}\n{evaluated}", nash_ir::pretty::pretty(core)));
                     crate::harness::assert_candidate_equivalent(arena, compiled.core, &evaluated);
-                    let expected: Result<&str, ()> = $expected;
-                    match expected {
-                        Ok(result) => assert_eq!(evaluated.result, result),
-                        Err(()) => assert!(
-                            evaluated.result.starts_with("error:"),
-                            "expected evaluation failure, got {}",
-                            evaluated.result
-                        ),
-                    }
-                    insta::assert_snapshot!(
-                        stringify!($name),
-                        format!("--- core\n{}\n{evaluated}", nash_ir::pretty::pretty(core))
-                    );
                 },
             );
         }
+    };
+}
+macro_rules! error_case {
+    ($name:ident, $source:literal) => {
+        case!(@run $name, $source, true, crate::build::TraceConfig::default());
     };
 }
 
@@ -83,17 +66,15 @@ macro_rules! validator_case {
 }
 
 macro_rules! traced_case {
-    ($name:ident, $silent_name:ident, $source:literal, $expected:expr) => {
-        case!($name, $source, $expected);
-        case!(
-            $silent_name,
-            $source,
-            $expected,
-            crate::build::TraceConfig {
-                user: crate::build::TraceLevel::Silent,
-                compiler: false,
-            }
-        );
+    ($name:ident, $silent_name:ident, $source:literal) => {
+        case!($name, $source);
+        case!(@run $silent_name, $source, false, crate::build::TraceConfig { user: crate::build::TraceLevel::Silent, compiler: false });
+    };
+}
+macro_rules! traced_error_case {
+    ($name:ident, $silent_name:ident, $source:literal) => {
+        error_case!($name, $source);
+        case!(@run $silent_name, $source, true, crate::build::TraceConfig { user: crate::build::TraceLevel::Silent, compiler: false });
     };
 }
 

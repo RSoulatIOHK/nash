@@ -87,11 +87,7 @@ fn do_rejects_missing_core_and_refutable_patterns() {
             &module,
         )
         .unwrap_err();
-        assert!(
-            matches!(errors.as_slice(), [nash_can::Error::DoWithoutMonad { .. }] if !core)
-                || matches!(errors.as_slice(), [nash_can::Error::RefutableBindPattern { .. }] if core && rhs == "m")
-                || matches!(errors.as_slice(), [nash_can::Error::NotFoundVar { .. }] if rhs == "x")
-        );
+
         results.push(snapshot_support::errors(source, &errors));
     }
     insta::with_settings!({info => &"diagnostic", description => snapshot_inputs.description(), omit_expression => true}, {

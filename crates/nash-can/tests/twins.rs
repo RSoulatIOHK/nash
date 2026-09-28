@@ -40,10 +40,6 @@ fn twin_imports_preserve_privacy_and_explicit_exposure() {
                 "exports={exports}, imports={imports}, constructor={constructor}: {result:?}"
             );
             if let Err(errors) = result {
-                assert!(matches!(
-                    errors.as_slice(),
-                    [nash_can::Error::NotFoundCtor { .. }]
-                ));
                 diagnostics.push(format!(
                     "exports={exports}; imports={imports}; {constructor}:\n{}",
                     snapshot_support::errors(source, &errors)

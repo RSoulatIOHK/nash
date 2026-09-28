@@ -9,17 +9,10 @@ const INT: Ty<'static> = Ty::Const(&ConstTy::Int);
 fn trace<'a>(b: &Builder<'a>, text: &'a str, value: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, text)), value)
 }
-fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fails: bool) {
-    check_args(name, b, core, logs, fails, &[])
+fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) {
+    check_args(name, b, core, fails, &[])
 }
-fn check_args<'a>(
-    name: &str,
-    b: &Builder<'a>,
-    core: &'a Core<'a>,
-    logs: &[&str],
-    fails: bool,
-    args: &[i128],
-) {
+fn check_args<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool, args: &[i128]) {
     let core = crate::recursion::rewrite(b, core).unwrap();
     let before = crate::lower::lower_with_builtin_sharing(b.arena, core).unwrap();
     let after = crate::lower::lower_with_constant_sharing(b.arena, core).unwrap();
@@ -34,16 +27,9 @@ fn check_args<'a>(
     };
     let baseline = crate::harness::eval_named(b.arena, apply(before));
     let candidate = crate::harness::eval_named(b.arena, apply(after));
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
-    assert_eq!(
-        nash_plutus::pretty::term(after),
-        nash_plutus::pretty::term(
-            crate::lower::lower_with_constant_sharing(b.arena, core).unwrap()
-        )
-    );
+
     insta::assert_snapshot!(
         name,
         format!(
@@ -52,6 +38,15 @@ fn check_args<'a>(
             nash_plutus::pretty::term(after),
             candidate.result,
             candidate.logs
+        )
+    );
+    // Properties independent of the expected snapshot.
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
+    assert_eq!(
+        nash_plutus::pretty::term(after),
+        nash_plutus::pretty::term(
+            crate::lower::lower_with_constant_sharing(b.arena, core).unwrap()
         )
     );
 }
@@ -72,13 +67,7 @@ fn repeated_prefix_keeps_later_argument_order() {
         &[b.int(100), trace(&b, "right", b.int(2))],
         INT,
     );
-    check(
-        "repeated",
-        &b,
-        sum(&b, left, right),
-        &["left", "right"],
-        false,
-    );
+    check("repeated", &b, sum(&b, left, right), false);
 }
 #[test]
 fn one_occurrence_and_different_prefixes_stay_put() {
@@ -92,7 +81,6 @@ fn one_occurrence_and_different_prefixes_stay_put() {
             b.builtin(F::SubtractInteger, &[b.int(100), b.int(1)], INT),
             b.builtin(F::SubtractInteger, &[b.int(99), b.int(2)], INT),
         ),
-        &[],
         false,
     );
     check(
@@ -103,7 +91,6 @@ fn one_occurrence_and_different_prefixes_stay_put() {
             b.builtin(F::SubtractInteger, &[b.int(100), b.int(1)], INT),
             b.builtin(F::MultiplyInteger, &[b.int(100), b.int(2)], INT),
         ),
-        &[],
         false,
     );
 }
@@ -121,13 +108,7 @@ fn trailing_literals_and_computed_first_arguments_are_not_moved() {
         &[trace(&b, "right", b.int(99)), b.int(1)],
         INT,
     );
-    check(
-        "trailing",
-        &b,
-        sum(&b, left, right),
-        &["left", "right"],
-        false,
-    );
+    check("trailing", &b, sum(&b, left, right), false);
 }
 #[test]
 fn repeated_trace_prefix_does_not_trace_during_initialization() {
@@ -145,7 +126,6 @@ fn repeated_trace_prefix_does_not_trace_during_initialization() {
                 trace(&b, "same", b.int(22)),
             ),
         ),
-        &["before", "same", "same"],
         false,
     );
 }
@@ -159,12 +139,11 @@ fn unselected_and_selected_division_failures_remain_at_call_sites() {
         b.int(42),
         sum(&b, fail, fail),
     );
-    check("unselected", &b, cold, &[], false);
+    check("unselected", &b, cold, false);
     check(
         "failure",
         &b,
         trace(&b, "before", sum(&b, fail, fail)),
-        &["before"],
         true,
     );
 }
@@ -186,7 +165,6 @@ fn unary_saturated_calls_are_never_partially_shared() {
             b.int(42),
             sum(&b, fail, fail),
         ),
-        &[],
         false,
     );
 }
@@ -220,7 +198,6 @@ fn returned_partial_values_can_be_applied_independently() {
                 ),
             ),
         ),
-        &[],
         false,
     );
 }
@@ -233,13 +210,7 @@ fn delayed_calls_and_discarded_defaults() {
         trace(&b, "same", b.int(20)),
         trace(&b, "same", b.int(22)),
     );
-    check(
-        "delay",
-        &b,
-        b.force(b.delay(repeated), INT),
-        &["same", "same"],
-        false,
-    );
+    check("delay", &b, b.force(b.delay(repeated), INT), false);
     let core = b.case(
         CaseKind::Bool,
         b.lit(Constant::bool(&a, true)),
@@ -258,7 +229,7 @@ fn delayed_calls_and_discarded_defaults() {
         Some(repeated),
         INT,
     );
-    check("discarded", &b, core, &[], false);
+    check("discarded", &b, core, false);
 }
 
 #[test]
@@ -274,7 +245,6 @@ fn prefix_outside_validator_arguments_and_polymorphic_trace() {
         "validator",
         &b,
         b.lam(&[x], sum(&b, call, call)),
-        &[],
         false,
         &[3],
     );
@@ -283,7 +253,7 @@ fn prefix_outside_validator_arguments_and_polymorphic_trace() {
         trace(&b, "same", b.int(42)),
         b.int(0),
     );
-    check("polymorphic", &b, root, &["same", "same"], false);
+    check("polymorphic", &b, root, false);
 }
 
 #[test]
@@ -297,7 +267,6 @@ fn ternary_builtin_shares_only_the_first_literal() {
         "first_literal_only",
         &b,
         b.builtin(F::AppendByteString, &[first, second], bytes.ty),
-        &[],
         false,
     );
 }
@@ -330,7 +299,6 @@ fn separate_lambda_scopes_share_the_closed_prefix() {
             b.app(left, &[b.int(1)], INT),
             b.app(right, &[b.int(2)], INT),
         ),
-        &[],
         false,
     );
 }

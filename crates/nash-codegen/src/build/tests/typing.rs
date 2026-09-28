@@ -60,10 +60,7 @@ fn nominal_constructors_with_identical_layout_keep_distinct_types() {
                     constructors.push(format!("constrData: {}", node.ty));
                 }
             });
-            assert!(constructors.iter().any(|line| line.contains("apple")));
-            assert!(constructors.iter().any(|line| line.contains("orange")));
-            assert!(constructors.iter().any(|line| line.contains("AppleBig")));
-            assert!(constructors.iter().any(|line| line.contains("OrangeBig")));
+
             insta::assert_snapshot!(format!(
                 "root: {}\n{}",
                 compiled.core.ty,
@@ -105,7 +102,7 @@ fn record_projection_and_tuple_result_retain_field_types() {
                     fields.push(format!("field {index}: {} from {}", node.ty, record.ty));
                 }
             });
-            assert_eq!(fields.len(), 1);
+
             insta::assert_snapshot!(format!("root: {}\n{}", compiled.core.ty, fields.join("\n")));
             assert!(
                 !crate::harness::eval_core(arena, compiled.core)
@@ -217,7 +214,7 @@ fn generic_empty_lists_keep_nominal_element_metadata() {
             });
             empty_types.sort();
             empty_types.dedup();
-            assert!(empty_types.iter().any(|ty| ty.contains("Token")));
+
             lines.push(format!("empty constants: {}", empty_types.join(", ")));
             insta::assert_snapshot!(lines.join("\n"));
             assert!(

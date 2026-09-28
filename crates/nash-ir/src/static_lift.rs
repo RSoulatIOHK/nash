@@ -149,7 +149,7 @@ mod tests {
     use super::*;
     use crate::{hygiene, pretty::pretty, ty::ConstTy};
     use nash_plutus::{arena::Arena, builtin::DefaultFunction};
-    fn fixture(all: bool, escape: bool) -> String {
+    fn assert_lift_snapshot(name: &str, all: bool, escape: bool) {
         let arena = Arena::new();
         let b = Builder::new(&arena);
         let int = Ty::Const(&ConstTy::Int);
@@ -199,28 +199,31 @@ mod tests {
             b.var(f.name, fun),
         );
         let after = lift(&b, before);
+        insta::assert_snapshot!(
+            name,
+            format!(
+                "--- core before\n{}\n--- core after\n{}",
+                pretty(before),
+                pretty(after)
+            )
+        );
         assert_eq!(hygiene::validate(after, &[]), Ok(()));
         assert_eq!(pretty(after), pretty(lift(&b, after)));
         if escape {
             assert!(std::ptr::eq(before, after));
         }
-        format!(
-            "--- core before\n{}\n--- core after\n{}",
-            pretty(before),
-            pretty(after)
-        )
     }
     #[test]
     fn captures_static_parameter() {
-        insta::assert_snapshot!(fixture(false, false));
+        assert_lift_snapshot("captures_static_parameter", false, false);
     }
     #[test]
     fn all_static_worker_is_delayed() {
-        insta::assert_snapshot!(fixture(true, false));
+        assert_lift_snapshot("all_static_worker_is_delayed", true, false);
     }
     #[test]
     fn partial_self_call_is_unchanged() {
-        insta::assert_snapshot!(fixture(false, true));
+        assert_lift_snapshot("partial_self_call_is_unchanged", false, true);
     }
     #[test]
     fn nested_worker_captures_outer_dynamic_parameter() {
@@ -294,12 +297,12 @@ mod tests {
             b.var(f.name, fun),
         );
         let after = lift(&b, before);
-        assert_eq!(hygiene::validate(after, &[]), Ok(()));
-        assert_eq!(pretty(after), pretty(lift(&b, after)));
         insta::assert_snapshot!(format!(
             "--- core before\n{}\n--- core after\n{}",
             pretty(before),
             pretty(after)
         ));
+        assert_eq!(hygiene::validate(after, &[]), Ok(()));
+        assert_eq!(pretty(after), pretty(lift(&b, after)));
     }
 }

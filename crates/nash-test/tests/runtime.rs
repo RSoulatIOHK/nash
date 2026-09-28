@@ -376,7 +376,7 @@ fn unicode_assert_columns_and_json() {
     outcome.assert = Some(report);
     let json: serde_json::Value =
         serde_json::from_str(&report::json::render(42, 5, &[outcome])).unwrap();
-    assert_eq!(json["tests"][0]["assert"]["values"][1]["column"], 5);
+
     insta::with_settings!({description => source, omit_expression => true}, {
         insta::assert_snapshot!(serde_json::to_string_pretty(&json).unwrap());
     });
@@ -579,10 +579,7 @@ fn terminal_and_json_reports_snapshot() {
     });
     let json: serde_json::Value =
         serde_json::from_str(&report::json::render(42, 100, &[outcome])).unwrap();
-    assert_eq!(
-        json["tests"][0]["failure"]["limit"]["cpu"],
-        i128::MAX.to_string()
-    );
+
     insta::assert_snapshot!(
         "budget_failure_json",
         serde_json::to_string_pretty(&json).unwrap()
@@ -647,14 +644,6 @@ fn multiline_assert_uses_source_rows_display_width_and_indented_values() {
         "multiline_assert_json",
         serde_json::to_string_pretty(&json["tests"][0]["assert"]).unwrap()
     );
-    let values = json["tests"][0]["assert"]["values"].as_array().unwrap();
-    assert_eq!(
-        values
-            .iter()
-            .map(|v| (v["row"].as_u64().unwrap(), v["column"].as_u64().unwrap()))
-            .collect::<Vec<_>>(),
-        [(0, 0), (0, 17), (1, 9), (1, 26), (0, 33)]
-    );
 }
 
 #[test]
@@ -691,7 +680,6 @@ fn nested_reduction_normalization_and_boundaries() {
         cache.get(trace);
         cache.get(trace);
     }
-    assert_eq!(calls.get(), 3);
 
     let mut normalized = Counterexample {
         value: 9,
@@ -703,7 +691,6 @@ fn nested_reduction_normalization_and_boundaries() {
         steps: 0,
     };
     normalized.simplify();
-    assert_eq!(normalized.choices, vec![C(9)]);
 
     let mut merged = Counterexample {
         value: 1,
@@ -723,7 +710,7 @@ fn nested_reduction_normalization_and_boundaries() {
         steps: 0,
     };
     merged.simplify();
-    assert_eq!(merged.choices, vec![C(0), G(vec![C(0), C(0)])]);
+
     insta::with_settings!({omit_expression => true}, {
         insta::assert_snapshot!(format!("distinct tree cache entries: {}\nnon-reproducible normalization retained: {:?}\ncoordinated merge: {:?}", calls.get(), normalized.choices, merged.choices));
     });

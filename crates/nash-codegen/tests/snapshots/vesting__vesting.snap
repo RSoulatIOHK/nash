@@ -1,6 +1,6 @@
 ---
 source: crates/nash-codegen/tests/vesting.rs
-assertion_line: 204
+assertion_line: 196
 description: "module Cardano.Tx exposing (currentSlot, signedBy)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\n\n-- Test contexts encode the current slot and one signer as two Data fields.\ncurrentSlot : Data -> int\ncurrentSlot ctx =\n    case ctx of\n        Constr pair(_, [ I slot, _ ]) -> slot\n        _ -> fail\n\nsignedBy : Data -> Bytes -> bool\nsignedBy ctx owner =\n    case ctx of\n        Constr pair(_, [ _, B signer ]) -> Builtin.equalsByteString signer (lower owner)\n        _ -> fail\n\nvalidator module Vesting exposing (main)\n\nimport Primitive exposing (..)\nimport Builtin exposing (..)\nimport Lift exposing (lower)\nimport Cardano.Tx exposing (currentSlot, signedBy)\n\ntype Datum = Datum { owner : Bytes, deadline : Int }\n\ntype step 'a = Done 'a | Next int 'a\n\ntype alias acc = { total : int, seen : list Int }\n\ntype Redeemer = Claim | Cancel\n\nmain : Datum -> Redeemer -> Data -> unit\nmain datum redeemer ctx =\n    case redeemer of\n        Claim -> assert (Builtin.lessThanInteger (lower datum.deadline) (currentSlot ctx))\n        Cancel -> assert (signedBy ctx datum.owner)\n"
 ---
 --- core
@@ -212,7 +212,7 @@ main#1
 --- scenario
 claim after deadline
 --- result
-unit
+(con unit ())
 --- logs
 []
 --- budget
@@ -220,7 +220,7 @@ cpu: 2621392, memory: 14525
 --- scenario
 claim before deadline
 --- result
-error
+error: ExplicitErrorTerm
 --- logs
 ["assertion failed"]
 --- budget
@@ -228,7 +228,7 @@ cpu: 408890, memory: 357
 --- scenario
 cancel signed by owner
 --- result
-unit
+(con unit ())
 --- logs
 []
 --- budget
@@ -236,7 +236,7 @@ cpu: 2588434, memory: 14425
 --- scenario
 cancel unsigned
 --- result
-error
+error: ExplicitErrorTerm
 --- logs
 ["assertion failed"]
 --- budget

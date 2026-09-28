@@ -19,7 +19,6 @@ fn check<'a>(
     name: &str,
     b: &Builder<'a>,
     core: &'a Core<'a>,
-    logs: &[&str],
     fails: bool,
     bindings: usize,
     apply: bool,
@@ -27,6 +26,31 @@ fn check<'a>(
     let core = crate::recursion::rewrite(b, core).unwrap();
     let before = crate::lower::lower(b.arena, core).unwrap();
     let after = crate::lower::lower_with_builtin_sharing(b.arena, core).unwrap();
+    let evaluate = |term: &'a Term<'a, _>| {
+        crate::harness::eval_named(
+            b.arena,
+            if apply {
+                term.apply(b.arena, Term::integer_from(b.arena, 3))
+            } else {
+                term
+            },
+        )
+    };
+    let baseline = evaluate(before);
+    let candidate = evaluate(after);
+
+    assert_eq!(candidate.result.starts_with("error:"), fails);
+
+    insta::assert_snapshot!(
+        name,
+        format!(
+            "--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
+            nash_plutus::pretty::term(before),
+            nash_plutus::pretty::term(after),
+            candidate.result,
+            candidate.logs
+        )
+    );
     let mut rest = after;
     for _ in 0..bindings {
         let Term::Apply { function, argument } = rest else {
@@ -51,35 +75,12 @@ fn check<'a>(
     if apply {
         assert!(matches!(rest, Term::Lambda { .. }));
     }
-    let evaluate = |term: &'a Term<'a, _>| {
-        crate::harness::eval_named(
-            b.arena,
-            if apply {
-                term.apply(b.arena, Term::integer_from(b.arena, 3))
-            } else {
-                term
-            },
-        )
-    };
-    let baseline = evaluate(before);
-    let candidate = evaluate(after);
+    // Properties independent of the expected snapshot.
     assert_eq!(baseline.observable, candidate.observable);
     assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
-    assert_eq!(candidate.result.starts_with("error:"), fails);
     assert_eq!(
         nash_plutus::pretty::term(after),
         nash_plutus::pretty::term(crate::lower::lower_with_builtin_sharing(b.arena, core).unwrap())
-    );
-    insta::assert_snapshot!(
-        name,
-        format!(
-            "--- uplc before\n{}\n--- uplc after\n{}\n--- result\n{}\n--- logs\n{:?}",
-            nash_plutus::pretty::term(before),
-            nash_plutus::pretty::term(after),
-            candidate.result,
-            candidate.logs
-        )
     );
 }
 #[test]
@@ -91,7 +92,6 @@ fn one_use_outside_validator_arguments() {
         "single",
         &b,
         b.lam(&[x], trace(&b, "called", b.var(x.name, INT))),
-        &["called"],
         false,
         1,
         true,
@@ -109,7 +109,6 @@ fn repeated_trace_preserves_argument_order() {
             &[trace(&b, "left", b.int(20)), trace(&b, "right", b.int(22))],
             INT,
         ),
-        &["left", "right"],
         false,
         1,
         false,
@@ -138,7 +137,7 @@ fn unselected_failure_and_trace_stay_lazy() {
         None,
         INT,
     );
-    check("unselected", &b, b.lam(&[x], body), &[], false, 1, true);
+    check("unselected", &b, b.lam(&[x], body), false, 1, true);
 }
 #[test]
 fn argument_failure_is_not_hoisted() {
@@ -155,7 +154,6 @@ fn argument_failure_is_not_hoisted() {
             ],
             INT,
         ),
-        &["argument"],
         true,
         1,
         false,
@@ -177,7 +175,6 @@ fn two_forces_and_multiple_type_instantiations() {
         "two_forces",
         &b,
         b.builtin(F::UnIData, &[first], INT),
-        &[],
         false,
         1,
         false,
@@ -218,7 +215,6 @@ fn two_forces_and_multiple_type_instantiations() {
             None,
             INT,
         ),
-        &[],
         false,
         1,
         false,
@@ -232,7 +228,6 @@ fn unforced_builtins_remain_unchanged() {
         "unforced",
         &b,
         b.builtin(F::AddInteger, &[b.int(20), b.int(22)], INT),
-        &[],
         false,
         0,
         false,
@@ -246,7 +241,6 @@ fn delayed_body_stays_delayed() {
         "delay",
         &b,
         b.force(b.delay(trace(&b, "forced", b.int(42))), INT),
-        &["forced"],
         false,
         1,
         false,
@@ -294,15 +288,7 @@ fn recursive_calls_share_one_reference() {
         }],
         b.app(b.var(f.name, f.ty), &[b.int(3)], INT),
     );
-    check(
-        "recursion",
-        &b,
-        root,
-        &["tick", "tick", "tick"],
-        false,
-        1,
-        false,
-    );
+    check("recursion", &b, root, false, 1, false);
 }
 
 #[test]
@@ -322,7 +308,7 @@ fn data_case_and_trace_introduced_by_lowering() {
         Some(b.error(INT)),
         INT,
     );
-    check("lowered_data", &b, core, &["integer"], false, 2, false);
+    check("lowered_data", &b, core, false, 2, false);
 }
 
 #[test]
@@ -354,7 +340,7 @@ fn bare_and_partial_references_share_with_direct_calls() {
             ),
         ),
     );
-    check("partial", &b, root, &["bare", "partial"], false, 1, false);
+    check("partial", &b, root, false, 1, false);
 }
 
 #[test]
@@ -390,7 +376,7 @@ fn discarded_defaults_do_not_create_unused_bindings() {
         Some(fallback),
         INT,
     );
-    check("discarded_bool_default", &b, boolean, &[], false, 0, false);
+    check("discarded_bool_default", &b, boolean, false, 0, false);
     let data_ty = Ty::Big(&nash_ir::ty::BigTy::Data);
     let list_ty = Ty::Const(a.alloc(ConstTy::List(data_ty)));
     let head = binder(&b, "head", data_ty);
@@ -414,7 +400,7 @@ fn discarded_defaults_do_not_create_unused_bindings() {
         Some(fallback),
         INT,
     );
-    check("discarded_list_default", &b, list, &[], false, 0, false);
+    check("discarded_list_default", &b, list, false, 0, false);
     let branches: Vec<_> = [
         Test::DataConstr,
         Test::DataMap,
@@ -436,5 +422,5 @@ fn discarded_defaults_do_not_create_unused_bindings() {
         Some(fallback),
         INT,
     );
-    check("discarded_data_default", &b, data, &[], false, 1, false);
+    check("discarded_data_default", &b, data, false, 1, false);
 }

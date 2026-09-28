@@ -19,20 +19,17 @@ fn binder<'a>(b: &Builder<'a>, name: &'a str, ty: Ty<'a>) -> Binder<'a> {
 fn traced<'a>(b: &Builder<'a>, message: &'a str, value: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, message)), value)
 }
-fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fails: bool) {
+fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) {
     let before = nash_ir::beta::simplify(b, anf::normalize(b, core));
     let after = simplify(b, before);
     for phase in [before, after] {
         anf::validate(phase).unwrap();
         hygiene::validate(phase, &[]).unwrap();
     }
-    assert_eq!(before.ty, after.ty);
-    assert_eq!(pretty(after), pretty(simplify(b, after)));
+
     let baseline = crate::harness::eval_core_raw(b.arena, before);
     let candidate = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     fn output(v: &crate::harness::Evaluated) -> String {
         format!(
@@ -50,6 +47,11 @@ fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fai
             output(&candidate)
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(pretty(after), pretty(simplify(b, after)));
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn computed_tail_result_removes_binding() {
@@ -64,7 +66,6 @@ fn computed_tail_result_removes_binding() {
             b.builtin(F::AddInteger, &[b.int(40), b.int(2)], INT),
             b.var(x.name, INT),
         ),
-        &[],
         false,
     );
 }
@@ -87,7 +88,6 @@ fn single_function_keeps_argument_and_body_order() {
                 INT,
             ),
         ),
-        &["argument", "body"],
         false,
     );
 }
@@ -110,7 +110,6 @@ fn single_function_unused_argument_stays_strict() {
                 INT,
             ),
         ),
-        &["failure"],
         true,
     );
 }
@@ -127,7 +126,6 @@ fn computed_binding_is_not_moved_past_trace() {
             traced(&b, "first", b.int(42)),
             traced(&b, "second", b.var(x.name, INT)),
         ),
-        &["first", "second"],
         false,
     );
 }
@@ -145,7 +143,6 @@ fn computed_binding_is_not_moved_into_unselected_branch() {
         "branch_barrier",
         &b,
         b.let_(x, traced(&b, "failure", b.error(INT)), body),
-        &["failure"],
         true,
     );
 }
@@ -165,7 +162,6 @@ fn computed_capture_stays_strict_when_function_is_unused() {
             traced(&b, "capture", b.int(1)),
             b.let_(f, lam, b.int(42)),
         ),
-        &["capture"],
         false,
     );
 }
@@ -183,7 +179,6 @@ fn single_delay_keeps_its_force_site() {
             value,
             traced(&b, "before force", b.force(b.var(d.name, d.ty), INT)),
         ),
-        &["before force", "delayed"],
         false,
     );
 }
@@ -202,7 +197,6 @@ fn computed_function_operand_remains_bound() {
         "computed_function",
         &b,
         b.let_(f, value, b.app(b.var(f.name, f.ty), &[b.int(42)], INT)),
-        &["function", "body"],
         false,
     );
 }
@@ -223,7 +217,6 @@ fn single_builtin_reference_applies_normally() {
             b.builtin(F::AddInteger, &[], ty),
             b.app(b.var(f.name, ty), &[b.int(40), b.int(2)], INT),
         ),
-        &[],
         false,
     );
 }
@@ -258,7 +251,6 @@ fn single_builtin_use_inside_repeated_function_preserves_logs() {
         "builtin_inside_repeated_function",
         &b,
         b.let_(tracer, b.builtin(F::Trace, &[], ty), b.let_(f, lam, body)),
-        &["tick", "tick"],
         false,
     );
 }

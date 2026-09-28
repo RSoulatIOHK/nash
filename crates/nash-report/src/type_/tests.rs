@@ -1469,10 +1469,7 @@ fn missing_impl_local_union_suggests_a_supported_impl() {
         because: &[],
     };
     let report = to_report(&l, &error);
-    let text = report.after.render(80, false);
-    assert!(text.contains("Import or define an impl for"), "{text}");
-    assert!(text.contains("step"), "{text}");
-    assert!(!text.contains("@derive"));
+
     insta::assert_snapshot!(crate::render_plain(
         &report,
         &crate::Source::new(source),
@@ -1511,9 +1508,6 @@ fn missing_impl_imported_or_custom_trait_has_no_derive_hint() {
         };
         let settings = source_settings(source);
         let _guard = settings.bind_to_scope();
-        let bump = bumpalo::Bump::new();
-        let module = nash_parse::Parser::new(&bump, source).module().unwrap();
-        let l = Localizer::from_module(&module, &[]);
         let typ = ErrorType::Type {
             home,
             name: "step",
@@ -1528,12 +1522,6 @@ fn missing_impl_imported_or_custom_trait_has_no_derive_hint() {
             because: &[],
         };
         insta::assert_snapshot!(show(source, &error));
-        assert!(
-            !to_report(&l, &error)
-                .after
-                .render(80, false)
-                .contains("@derive")
-        );
     }
 }
 
@@ -1580,12 +1568,6 @@ fn pipe_argument_mismatch_does_not_blame_the_function_operand() {
         Expected::FromContext(region(), Context::OpRight("<|"), &function),
     );
     insta::assert_snapshot!(show(source, &error));
-    let report = to_report(&Localizer::from_names([]), &error);
-    assert!(!report.after.render(80, false).contains("left operand"));
-    assert_eq!(
-        report.primary_label.as_deref(),
-        Some("right operand of (<|)")
-    );
 }
 
 #[test]

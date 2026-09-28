@@ -163,15 +163,6 @@ mod tests {
         insta::with_settings!({description => source.text(), omit_expression => true}, {
             insta::assert_snapshot!(serde_json::to_string_pretty(&diagnostic).unwrap());
         });
-        assert_eq!(diagnostic.range, to_range(report.region, &source).unwrap());
-        assert_eq!(
-            diagnostic.related_information.unwrap()[0].location.range,
-            to_range(region(1, 1, 1, 2), &source).unwrap()
-        );
-        assert_eq!(
-            diagnostic.message,
-            "Duplicate names:\n\nsecond name\n\nRename one."
-        );
     }
     #[test]
     fn highlighted_region_and_suggestions_survive() {
@@ -190,15 +181,10 @@ mod tests {
         insta::with_settings!({description => source.text(), omit_expression => true}, {
             insta::assert_snapshot!(serde_json::to_string_pretty(&diagnostic).unwrap());
         });
-        assert_eq!(diagnostic.severity, Some(DiagnosticSeverity::WARNING));
-        assert_eq!(diagnostic.data, Some(serde_json::json!(["known"])));
-        assert_eq!(
-            diagnostic.range,
-            to_range(region(1, 5, 1, 12), &source).unwrap()
-        );
+
         report = report.without_source();
         let diagnostic = to_lsp(&report, &source, &uri);
-        assert!(diagnostic.related_information.is_none());
+
         insta::with_settings!({description => source.text(), omit_expression => true}, {
             insta::assert_snapshot!(serde_json::to_string_pretty(&diagnostic).unwrap());
         });
@@ -254,20 +240,5 @@ mod structured_tests {
         insta::with_settings!({description => "a b c", omit_expression => true}, {
             insta::assert_snapshot!(serde_json::to_string_pretty(&diagnostic).unwrap());
         });
-        assert_eq!(
-            diagnostic.code,
-            Some(NumberOrString::String("nash::type::mismatch".into()))
-        );
-        assert!(
-            diagnostic.message.contains("argument 2 of `f`"),
-            "{diagnostic:?}"
-        );
-        let related = diagnostic.related_information.unwrap();
-        assert_eq!(related.len(), 3);
-        assert_eq!(
-            related[2].location.uri.as_str(),
-            "file:///project/Other%20%23.nash"
-        );
-        assert!(related[2].message.contains("annotation for `f`"));
     }
 }

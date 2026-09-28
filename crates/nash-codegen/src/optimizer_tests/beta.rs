@@ -19,20 +19,17 @@ fn binder<'a>(b: &Builder<'a>, name: &'a str, ty: Ty<'a>) -> Binder<'a> {
 fn traced<'a>(b: &Builder<'a>, message: &'a str, value: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, message)), value)
 }
-fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fails: bool) {
+fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) {
     let before = anf::normalize(b, core);
     let after = simplify(b, before);
     for phase in [before, after] {
         anf::validate(phase).unwrap();
         hygiene::validate(phase, &[]).unwrap();
     }
-    assert_eq!(before.ty, after.ty);
-    assert_eq!(pretty(after), pretty(simplify(b, after)));
+
     let baseline = crate::harness::eval_core_raw(b.arena, before);
     let candidate = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     fn output(v: &crate::harness::Evaluated) -> String {
         format!(
@@ -50,6 +47,11 @@ fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fai
             output(&candidate)
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(pretty(after), pretty(simplify(b, after)));
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn exact_application_exposes_literal_aliases() {
@@ -65,7 +67,6 @@ fn exact_application_exposes_literal_aliases() {
             &[b.int(42)],
             INT,
         ),
-        &[],
         false,
     );
 }
@@ -82,7 +83,6 @@ fn unused_argument_still_fails_before_body() {
             &[traced(&b, "argument", b.error(INT))],
             INT,
         ),
-        &["argument"],
         true,
     );
 }
@@ -103,7 +103,6 @@ fn partial_application_evaluates_capture_before_returning_function() {
             b.app(lam, &[traced(&b, "capture", b.int(42))], ty),
             b.int(0),
         ),
-        &["capture"],
         false,
     );
 }
@@ -136,7 +135,6 @@ fn multiple_arguments_remain_left_to_right() {
             ],
             INT,
         ),
-        &["first", "second", "body"],
         false,
     );
 }
@@ -158,7 +156,6 @@ fn oversaturation_runs_intermediate_body_before_extra_argument() {
         "oversaturation_argument_order",
         &b,
         b.app(lam, &[b.int(0), traced(&b, "extra", b.int(42))], INT),
-        &["intermediate", "extra", "returned body"],
         false,
     );
 }
@@ -173,7 +170,6 @@ fn oversaturation_with_atomic_extra_keeps_intermediate_failure() {
         "oversaturation_failure",
         &b,
         b.app(lam, &[b.int(0), b.int(42)], INT),
-        &["failure"],
         true,
     );
 }
@@ -199,7 +195,7 @@ fn unselected_branch_and_unforced_delay_keep_reduced_bodies_suspended() {
         delayed,
         b.if_(b.lit(Constant::bool(&a, true)), b.int(42), dead),
     );
-    check("suspended_bodies", &b, core, &[], false);
+    check("suspended_bodies", &b, core, false);
 }
 #[test]
 fn repeated_rounds_reduce_nested_direct_applications() {
@@ -213,7 +209,6 @@ fn repeated_rounds_reduce_nested_direct_applications() {
         "multiple_rounds",
         &b,
         b.app(lam, &[b.int(0), b.int(1), b.int(42)], INT),
-        &[],
         false,
     );
 }
@@ -241,7 +236,6 @@ fn oversaturation_with_atomic_extra_evaluates_returned_function() {
         "oversaturation_atomic_success",
         &b,
         b.app(lam, &[b.int(40), b.int(2)], INT),
-        &["intermediate", "returned body"],
         false,
     );
 }
@@ -265,7 +259,6 @@ fn oversaturation_inlines_repeated_integer_parameter() {
         "oversaturation_repeated_integer",
         &b,
         b.app(lam, &[b.int(21), b.int(0)], INT),
-        &["intermediate"],
         false,
     );
 }

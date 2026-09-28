@@ -92,12 +92,7 @@ mod tests {
             reports: vec![report],
         };
         let value = module_to_json(&module);
-        assert_eq!(
-            value["problems"][0]["region"],
-            encode_region(region(2, 5, 2, 12))
-        );
-        assert_eq!(value.as_object().unwrap().len(), 3);
-        assert_eq!(value["problems"][0]["suggestions"], json!(["found"]));
+
         insta::with_settings!({ description => format!("Code:\n\n{}", module.source), omit_expression => true }, {
             insta::assert_snapshot!(serde_json::to_string_pretty(&value).unwrap());
         });
@@ -245,18 +240,5 @@ mod structured_tests {
         insta::with_settings!({description => report.related[0].source.as_str(), omit_expression => true}, {
             insta::assert_snapshot!(serde_json::to_string_pretty(&value).unwrap());
         });
-        assert_eq!(value["code"], "nash::type::mismatch");
-        assert_eq!(value["title"], "NEW TITLE");
-        assert_eq!(value["labels"].as_array().unwrap().len(), 3);
-        assert_eq!(value["labels"][0]["primary"], true);
-        assert_eq!(value["labels"][1]["text"], "annotation");
-        assert_eq!(value["labels"][2]["primary"], false);
-        assert_eq!(value["related"][0]["path"], "Other.nash");
-        assert_eq!(
-            value["related"][0]["problems"][0]["code"],
-            "nash::type::origin"
-        );
-        assert_eq!(value["suggestions"], json!(["replacement"]));
-        assert_eq!(value["message"], json!(["Problem.\n\nHint."]));
     }
 }

@@ -229,7 +229,7 @@ async fn roots_use_their_own_target_settings_and_hashes() {
         ..Default::default()
     })
     .await;
-    assert_eq!(artifacts.len(), 2);
+
     insta::with_settings!({description => files.iter().map(|(_, source)| *source).collect::<Vec<_>>().join("\n"), omit_expression => true}, {
         insta::assert_snapshot!(artifacts.iter().map(|artifact| format!("{}\n{}\nhash: {}", artifact.module, artifact.uplc, hex::encode(artifact.hash))).collect::<Vec<_>>().join("\n"));
     });

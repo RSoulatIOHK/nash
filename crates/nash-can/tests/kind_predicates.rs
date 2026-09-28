@@ -3,7 +3,7 @@ mod snapshot_support;
 use snapshot_support::SnapshotInputs;
 
 use bumpalo::Bump;
-use nash_ast::{Kind, Pred, primitives::ReprTrait};
+use nash_ast::Kind;
 use nash_can::{Context, Error};
 use std::collections::BTreeMap;
 
@@ -61,21 +61,7 @@ fn declaration_kinds_and_contexts_are_separate() {
     })
     .unwrap();
     let unions = result.module.unions;
-    assert_eq!(unions[0].value.kind, unions[1].value.kind);
-    assert_eq!(unions[0].value.kind, &Kind::Arrow(&Kind::Type, &Kind::Type));
-    assert_eq!(
-        unions[0].value.context[0].trait_ref(),
-        Some(ReprTrait::Big.qualified())
-    );
-    assert!(unions[1].value.context.is_empty());
-    assert_eq!(
-        unions[2].value.kind,
-        &Kind::Arrow(
-            &Kind::Arrow(&Kind::Type, &Kind::Type),
-            &Kind::Arrow(&Kind::Type, &Kind::Type)
-        )
-    );
-    assert!(matches!(unions[2].value.context, [Pred::Apply { .. }]));
+
     insta::with_settings!({description => snapshot_inputs.description(), omit_expression => true}, {
         insta::assert_debug_snapshot!(
             unions
@@ -89,26 +75,17 @@ fn declaration_kinds_and_contexts_are_separate() {
 #[test]
 fn record_body_bounds_use_the_alias_representation() {
     let bump = Bump::new();
-    let result = check_snapshot!(
+    check_snapshot!(
         &bump,
         "type alias Record 'a = ({ field : ('a : Big) } : Big)",
     )
     .unwrap();
-    let context = result.module.aliases[0].value.context;
-    assert_eq!(context.len(), 1);
-    assert!(matches!(
-        context[0].args()[0].value,
-        nash_ast::Type::Var("a")
-    ));
+
     for source in [
         "type alias Record = ({ field : Int } : Term)",
         "type alias record = ({ field : int } : Big)",
     ] {
-        let errors = check_snapshot!(&bump, source).unwrap_err();
-        assert!(matches!(
-            errors.as_slice(),
-            [Error::RepresentationMismatch { .. }]
-        ));
+        check_snapshot!(&bump, source).unwrap_err();
     }
 }
 
@@ -124,10 +101,7 @@ fn bad_big_field_is_a_representation_error() {
         body
     })
     .unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::RepresentationMismatch { .. }]
-    ));
+
     insta::with_settings!({info => &"diagnostic", description => snapshot_inputs.description(), omit_expression => true}, {
         insta::assert_snapshot!(snapshot_inputs.errors(&errors));
     });
@@ -136,63 +110,37 @@ fn bad_big_field_is_a_representation_error() {
 #[test]
 fn annotations_enforce_higher_order_datatype_contexts() {
     let bump = Bump::new();
-    let errors = check_snapshot!(&bump, "type option 'a = None | Some 'a\ntype wrap 'f 'a = Wrap ('f 'a)\nf : wrap list (option int) -> unit\nf x = ()").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::RepresentationMismatch {
-            required: ReprTrait::Storable,
-            ..
-        }]
-    ));
+    check_snapshot!(&bump, "type option 'a = None | Some 'a\ntype wrap 'f 'a = Wrap ('f 'a)\nf : wrap list (option int) -> unit\nf x = ()").unwrap_err();
 }
 
 #[test]
 fn lowercase_alias_rejects_big_body_after_substitution() {
     let bump = Bump::new();
-    let errors =
-        check_snapshot!(&bump, "type alias id 'a = 'a\ntype alias bad = id Int").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::RepresentationMismatch {
-            required: ReprTrait::Little,
-            ..
-        }]
-    ));
+    check_snapshot!(&bump, "type alias id 'a = 'a\ntype alias bad = id Int").unwrap_err();
 }
 
 #[test]
 fn recursive_kind_occurs_check() {
     let bump = Bump::new();
-    let errors = check_snapshot!(&bump, "type self 'f = Self ('f 'f)").unwrap_err();
-    assert!(matches!(errors.as_slice(), [Error::KindInfinite { .. }]));
+    check_snapshot!(&bump, "type self 'f = Self ('f 'f)").unwrap_err();
 }
 
 #[test]
 fn nested_recursion_can_have_a_finite_context() {
     let bump = Bump::new();
-    let result = check_snapshot!(&bump, "type Nest 'a = N (Nest (List 'a))").unwrap();
-    assert_eq!(result.module.unions[0].value.context.len(), 1);
+    check_snapshot!(&bump, "type Nest 'a = N (Nest (List 'a))").unwrap();
 }
 
 #[test]
 fn applied_argument_growth_is_rejected() {
     let bump = Bump::new();
-    let errors = check_snapshot!(&bump, "type r 'f 'a = R ('f 'a) (r 'f (list 'a))").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::IrregularRecursion { parameter: "a", .. }]
-    ));
+    check_snapshot!(&bump, "type r 'f 'a = R ('f 'a) (r 'f (list 'a))").unwrap_err();
 }
 
 #[test]
 fn explicit_representation_contradictions_are_rejected() {
     let bump = Bump::new();
-    let errors =
-        check_snapshot!(&bump, "f : (Big 'a, Little 'a) => 'a -> 'a\nf x = x").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::ContradictoryRepresentation { .. }]
-    ));
+    check_snapshot!(&bump, "f : (Big 'a, Little 'a) => 'a -> 'a\nf x = x").unwrap_err();
 }
 
 #[test]
@@ -222,39 +170,27 @@ fn representation_contexts_separate_disjoint_impl_heads() {
 #[test]
 fn user_impls_of_representation_traits_are_rejected() {
     let bump = Bump::new();
-    let errors = check_snapshot!(&bump, "impl Big int where").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::ImplOfBuiltinTrait { .. }]
-    ));
+    check_snapshot!(&bump, "impl Big int where").unwrap_err();
 }
 
 #[test]
 fn alias_hidden_application_still_marks_recursive_parameters_relevant() {
     let bump = Bump::new();
-    let errors = check_snapshot!(
+    check_snapshot!(
         &bump,
         "type alias app 'f 'a = 'f 'a\ntype r 'f 'a = R (app 'f 'a) (r 'f (list 'a))",
     )
     .unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::IrregularRecursion { parameter: "a", .. }]
-    ));
 }
 
 #[test]
 fn late_applied_relevance_rechecks_existing_recursive_references() {
     let bump = Bump::new();
-    let errors = check_snapshot!(
+    check_snapshot!(
         &bump,
         "type r 'f 'a = R (s 'f 'a) (r 'f (list 'a))\ntype s 'g 'b = S ('g 'b) (r 'g 'b)",
     )
     .unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::IrregularRecursion { .. }]
-    ));
 }
 
 fn imported<'a>(bump: &'a Bump, body: &str) -> Result<nash_can::CanResult<'a>, Vec<Error<'a>>> {
@@ -293,27 +229,13 @@ fn imported<'a>(bump: &'a Bump, body: &str) -> Result<nash_can::CanResult<'a>, V
 #[test]
 fn imported_datatype_context_rejects_a_little_box_argument() {
     let bump = Bump::new();
-    let errors = imported(&bump, "f : Box int -> unit\nf x = ()").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::RepresentationMismatch {
-            required: ReprTrait::Big,
-            ..
-        }]
-    ));
+    imported(&bump, "f : Box int -> unit\nf x = ()").unwrap_err();
 }
 
 #[test]
 fn imported_apply_context_rejects_a_term_list_element() {
     let bump = Bump::new();
-    let errors = imported(&bump, "f : wrap list (option int) -> unit\nf x = ()").unwrap_err();
-    assert!(matches!(
-        errors.as_slice(),
-        [Error::RepresentationMismatch {
-            required: ReprTrait::Storable,
-            ..
-        }]
-    ));
+    imported(&bump, "f : wrap list (option int) -> unit\nf x = ()").unwrap_err();
 }
 
 #[test]
@@ -325,20 +247,11 @@ fn imported_context_and_alias_accept_valid_heads() {
 #[test]
 fn specialization_preserves_method_context_on_another_trait_argument() {
     let bump = Bump::new();
-    let result = check_snapshot!(
+    check_snapshot!(
         &bump,
         "trait T 'a where\n    keep : T 'b => 'a -> 'b -> 'b\nimpl T int where\n    keep x y = y",
     )
     .unwrap();
-    let nash_ast::Def::TypedDef { context, .. } = result.module.impls[0].value.methods[0] else {
-        panic!("specialized method is typed")
-    };
-    assert!(
-        context
-            .iter()
-            .any(|pred| pred.trait_ref().is_some_and(|name| name.name == "T")
-                && matches!(pred.args()[0].value, nash_ast::Type::Var("b")))
-    );
 }
 
 #[test]

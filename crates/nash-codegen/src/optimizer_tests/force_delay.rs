@@ -11,16 +11,14 @@ const INT: Ty<'static> = Ty::Const(&ConstTy::Int);
 fn trace<'a>(b: &Builder<'a>, s: &'a str, x: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, s)), x)
 }
-fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: bool) {
+fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, fails: bool) {
     let after = force_delay::reduce(b, before);
-    assert_eq!(before.ty, after.ty);
+
     hygiene::validate(after, &[]).unwrap();
-    assert!(std::ptr::eq(after, force_delay::reduce(b, after)));
+
     let left = crate::harness::eval_core_raw(b.arena, before);
     let right = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(left.observable, right.observable);
-    assert_eq!(left.logs, right.logs);
-    assert_eq!(right.logs, logs);
+
     assert_eq!(right.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -34,31 +32,33 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: b
             right.logs
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert!(std::ptr::eq(after, force_delay::reduce(b, after)));
+    assert_eq!(left.observable, right.observable);
+    assert_eq!(left.logs, right.logs);
 }
 #[test]
 fn literal_trace_failure_and_nested_pairs() {
     let a = Arena::new();
     let b = Builder::new(&a);
-    check("literal", &b, b.force(b.delay(b.int(42)), INT), &[], false);
+    check("literal", &b, b.force(b.delay(b.int(42)), INT), false);
     check(
         "trace",
         &b,
         b.force(b.delay(trace(&b, "body", b.int(42))), INT),
-        &["body"],
         false,
     );
     check(
         "failure",
         &b,
         b.force(b.delay(trace(&b, "before failure", b.error(INT))), INT),
-        &["before failure"],
         true,
     );
     check(
         "nested",
         &b,
         b.force(b.delay(b.force(b.delay(b.int(42)), INT)), INT),
-        &[],
         false,
     );
 }
@@ -75,7 +75,6 @@ fn selected_and_cold_branches() {
                 b.force(b.delay(trace(&b, "selected", b.int(42))), INT),
                 b.int(0),
             ),
-            if hot { &["selected"] } else { &[] },
             false,
         );
     }
@@ -94,13 +93,7 @@ fn strict_order_and_repeated_forcing() {
         trace(&b, "first", b.int(0)),
         b.builtin(F::AddInteger, &[call, call], INT),
     );
-    check(
-        "repeated_order",
-        &b,
-        root,
-        &["first", "body", "body"],
-        false,
-    );
+    check("repeated_order", &b, root, false);
 }
 #[test]
 fn reverse_pair_and_invalid_force_remain() {
@@ -108,10 +101,10 @@ fn reverse_pair_and_invalid_force_remain() {
     let b = Builder::new(&a);
     let invalid = b.force(b.int(42), INT);
     assert!(std::ptr::eq(invalid, force_delay::reduce(&b, invalid)));
-    check("invalid_force", &b, invalid, &[], true);
+    check("invalid_force", &b, invalid, true);
     let suspended = b.delay(invalid);
     assert!(std::ptr::eq(suspended, force_delay::reduce(&b, suspended)));
-    check("reverse_pair", &b, suspended, &[], false);
+    check("reverse_pair", &b, suspended, false);
 }
 #[test]
 fn outer_type_view_is_retained() {
@@ -142,7 +135,7 @@ fn exposed_let_body_needs_cleanup_but_not_another_anf_pass() {
         b.builtin(F::AddInteger, &[b.var(y.name, INT), b.int(21)], INT),
     );
     nash_ir::anf::validate(root).unwrap();
-    check("exposed_let", &b, root, &["inner"], false);
+    check("exposed_let", &b, root, false);
     let after = nash_ir::small_inline::simplify(&b, root);
     nash_ir::anf::validate(after).unwrap();
     let before_result = crate::harness::eval_core_raw(&a, root);

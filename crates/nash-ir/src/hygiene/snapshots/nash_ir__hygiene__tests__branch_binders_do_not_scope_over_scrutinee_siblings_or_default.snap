@@ -1,26 +1,25 @@
 ---
 source: crates/nash-ir/src/hygiene/tests.rs
-expression: "validate(tree, &[])"
+assertion_line: 200
+expression: "validate(tree, &[]).expect_err(\"invalid scope\")"
 ---
-Err(
-    [
-        UnboundVariable(
-            Name {
-                text: "x",
-                unique: 1,
-            },
-        ),
-        UnboundVariable(
-            Name {
-                text: "x",
-                unique: 1,
-            },
-        ),
-        UnboundVariable(
-            Name {
-                text: "x",
-                unique: 1,
-            },
-        ),
-    ],
-)
+[
+    UnboundVariable(
+        Name {
+            text: "x",
+            unique: 1,
+        },
+    ),
+    UnboundVariable(
+        Name {
+            text: "x",
+            unique: 1,
+        },
+    ),
+    UnboundVariable(
+        Name {
+            text: "x",
+            unique: 1,
+        },
+    ),
+]

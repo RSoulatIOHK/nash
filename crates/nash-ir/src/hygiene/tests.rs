@@ -41,7 +41,7 @@ fn scope_diagnostics() {
             &[b.lam(&[x], b.var(x.name, x.ty)), b.var(y.name, y.ty)],
         ),
     );
-    insta::assert_debug_snapshot!(validate(tree, &[]));
+    insta::assert_debug_snapshot!(validate(tree, &[]).expect_err("invalid scope"));
     assert!(validate(b.var(y.name, y.ty), &[y.name]).is_ok());
 }
 
@@ -168,7 +168,7 @@ fn recursive_group_scope_is_simultaneous_and_parameters_are_local() {
         ],
         b.var(p.name, p.ty),
     );
-    insta::assert_debug_snapshot!(validate(leaking, &[]));
+    insta::assert_debug_snapshot!(validate(leaking, &[]).expect_err("invalid scope"));
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn branch_binders_do_not_scope_over_scrutinee_siblings_or_default() {
         Some(b.var(x.name, x.ty)),
         x.ty,
     );
-    insta::assert_debug_snapshot!(validate(tree, &[]));
+    insta::assert_debug_snapshot!(validate(tree, &[]).expect_err("invalid scope"));
     let result = substitute(&b, tree, 1, b.int(42));
     assert_eq!(result.ty, tree.ty);
     assert!(validate(result, &[]).is_ok());
@@ -218,7 +218,7 @@ fn duplicate_ids_include_disjoint_scopes_and_external_names() {
             b.lam(&[y], b.var(y.name, y.ty)),
         ],
     );
-    insta::assert_debug_snapshot!(validate(tree, &[x.name]));
+    insta::assert_debug_snapshot!(validate(tree, &[x.name]).expect_err("invalid scope"));
 }
 
 #[test]

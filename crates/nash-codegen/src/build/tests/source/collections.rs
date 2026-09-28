@@ -20,8 +20,7 @@ case!(
     none : option int
     none = None
     main = eq (map none (\_ -> 14)) None
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -46,8 +45,7 @@ case!(
     none : option int
     none = None
     main = eq (map none (\_ -> ())) None
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -70,8 +68,7 @@ case!(
             None -> None
             Some a -> Some (f a)
     main = eq (map (Some 14) (\n -> addInteger n 1)) (Some 15)
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -102,8 +99,7 @@ case!(
     empty : list int
     empty = []
     main = eq (filterMap empty (\_ -> Some 42)) []
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -130,8 +126,7 @@ case!(
                     Some b -> Some (f a b)
     main = optionEq pairEq (map2 (Some 14) (Some 42) (\a b -> mkPairData (iData a) (iData b))) (Some (mkPairData (iData 14) (iData 42)))
     pairEq a b = if equalsData (toData (fstPair a)) (toData (fstPair b)) then equalsData (toData (sndPair a)) (toData (sndPair b)) else False
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -157,8 +152,7 @@ case!(
                     Some b -> Some (f a b)
     pairEq (a, b) (c, d) = if eq a c then eq b d else False
     main = optionEq pairEq (map2 (Some 14) (Some 42) (\a b -> (a, b))) (Some (14, 42))
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -170,8 +164,7 @@ case!(
     import Literal exposing (..)
     import Eq exposing (..)
     main = eq () ()
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -192,8 +185,7 @@ case!(
             [] -> []
             x :: rest -> concat (f x) (flatMap rest f)
     main = eq (flatMap [1, 2, 3] (\a -> [a, a])) [1, 1, 2, 2, 3, 3]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -217,8 +209,7 @@ case!(
     empty : list int
     empty = []
     main = eq (unique empty) []
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -240,8 +231,7 @@ case!(
             [] -> []
             x :: rest -> mkCons x (unique (filter rest (\y -> neq y x)))
     main = eq (unique [1, 2, 3, 1]) [1, 2, 3]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -273,8 +263,7 @@ case!(
                 else mkCons (mkPairData (bData k2) (iData v2)) (doInsert rest k v)
     fixture1 = insert (insert new "foo" 42) "bar" 14
     main = equalsData (toData (mapData (toList fixture1))) (toData (mapData [mkPairData (bData "foo") (iData 42), mkPairData (bData "bar") (iData 14)]))
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -318,8 +307,7 @@ case!(
             [] -> right
             entry :: rest -> doUnion rest (doInsert right (unBData (fstPair entry)) (unIData (sndPair entry)))
     main = eq (union fixture1 new) fixture1
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -364,8 +352,7 @@ case!(
     fixture1 : assocList bytes int
     fixture1 = insert (insert emptyList "foo" 42) "bar" 14
     main = eq (union fixture1 emptyList) fixture1
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -378,6 +365,5 @@ case!(
     import Eq exposing (..)
     abs a = if lessThanInteger a 0 then subtractInteger 0 a else a
     main = eq (abs (subtractInteger 0 14)) 14
-    "#,
-    Ok("(con bool True)")
+    "#
 );

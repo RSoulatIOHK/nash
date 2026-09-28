@@ -19,20 +19,17 @@ fn binder<'a>(b: &Builder<'a>, name: &'a str, ty: Ty<'a>) -> Binder<'a> {
 fn traced<'a>(b: &Builder<'a>, message: &'a str, value: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, message)), value)
 }
-fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fails: bool) {
+fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, fails: bool) {
     let before = anf::normalize(b, core);
     let after = propagate(b, before);
     for phase in [before, after] {
         anf::validate(phase).unwrap();
         hygiene::validate(phase, &[]).unwrap();
     }
-    assert_eq!(before.ty, after.ty);
-    assert_eq!(pretty(after), pretty(propagate(b, after)));
+
     let baseline = crate::harness::eval_core_raw(b.arena, before);
     let candidate = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     fn output(v: &crate::harness::Evaluated) -> String {
         format!(
@@ -50,6 +47,11 @@ fn check<'a>(name: &str, b: &Builder<'a>, core: &'a Core<'a>, logs: &[&str], fai
             output(&candidate)
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(pretty(after), pretty(propagate(b, after)));
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn aliases_in_unselected_branch_do_not_hide_strict_failure() {
@@ -70,13 +72,7 @@ fn aliases_in_unselected_branch_do_not_hide_strict_failure() {
             ),
         ),
     );
-    check(
-        "unselected_alias_strict_failure",
-        &b,
-        core,
-        &["strict failure"],
-        true,
-    );
+    check("unselected_alias_strict_failure", &b, core, true);
 }
 #[test]
 fn alias_inside_delay_does_not_delay_original_computation() {
@@ -99,13 +95,7 @@ fn alias_inside_delay_does_not_delay_original_computation() {
             ),
         ),
     );
-    check(
-        "alias_capture_delay",
-        &b,
-        core,
-        &["strict", "before force", "delayed"],
-        false,
-    );
+    check("alias_capture_delay", &b, core, false);
 }
 #[test]
 fn alias_captured_by_function_keeps_outer_binding() {
@@ -127,13 +117,7 @@ fn alias_captured_by_function_keeps_outer_binding() {
             ),
         ),
     );
-    check(
-        "alias_capture_function",
-        &b,
-        core,
-        &["outer", "argument"],
-        false,
-    );
+    check("alias_capture_function", &b, core, false);
 }
 #[test]
 fn alias_to_branch_field_preserves_scope() {
@@ -160,7 +144,7 @@ fn alias_to_branch_field_preserves_scope() {
         None,
         INT,
     );
-    check("alias_branch_field", &b, core, &[], false);
+    check("alias_branch_field", &b, core, false);
 }
 #[test]
 fn shared_string_alias_retains_one_literal_binding() {
@@ -182,7 +166,7 @@ fn shared_string_alias_retains_one_literal_binding() {
             ),
         ),
     );
-    check("shared_string_alias", &b, core, &[], false);
+    check("shared_string_alias", &b, core, false);
 }
 #[test]
 fn literal_alias_chain_collapses() {
@@ -198,7 +182,6 @@ fn literal_alias_chain_collapses() {
             b.int(42),
             b.let_(y, b.var(x.name, INT), b.var(y.name, INT)),
         ),
-        &[],
         false,
     );
 }
@@ -221,7 +204,6 @@ fn repeated_bytes_at_64_byte_limit_evaluate() {
                 x.ty,
             ),
         ),
-        &[],
         false,
     );
 }

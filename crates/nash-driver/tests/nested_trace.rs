@@ -239,10 +239,7 @@ async fn nested_trace_reduction_repartitions_strict_groups() {
         steps: 0,
     };
     reduced.simplify();
-    assert_eq!(
-        reduced.choices,
-        vec![G(vec![C(0), C(0), C(0)]), G(vec![C(0)])]
-    );
+
     insta::with_settings!({description => SOURCE, omit_expression => true}, {
         insta::assert_snapshot!(format!("original: {original:?}\nreduced: {:?}\nvalue: {}", reduced.choices, reduced.value));
     });
@@ -273,7 +270,7 @@ async fn reconstructs_multiple_boundaries() {
         cache,
     };
     ce.simplify();
-    assert_eq!(ce.choices, vec![C(0), G(vec![G(vec![C(0)])])]);
+
     insta::with_settings!({description => SOURCE, omit_expression => true}, {
         insta::assert_snapshot!(format!("value: {}\nrebuilt trace: {:?}", ce.value, ce.choices));
     });

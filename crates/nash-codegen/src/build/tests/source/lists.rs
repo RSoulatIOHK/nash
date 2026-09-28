@@ -10,8 +10,7 @@ case!(
             [] -> 0
             _ :: rest -> addInteger 1 (length rest)
     main = equalsInteger (length [1, 2, 3]) 3
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -25,8 +24,7 @@ case!(
         if lessThanEqualsInteger n 0 then []
         else mkCons x (repeat x (subtractInteger n 1))
     main = eq (repeat #"61696b656e" 2) [#"61696b656e", #"61696b656e"]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -42,8 +40,7 @@ case!(
             x :: rest -> f x (foldr rest f zero)
     concat left right = foldr left (\x xs -> mkCons x xs) right
     main = eq (concat [1, 2, 3] [4, 5, 6]) [1, 2, 3, 4, 5, 6]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -60,8 +57,7 @@ case!(
     prepend x xs = mkCons x xs
     concat left right = foldr left prepend right
     main = eq (concat [1, 2, 3] [4, 5, 6]) [1, 2, 3, 4, 5, 6]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -86,8 +82,7 @@ case!(
                     _ -> Some (headList xs)
         in
         eq (head [1, 2, 3]) (Some 1)
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -113,8 +108,7 @@ case!(
                     a :: b :: rest -> Some [a, b]
         in
         eq (head [1, 2, 3]) (Some [1, 2])
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -137,8 +131,7 @@ case!(
             [] -> None
             _ -> Some (headList xs)
     main = eq (head [1, 2, 3]) (Some 1)
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -161,8 +154,7 @@ case!(
             [] -> None
             _ -> Some (headList xs)
     main = eq (head []) None
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -178,8 +170,7 @@ case!(
             x = 1
         in
         if equalsInteger x 1 then True else False
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -193,8 +184,7 @@ case!(
     empty = []
     same a b = if equalsData (toData (fstPair a)) (toData (fstPair b)) then equalsData (toData (sndPair a)) (toData (sndPair b)) else False
     main = same (mkPairData (iData 1) (listData empty)) (mkPairData (iData 1) (listData empty))
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -207,8 +197,7 @@ case!(
     same : (int, list int) -> (int, list int) -> bool
     same (a, b) (c, d) = if eq a c then eq b d else False
     main = same (1, []) (1, [])
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -233,8 +222,7 @@ case!(
             x = Cons (3, #"55") (Cons (4, #"7799") Nil)
         in
         same (unzip x) ([3, 4], [#"55", #"7799"])
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -266,8 +254,7 @@ case!(
         in
         same (unzip x)
             (mkPairData (listData [iData 3, iData 4]) (listData [bData #"55", bData #"7799"]))
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -279,8 +266,7 @@ case!(
     import Eq exposing (..)
     isEmpty bytes = equalsInteger (Builtin.lengthOfByteString bytes) 0
     main = eq (isEmpty #"") True
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -292,8 +278,7 @@ case!(
     import Eq exposing (..)
     isEmpty bytes = equalsInteger (Builtin.lengthOfByteString bytes) 0
     main = eq (isEmpty #"01") False
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -305,8 +290,7 @@ case!(
     import Eq exposing (..)
     isEmpty bytes = equalsInteger (lengthOfByteString bytes) 0
     main = eq (isEmpty #"") True
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -329,8 +313,7 @@ case!(
             Some a -> Some (f a)
     addOne n = addInteger n 1
     main = eq (map None addOne) None
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -353,8 +336,7 @@ case!(
             Some a -> Some (f a)
     addOne n = addInteger n 1
     main = eq (map (Some 1) addOne) (Some 2)
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -369,8 +351,7 @@ case!(
             [] -> []
             x :: rest -> mkCons (f x) (map rest f)
     main = eq (map [] (\n -> addInteger n 1)) []
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -385,8 +366,7 @@ case!(
             [] -> []
             x :: rest -> mkCons (f x) (map rest f)
     main = eq (map [6, 7, 8] (\n -> addInteger n 1)) [7, 8, 9]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -403,8 +383,7 @@ case!(
                 if f x then mkCons x (filter rest f)
                 else filter rest f
     main = eq (filter [1, 2, 3, 4, 5, 6] (\x -> equalsInteger (modInteger x 2) 0)) [2, 4, 6]
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -415,8 +394,7 @@ case!(
     import Builtin exposing (..)
     import Eq exposing (..)
     main = [subtractInteger 0 2, subtractInteger 0 1, 0]
-    "#,
-    Ok("(con (list integer) [-2, -1, 0])")
+    "#
 );
 
 case!(
@@ -430,8 +408,7 @@ case!(
     new () = Pairs { inner = [] }
     same (Pairs a) (Pairs b) = equalsData (toData (mapData a)) (toData (mapData b))
     main = same (new ()) (Pairs { inner = [] })
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -449,8 +426,7 @@ case!(
             x = #"01020304050607"
         in
         eq (drop x 2) #"0304050607"
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -463,8 +439,7 @@ case!(
     slice bytes start end = sliceByteString start end bytes
     take bytes n = slice bytes 0 n
     main = eq (take #"010203" 2) #"0102"
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -486,6 +461,5 @@ case!(
             None -> default
             Some a -> a
     main = equalsInteger (orElse (Some 42) 14) 42
-    "#,
-    Ok("(con bool True)")
+    "#
 );

@@ -13,36 +13,40 @@ fn binder<'a>(b: &Builder<'a>, name: &'a str, ty: Ty<'a>) -> Binder<'a> {
         ty,
     }
 }
-fn snapshot<'a>(b: &Builder<'a>, core: &'a Core<'a>) -> String {
-    let before = crate::beta::simplify(b, core);
-    let after = inline(b, before);
-    let fixed = simplify(b, before);
-    for v in [before, after, fixed] {
-        anf::validate(v).unwrap();
-        hygiene::validate(v, &[]).unwrap();
-        assert_eq!(v.ty, core.ty);
-    }
-    assert!(std::ptr::eq(fixed, simplify(b, fixed)));
-    format!(
-        "--- core before rule 3\n{}\n--- core after rule 3\n{}\n--- core after rules 1 + 2 + 3\n{}",
-        pretty(before),
-        pretty(after),
-        pretty(fixed)
-    )
+macro_rules! assert_optimization_snapshot {
+    ($builder:expr, $input:expr $(, $name:expr)?) => {{
+        let b = $builder;
+        let core = $input;
+        let before = crate::beta::simplify(b, core);
+        let after = inline(b, before);
+        let fixed = simplify(b, before);
+        insta::assert_snapshot!($($name,)? format!(
+            "--- core before rule 3\n{}\n--- core after rule 3\n{}\n--- core after rules 1 + 2 + 3\n{}",
+            pretty(before),
+            pretty(after),
+            pretty(fixed)
+        ));
+        for v in [before, after, fixed] {
+            anf::validate(v).unwrap();
+            hygiene::validate(v, &[]).unwrap();
+            assert_eq!(v.ty, core.ty);
+        }
+        assert!(std::ptr::eq(fixed, simplify(b, fixed)));
+    }};
 }
 #[test]
 fn immediate_computed_return_is_removed() {
     let a = Arena::new();
     let b = Builder::new(&a);
     let x = binder(&b, "result", INT);
-    insta::assert_snapshot!(snapshot(
+    assert_optimization_snapshot!(
         &b,
         b.let_(
             x,
             b.builtin(F::AddInteger, &[b.int(40), b.int(2)], INT),
             b.var(x.name, INT)
         )
-    ));
+    );
 }
 #[test]
 fn single_use_function_exposes_beta_reduction() {
@@ -54,10 +58,10 @@ fn single_use_function_exposes_beta_reduction() {
         b.builtin(F::AddInteger, &[b.var(x.name, INT), b.int(2)], INT),
     );
     let f = binder(&b, "f", lam.ty);
-    insta::assert_snapshot!(snapshot(
+    assert_optimization_snapshot!(
         &b,
         b.let_(f, lam, b.app(b.var(f.name, f.ty), &[b.int(40)], INT))
-    ));
+    );
 }
 #[test]
 fn nested_function_bindings_do_not_resurrect_removed_binders() {
@@ -76,10 +80,10 @@ fn nested_function_bindings_do_not_resurrect_removed_binders() {
         ),
     );
     let f = binder(&b, "f", outer.ty);
-    insta::assert_snapshot!(snapshot(
+    assert_optimization_snapshot!(
         &b,
         b.let_(f, outer, b.app(b.var(f.name, f.ty), &[b.int(42)], INT))
-    ));
+    );
 }
 #[test]
 fn computed_function_operand_remains_bound() {
@@ -93,7 +97,7 @@ fn computed_function_operand_remains_bound() {
     let f = binder(&b, "f", value.ty);
     let core = b.let_(f, value, b.app(b.var(f.name, f.ty), &[b.int(42)], INT));
     assert!(std::ptr::eq(core, inline(&b, core)));
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn computed_capture_is_not_moved_into_a_delay() {
@@ -102,7 +106,7 @@ fn computed_capture_is_not_moved_into_a_delay() {
     let x = binder(&b, "x", INT);
     let core = b.let_(x, b.error(INT), b.delay(b.var(x.name, INT)));
     assert!(std::ptr::eq(core, inline(&b, core)));
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn multiple_use_function_stays_shared() {
@@ -122,7 +126,7 @@ fn multiple_use_function_stays_shared() {
         ),
     );
     assert!(std::ptr::eq(core, inline(&b, core)));
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }
 #[test]
 fn occurrence_and_root_type_views_survive() {
@@ -144,22 +148,21 @@ fn single_use_delay_and_builtin_are_values() {
     let b = Builder::new(&a);
     let delayed = b.delay(b.error(INT));
     let d = binder(&b, "delayed", delayed.ty);
-    insta::assert_snapshot!(
-        "single_delay",
-        snapshot(&b, b.let_(d, delayed, b.force(b.var(d.name, d.ty), INT)))
+    assert_optimization_snapshot!(
+        &b,
+        b.let_(d, delayed, b.force(b.var(d.name, d.ty), INT)),
+        "single_delay"
     );
     let ty = Ty::Term(a.alloc(crate::ty::TermTy::Fun(a.alloc_slice_copy(&[INT, INT]), INT)));
     let f = binder(&b, "add", ty);
-    insta::assert_snapshot!(
-        "single_builtin",
-        snapshot(
-            &b,
-            b.let_(
-                f,
-                b.builtin(F::AddInteger, &[], ty),
-                b.app(b.var(f.name, ty), &[b.int(40), b.int(2)], INT)
-            )
-        )
+    assert_optimization_snapshot!(
+        &b,
+        b.let_(
+            f,
+            b.builtin(F::AddInteger, &[], ty),
+            b.app(b.var(f.name, ty), &[b.int(40), b.int(2)], INT)
+        ),
+        "single_builtin"
     );
 }
 
@@ -191,5 +194,5 @@ fn forced_builtin_reference_stays_bound_even_when_returned() {
     let f = binder(&b, "tracer", ty);
     let core = b.let_(f, b.builtin(F::Trace, &[], ty), b.var(f.name, ty));
     assert!(std::ptr::eq(core, inline(&b, core)));
-    insta::assert_snapshot!(snapshot(&b, core));
+    assert_optimization_snapshot!(&b, core);
 }

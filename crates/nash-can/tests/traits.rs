@@ -315,7 +315,7 @@ fn imported_trait_methods_retain_context_and_defaults() {
         references.push((*trait_, *method));
         decls = next;
     }
-    assert_eq!(references.len(), 2);
+
     insta::with_settings!({description => snapshot_inputs.description(), omit_expression => true}, {
         insta::assert_debug_snapshot!((interfaces["Identity"].traits, references));
     });

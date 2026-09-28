@@ -14,8 +14,7 @@ case!(
         }
     main : bool
     main = equalsData (encode pk) (encode pk)
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -37,8 +36,7 @@ case!(
         case encode pk of
             Constr pair(0, [B point, _]) -> bls12_381_g1_equal (bls12_381_g1_uncompress point) pk.piA
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -59,8 +57,7 @@ case!(
     main =
         case decodeNever (toData None) of
             Never -> ()
-"#,
-    Ok("(con unit ())")
+"#
 );
 
 traced_case!(
@@ -104,8 +101,7 @@ traced_case!(
                     y = hardCast x
                 in
                 same y y
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -117,8 +113,7 @@ case!(
     identity value = value
     main : bool
     main = if identity True then identity True else False
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -132,8 +127,7 @@ case!(
     expected = [1]
     main : bool
     main = eq (Builtin.mkCons 1 []) expected
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -148,8 +142,7 @@ case!(
     main = equalsData
         (toData (Builtin.listData (Builtin.mkCons (Some 42) [None])))
         (toData (Builtin.listData [Some 42, None]))
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -163,8 +156,7 @@ case!(
     main = equalsData
         (toData (Builtin.mapData (Builtin.mkCons (Builtin.mkPairData (I 1) (I 1)) (Builtin.mkNilPairData ()))))
         (toData (Builtin.mapData [Builtin.mkPairData (I 1) (I 1)]))
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -178,8 +170,7 @@ case!(
     main = equalsData
         (toData (Builtin.mapData (Builtin.mkNilPairData ())))
         (toData (Builtin.mapData (Builtin.mkNilPairData ())))
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -193,8 +184,7 @@ case!(
     main = equalsData
         (toData (Builtin.listData (Builtin.mkNilData ())))
         (toData (Builtin.listData (Builtin.mkNilData ())))
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -208,8 +198,7 @@ case!(
     main = equalsData
         (toData (Builtin.fstPair (Builtin.mkPairData (Builtin.iData 1) (Builtin.iData 2))))
         (toData (Builtin.iData 1))
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -228,8 +217,7 @@ case!(
             "bar" -> False
             #"666f6f" -> True
             _ -> False
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -240,8 +228,7 @@ case!(
     import Builtin exposing (..)
     main : unit
     main = trace "foo" (assert True)
-"#,
-    Ok("(con unit ())")
+"#
 );
 
 case!(
@@ -256,8 +243,7 @@ case!(
             predicate = True
         in
         trace "foo" (assert predicate)
-"#,
-    Ok("(con unit ())")
+"#
 );
 
 case!(
@@ -268,8 +254,7 @@ case!(
     import Builtin exposing (..)
     main : unit
     main = trace "foo" (trace "bar" (assert True))
-"#,
-    Ok("(con unit ())")
+"#
 );
 
 case!(
@@ -285,11 +270,10 @@ case!(
     main =
         if Builtin.nullList [toData (Foo 14), toData (Bar 42)] then False
         else True
-"#,
-    Ok("(con bool True)")
+"#
 );
 
-traced_case!(
+traced_error_case!(
     expect_non_empty_list_with_as_binding_fails_in_silent_and_verbose,
     expect_non_empty_list_with_as_binding_fails_silent,
     r#"
@@ -308,8 +292,7 @@ traced_case!(
             x = fromAssetList []
         in
         eq x x
-"#,
-    Err(())
+"#
 );
 
 case!(
@@ -329,8 +312,7 @@ case!(
                 equalsData (toData decodedInt) (I 42)
             else False
         else False
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -344,8 +326,7 @@ case!(
     decoded : List (List Int)
     decoded = fromData input
     main = equalsData (toData decoded) input
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -359,11 +340,10 @@ case!(
     decoded : Map Bytes (List Int)
     decoded = fromData input
     main = equalsData (toData decoded) input
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
-case!(
+error_case!(
     data_nested_list_rejects_malformed_element,
     r#"
     module Main exposing (..)
@@ -373,11 +353,10 @@ case!(
     decoded : List (List Int)
     decoded = validate (List [List [I 1, B #"aa"]])
     main = nullList (unListData decoded)
-    "#,
-    Err(())
+    "#
 );
 
-case!(
+error_case!(
     data_map_rejects_malformed_value,
     r#"
     module Main exposing (..)
@@ -387,8 +366,7 @@ case!(
     decoded : Map Bytes (List Int)
     decoded = validate (Map [mkPairData (B #"aa") (List [B #"bb"])])
     main = nullList (unMapData decoded)
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -403,8 +381,7 @@ case!(
     original = 42
     main : int
     main = coerce claimed
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
 case!(
@@ -421,11 +398,10 @@ case!(
     recovered = coerce hidden
     main : int
     main = recovered 42
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
-case!(
+error_case!(
     coerce_evaluates_argument,
     r#"
     module Main exposing (..)
@@ -435,8 +411,7 @@ case!(
     bad = fail
     main : bytes
     main = coerce bad
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -449,8 +424,7 @@ case!(
     decoded : List (List Int)
     decoded = fromData (List [List [B #"aa"]])
     main = nullList (unListData decoded)
-    "#,
-    Ok("(con bool False)")
+    "#
 );
 
 case!(
@@ -463,11 +437,10 @@ case!(
     decoded : Int
     decoded = fromData (B #"aa")
     main = equalsData (coerce decoded) (B #"aa")
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
-case!(
+error_case!(
     validate_data_rejects_wrong_scalar_shape,
     r#"
     module Main exposing (..)
@@ -477,8 +450,7 @@ case!(
     decoded : Int
     decoded = validate (B #"aa")
     main = unIData decoded
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -492,8 +464,7 @@ case!(
     decoded : Map Bytes (List Int)
     decoded = validate input
     main = equalsData (toData decoded) input
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -509,11 +480,10 @@ case!(
     main =
         case decoded of
             Datum number -> unIData number
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
-case!(
+error_case!(
     from_data_malformed_value_fails_on_use,
     r#"
     module Main exposing (..)
@@ -523,8 +493,7 @@ case!(
     decoded : Int
     decoded = fromData (B #"aa")
     main = unIData decoded
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -551,8 +520,7 @@ case!(
                     (Map [mkPairData (Builtin.constrData 0 [I 1]) (Builtin.constrData 0 [I 2])])
             else False
         else False
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
 case!(
@@ -578,11 +546,10 @@ case!(
                 equalsData (toData mapping) (Map [mkPairData (B #"aa") (I 7)])
             else False
         else False
-    "#,
-    Ok("(con bool True)")
+    "#
 );
 
-case!(
+error_case!(
     custom_validate_rejects_wrong_shape,
     r#"
     module Main exposing (..)
@@ -600,8 +567,7 @@ case!(
     main =
         case decoded of
             Datum number -> unIData number
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -624,6 +590,5 @@ case!(
                     [I number] -> Builtin.addInteger (Builtin.unIData key) number
                     _ -> fail
             _ -> fail
-    "#,
-    Ok("(con integer 49)")
+    "#
 );

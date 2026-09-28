@@ -2,17 +2,21 @@ use super::*;
 use crate::{hygiene, pretty::pretty, ty::ConstTy};
 use nash_plutus::{arena::Arena, builtin::DefaultFunction};
 
-fn snapshot<'a>(b: &Builder<'a>, before: &'a Core<'a>) -> String {
-    let after = normalize(b, before);
-    assert_eq!(validate(after), Ok(()));
-    assert_eq!(hygiene::validate(after, &[]), Ok(()));
-    assert_eq!(pretty(after), pretty(normalize(b, after)));
-    assert_eq!(before.ty, after.ty);
-    format!(
-        "--- core before\n{}\n--- core after\n{}",
-        pretty(before),
-        pretty(after)
-    )
+macro_rules! assert_optimization_snapshot {
+    ($builder:expr, $input:expr $(, $name:expr)?) => {{
+        let b = $builder;
+        let before = $input;
+        let after = normalize(b, before);
+        insta::assert_snapshot!($($name,)? format!(
+            "--- core before\n{}\n--- core after\n{}",
+            pretty(before),
+            pretty(after)
+        ));
+        assert_eq!(validate(after), Ok(()));
+        assert_eq!(hygiene::validate(after, &[]), Ok(()));
+        assert_eq!(pretty(after), pretty(normalize(b, after)));
+        assert_eq!(before.ty, after.ty);
+    }};
 }
 
 #[test]
@@ -30,7 +34,7 @@ fn nested_operands_and_staged_application() {
     };
     let f = b.lam(&[x, y], b.var(x.name, int));
     let add = b.builtin(DefaultFunction::AddInteger, &[b.int(1), b.int(2)], int);
-    insta::assert_snapshot!(snapshot(&b, b.app(f, &[add, b.int(3)], int)));
+    assert_optimization_snapshot!(&b, b.app(f, &[add, b.int(3)], int));
 }
 
 #[test]
@@ -49,7 +53,7 @@ fn scopes_and_administrative_lets() {
     let nested = b.let_(x, b.int(1), b.var(x.name, int));
     let value = b.let_(y, nested, b.var(y.name, int));
     let delayed = b.delay(b.builtin(DefaultFunction::AddInteger, &[value, b.int(2)], int));
-    insta::assert_snapshot!(snapshot(&b, b.force(delayed, int)));
+    assert_optimization_snapshot!(&b, b.force(delayed, int));
 }
 
 #[test]
@@ -88,7 +92,7 @@ fn intermediate_function_types_and_fresh_supply() {
     );
     let expression = source.app(f, &[source.int(1), add], int);
     let fresh = Builder::new(&arena);
-    insta::assert_snapshot!(snapshot(&fresh, expression));
+    assert_optimization_snapshot!(&fresh, expression);
 }
 
 #[test]
@@ -106,7 +110,7 @@ fn trace_body_and_branch_computations_stay_local() {
         ),
     );
     let condition = b.lit(nash_plutus::constant::Constant::bool(&arena, true));
-    insta::assert_snapshot!(snapshot(&b, b.if_(condition, branch, b.error(int))));
+    assert_optimization_snapshot!(&b, b.if_(condition, branch, b.error(int)));
 }
 
 #[test]

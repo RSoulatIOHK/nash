@@ -19,12 +19,11 @@ fn bind<'a>(b: &Builder<'a>, text: &'a str, ty: Ty<'a>) -> Binder<'a> {
 fn trace<'a>(b: &Builder<'a>, text: &'a str, core: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, text)), core)
 }
-fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: bool) {
+fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, fails: bool) {
     // A foreign name supply must avoid every ID owned by the input.
     let fresh = Builder::new(b.arena);
     let early = unused_params::reduce(&fresh, before);
-    assert!(!std::ptr::eq(before, early));
-    assert_eq!(before.ty, early.ty);
+
     hygiene::validate(early, &[]).unwrap();
     let after = anf::normalize(&fresh, early);
     anf::validate(after).unwrap();
@@ -33,9 +32,7 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: b
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, before).unwrap());
     let candidate =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, after).unwrap());
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -50,6 +47,11 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: b
             candidate.logs
         )
     );
+    // Properties independent of the expected snapshot.
+    assert!(!std::ptr::eq(before, early));
+    assert_eq!(before.ty, early.ty);
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn retained_and_discarded_arguments_keep_source_order() {
@@ -76,13 +78,7 @@ fn retained_and_discarded_arguments_keep_source_order() {
             ],
             INT,
         );
-        check(
-            name,
-            &b,
-            b.let_(f, value, call),
-            &["a", "b", "c", "body"],
-            false,
-        );
+        check(name, &b, b.let_(f, value, call), false);
     }
 }
 #[test]
@@ -116,7 +112,6 @@ fn failure_at_every_argument_stops_later_work() {
             name,
             &b,
             b.let_(f, value, b.app(b.var(f.name, f.ty), &args, INT)),
-            &labels[..=fail_at],
             true,
         );
     }
@@ -144,7 +139,6 @@ fn all_unused_arguments_are_strict_but_body_is_delayed_per_call() {
             value,
             b.builtin(F::AddInteger, &[invoke(), invoke()], INT),
         ),
-        &["a", "b", "body", "a", "b", "body"],
         false,
     );
     check(
@@ -155,7 +149,6 @@ fn all_unused_arguments_are_strict_but_body_is_delayed_per_call() {
             value,
             b.if_(b.lit(Constant::bool(&a, true)), b.int(42), invoke()),
         ),
-        &[],
         false,
     );
 }
@@ -171,7 +164,6 @@ fn zero_parameter_lambda_argument_is_evaluated() {
         "empty_lambda_argument",
         &b,
         b.let_(f, value, b.app(b.var(f.name, f.ty), &[argument], INT)),
-        &["argument"],
         false,
     );
 }

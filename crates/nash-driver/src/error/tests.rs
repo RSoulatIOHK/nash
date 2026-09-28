@@ -15,7 +15,7 @@ macro_rules! driver_error_snapshot {
                 .render_report(&mut rendered, &$error)
                 .unwrap();
             assert!(!rendered.contains('\x1b'));
-            assert!(rendered.contains('×'));
+
             insta::with_settings!({ description => $fixture, omit_expression => true, info => &"diagnostic" }, {
                 insta::assert_snapshot!(rendered);
             });

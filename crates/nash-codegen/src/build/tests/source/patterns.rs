@@ -7,11 +7,10 @@ case!(
     main =
         case trace "subject" () of
             () -> trace "body" 42
-"#,
-    Ok("(con integer 42)")
+"#
 );
 
-case!(
+error_case!(
     expect_empty_list_on_filled_list,
     r#"
     module Main exposing (..)
@@ -26,8 +25,7 @@ case!(
         case x of
             [] -> True
             _ -> fail
-"#,
-    Err(())
+"#
 );
 
 case!(
@@ -45,8 +43,7 @@ case!(
         case x of
             [] -> True
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -60,8 +57,7 @@ case!(
         case True of
             True -> True
             False -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -75,11 +71,10 @@ case!(
         case True of
             False -> fail
             True -> True
-"#,
-    Ok("(con bool True)")
+"#
 );
 
-case!(
+error_case!(
     when_bool_is_false,
     r#"
     module Main exposing (..)
@@ -90,8 +85,7 @@ case!(
         case False of
             False -> fail
             True -> True
-"#,
-    Err(())
+"#
 );
 
 case!(
@@ -110,8 +104,7 @@ case!(
                 if equalsInteger a.idx x then True
                 else trace "a.idx == x ? False" False
             (_, _) -> True
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -133,8 +126,7 @@ case!(
                     (a :: _, b :: _) -> equalsInteger a b
         in
         bye
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -152,8 +144,7 @@ case!(
         eq (Make a b) (Make c d) = if equalsInteger a c then eq b d else False
     hi sm toMake = toMake 3 sm
     main = eq (Make 3 (SubMake 1)) (hi (SubMake 1) Make)
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -170,8 +161,7 @@ case!(
         case dataFields () of
             (Fields { b }) :: _ -> lessThanInteger 0 (lower b)
             _ -> False
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -188,11 +178,10 @@ case!(
         case a of
             h :: _ -> equalsInteger h h
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
-case!(
+error_case!(
     expect_head_no_tail,
     r#"
     module Main exposing (..)
@@ -206,8 +195,7 @@ case!(
         case a of
             [h] -> equalsInteger h h
             _ -> fail
-"#,
-    Err(())
+"#
 );
 
 case!(
@@ -227,8 +215,7 @@ case!(
                     if equalsInteger i i then equalsInteger j j else False
                 else False
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -257,8 +244,7 @@ case!(
     values : list int
     values = [1, 2, 3, 4]
     main = eq (init values) (Some [1, 2, 3])
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -277,8 +263,7 @@ case!(
             [a, x] -> [x]
             a :: b :: c -> c
     main = eq (doInit [Some 1, None]) [Some 1]
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -296,8 +281,7 @@ case!(
         case x of
             None -> True
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -313,8 +297,7 @@ case!(
             first = headList x
         in
         equalsData (toData (mapData [first])) (toData (mapData [mkPairData (I 1) (B #"")]))
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -337,8 +320,7 @@ case!(
             (Infinity, ECI _) -> False
             (ECI _, Infinity) -> False
     main = equivalence Infinity Infinity
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -374,8 +356,7 @@ case!(
                     None
         in
         eq cry cry
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -412,8 +393,7 @@ case!(
             nextOutput = { prevOutput | value = (lift emptyPairs), datum = prevOutput.datum }
         in
         eq prevOutput nextOutput
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -450,8 +430,7 @@ case!(
             nextOutput = { prevOutput | datum = prevOutput.datum }
         in
         eq prevOutput nextOutput
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -488,8 +467,7 @@ case!(
             nextOutput = { prevOutput | scriptRef = None, address = (Address { thing = #"7363726970745f686173685f30" }) }
         in
         eq prevOutput nextOutput
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -515,11 +493,10 @@ case!(
                     if equalsInteger i i then equalsInteger j j else False
                 else False
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
-case!(
+error_case!(
     expect_head_cast_data_no_tail,
     r#"
     module Main exposing (..)
@@ -540,8 +517,7 @@ case!(
         case values of
             [h] -> equalsInteger h h
             _ -> fail
-"#,
-    Err(())
+"#
 );
 
 case!(
@@ -565,8 +541,7 @@ case!(
         case values of
             h :: j :: _ -> if equalsInteger h h then equalsInteger j j else False
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 validator_case!(
@@ -636,8 +611,7 @@ case!(
         case entries of
             [Pair _ amount] -> eq finalAmount amount
             _ -> fail
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -653,8 +627,7 @@ case!(
         case fields of
             [I number] -> Builtin.addInteger tag number
             _ -> fail
-    "#,
-    Ok("(con integer 49)")
+    "#
 );
 
 case!(
@@ -670,8 +643,7 @@ case!(
             pair = first value
         in
         (\pair(a, _) -> Builtin.addInteger pair a) value
-    "#,
-    Ok("(con integer 14)")
+    "#
 );
 
 case!(
@@ -685,8 +657,7 @@ case!(
             _ -> 0
     main : int
     main = Builtin.addInteger (inspect (Builtin.mkPairData (I 40) (B #"aabb"))) (inspect (Builtin.mkPairData (B #"") (I 2)))
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
 case!(
@@ -705,8 +676,7 @@ case!(
         case result of
             Some tag -> tag
             None -> fail
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
 case!(
@@ -723,8 +693,7 @@ case!(
         case rewrap (Builtin.constrData 7 [I 42]) of
             Constr pair(index, [I number]) -> Builtin.addInteger index number
             _ -> fail
-    "#,
-    Ok("(con integer 49)")
+    "#
 );
 
 case!(
@@ -740,8 +709,7 @@ case!(
         case Data.fields (Builtin.constrData 7 [I 42]) of
             [I number] -> Builtin.addInteger index number
             _ -> fail
-    "#,
-    Ok("(con integer 49)")
+    "#
 );
 
 case!(
@@ -752,11 +720,10 @@ case!(
     type Datum = Datum { a : Int, b : Int, c : Int, d : Int }
     main : int
     main = Builtin.unIData ((Datum { a = 10, b = 20, c = 30, d = 40 }).d)
-    "#,
-    Ok("(con integer 40)")
+    "#
 );
 
-case!(
+error_case!(
     big_field_skip_rejects_short_payload,
     r#"
     module Main exposing (..)
@@ -765,8 +732,7 @@ case!(
     malformed : Record
     malformed = coerce (List [I 1])
     main = malformed.c
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -788,8 +754,7 @@ case!(
         first 7
     main : int
     main = run 42
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
 case!(
@@ -801,8 +766,7 @@ case!(
     second n = if equalsInteger n 0 then fail else first (subtractInteger n 1)
     main : int
     main = first 2
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
 case!(
@@ -822,11 +786,10 @@ case!(
         if Logic.or Bool.True (bad ()) then
             both Bool.True True
         else False
-"#,
-    Ok("(con bool True)")
+"#
 );
 
-case!(
+error_case!(
     partial_big_boolean_application_is_strict,
     r#"
     module Main exposing (..)
@@ -842,8 +805,7 @@ case!(
             partial = Logic.or Bool.True
         in
         partial (bad ())
-"#,
-    Err(())
+"#
 );
 
 case!(
@@ -864,8 +826,7 @@ case!(
     both a b = Logic.and a b
     main : bool
     main = if Logic.and off True then True else both off True
-"#,
-    Ok("(con bool False)")
+"#
 );
 
 case!(
@@ -884,8 +845,7 @@ case!(
     value = coerce False
     main : bool
     main = Logic.or True value
-"#,
-    Ok("(con bool True)")
+"#
 );
 
 case!(
@@ -899,8 +859,7 @@ case!(
     make = lift
     main : (bool, bool)
     main = (lower (make Primitive.False), lower (make Primitive.True))
-    "#,
-    Ok("(constr 0 (con bool False) (con bool True))")
+    "#
 );
 
 case!(
@@ -913,8 +872,7 @@ case!(
         Unit.Unit -> ()
     main : unit
     main = consume (trace "unit input" Unit.Unit)
-    "#,
-    Ok("(con unit ())")
+    "#
 );
 
 case!(
@@ -930,11 +888,10 @@ case!(
         Third -> 0
     main : (int, int, int)
     main = (select (First (Box 20 22)), select (Second 7), select Third)
-    "#,
-    Ok("(constr 0 (con integer 42) (con integer 7) (con integer 0))")
+    "#
 );
 
-case!(
+error_case!(
     big_unit_pattern_keeps_scrutinee_failure,
     r#"
     module Main exposing (..)
@@ -944,8 +901,7 @@ case!(
         Unit.Unit -> ()
     main : unit
     main = consume (fail "unit input")
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -958,8 +914,7 @@ case!(
         Token -> 42
     main : int
     main = consume (trace "token input" Token)
-    "#,
-    Ok("(con integer 42)")
+    "#
 );
 
 case!(
@@ -976,10 +931,7 @@ case!(
         B _ -> 4
     main : (int, int, int, int, int)
     main = (classify (Builtin.constrData 0 []), classify (Map []), classify (List []), classify (I 42), classify (B #"aa"))
-    "#,
-    Ok(
-        "(constr 0\n  (con integer 0)\n  (con integer 1)\n  (con integer 2)\n  (con integer 3)\n  (con integer 4))"
-    )
+    "#
 );
 
 case!(
@@ -993,8 +945,7 @@ case!(
         None -> 0
     main : int
     main = tagOnly (Some 42)
-    "#,
-    Ok("(con integer 1)")
+    "#
 );
 
 case!(
@@ -1007,8 +958,7 @@ case!(
         Box _ _ -> 7
     main : int
     main = ignore (trace "box input" (Box 1 2))
-    "#,
-    Ok("(con integer 7)")
+    "#
 );
 
 case!(
@@ -1021,8 +971,7 @@ case!(
         { b, d, e } -> Builtin.addInteger (Builtin.unIData b) (Builtin.addInteger (Builtin.unIData d) (Builtin.unIData e))
     main : int
     main = read { a = 1, b = 2, c = 3, d = 4, e = 5 }
-    "#,
-    Ok("(con integer 11)")
+    "#
 );
 
 case!(
@@ -1034,8 +983,7 @@ case!(
     change value = { value | c = (trace "c" 30), a = (trace "a" 10) }
     main : Record
     main = change (trace "base" (Record 1 2 3))
-    "#,
-    Ok("(con data (Constr 0 [I 10, I 2, I 30]))")
+    "#
 );
 
 case!(
@@ -1047,8 +995,7 @@ case!(
     change value = { value | c = (trace "c" 30), a = (trace "a" 10) }
     main : record
     main = change (trace "base" (Record 1 2 3))
-    "#,
-    Ok("(constr 0 (con integer 10) (con integer 2) (con integer 30))")
+    "#
 );
 
 case!(
@@ -1058,30 +1005,27 @@ case!(
     import Data exposing (ToData, Validate)
     main : Int
     main = validate (toData (Builtin.iData 42))
-    "#,
-    Ok("(con data (I 42))")
+    "#
 );
 
-case!(
+error_case!(
     validate_int_rejects_bytes,
     r#"
     module Main exposing (..)
     import Data exposing (ToData, Validate)
     main : Int
     main = validate (toData (Builtin.bData #"ff"))
-    "#,
-    Err(())
+    "#
 );
 
-case!(
+error_case!(
     validate_bytes_rejects_integer,
     r#"
     module Main exposing (..)
     import Data exposing (ToData, Validate)
     main : Bytes
     main = validate (toData (Builtin.iData 42))
-    "#,
-    Err(())
+    "#
 );
 
 case!(
@@ -1094,8 +1038,7 @@ case!(
     main = case trace "data input" (toData (Builtin.iData 42)) of
         I _ -> 7
         _ -> fail
-    "#,
-    Ok("(con integer 7)")
+    "#
 );
 
 case!(
@@ -1105,28 +1048,25 @@ case!(
     import Data exposing (ToData, Validate)
     main : Bytes
     main = validate (toData (Builtin.bData #"ff"))
-    "#,
-    Ok("(con data (B #ff))")
+    "#
 );
 
-case!(
+error_case!(
     validate_list_rejects_wrong_element,
     r#"
     module Main exposing (..)
     import Data exposing (ToData, Validate)
     main : List Int
     main = validate (toData (Builtin.listData [Builtin.bData #"ff"]))
-    "#,
-    Err(())
+    "#
 );
 
-case!(
+error_case!(
     validate_map_rejects_wrong_key,
     r#"
     module Main exposing (..)
     import Data exposing (ToData, Validate)
     main : Map Int Bytes
     main = validate (toData (Builtin.mapData [Builtin.mkPairData (Builtin.bData #"aa") (Builtin.bData #"bb")]))
-    "#,
-    Err(())
+    "#
 );

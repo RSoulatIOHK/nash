@@ -482,10 +482,7 @@ fn underindented_closing_delimiter_is_not_reported_missing() {
             .expect_err(source);
         let report = to_report(&Source::new(source), &Error::ParseError(&error));
         syntax_snapshot!(@report source, &report);
-        assert!(
-            report.after.render(80, false).contains("Indent"),
-            "{source}: {report:?}"
-        );
+
         assert_eq!(report.region.start, nash_region::Position::new(2, 1));
         assert_eq!(report.labels.len(), 1);
     }
@@ -493,11 +490,7 @@ fn underindented_closing_delimiter_is_not_reported_missing() {
 
 #[test]
 fn malformed_empty_collections_keep_opener_and_comma_guidance() {
-    for (source, closer) in [
-        ("value = [)", "]"),
-        ("value = (]", ")"),
-        ("value = {]", "}"),
-    ] {
+    for source in ["value = [)", "value = (]", "value = {]"] {
         let bump = bumpalo::Bump::new();
         let error = nash_parse::Parser::new(&bump, source)
             .module()
@@ -509,19 +502,12 @@ fn malformed_empty_collections_keep_opener_and_comma_guidance() {
             report.labels[0].region.start,
             nash_region::Position::new(1, 9)
         );
-        assert!(
-            report
-                .after
-                .render(80, false)
-                .contains(&format!("with `{closer}`"))
-        );
     }
     let source = "value = [(),]";
     let bump = bumpalo::Bump::new();
     let error = nash_parse::Parser::new(&bump, source).module().unwrap_err();
     let report = to_report(&Source::new(source), &Error::ParseError(&error));
     syntax_snapshot!(@report source, &report);
-    assert!(report.after.render(80, false).contains("comma"));
 }
 
 #[test]

@@ -1,20 +1,19 @@
 ---
 source: crates/nash-ir/src/hygiene/tests.rs
-expression: "validate(leaking, &[])"
+assertion_line: 171
+expression: "validate(leaking, &[]).expect_err(\"invalid scope\")"
 ---
-Err(
-    [
-        UnboundVariable(
-            Name {
-                text: "p",
-                unique: 3,
-            },
-        ),
-        UnboundVariable(
-            Name {
-                text: "p",
-                unique: 3,
-            },
-        ),
-    ],
-)
+[
+    UnboundVariable(
+        Name {
+            text: "p",
+            unique: 3,
+        },
+    ),
+    UnboundVariable(
+        Name {
+            text: "p",
+            unique: 3,
+        },
+    ),
+]

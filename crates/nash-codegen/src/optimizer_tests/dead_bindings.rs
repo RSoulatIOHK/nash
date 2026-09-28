@@ -21,29 +21,15 @@ fn bind<'a>(b: &Builder<'a>, ty: Ty<'a>) -> Binder<'a> {
         ty,
     }
 }
-fn check(
-    name: &str,
-    b: &Builder<'_>,
-    before: &Core<'_>,
-    removes: bool,
-    fails: bool,
-    logs: &[&str],
-) {
+fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, removes: bool, fails: bool) {
     let after = dead_bindings::simplify(b, before);
     let normalized = nash_ir::anf::normalize(b, before);
     nash_ir::anf::validate(dead_bindings::simplify(b, normalized)).unwrap();
     hygiene::validate(after, &[]).unwrap();
-    assert_eq!(before.ty, after.ty);
-    assert_eq!(pretty(after), pretty(dead_bindings::simplify(b, after)));
-    assert_eq!(
-        analysis::size_estimate(after).nodes < analysis::size_estimate(before).nodes,
-        removes
-    );
+
     let baseline = crate::harness::eval_core_raw(b.arena, before);
     let candidate = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -57,6 +43,15 @@ fn check(
             candidate.logs
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(pretty(after), pretty(dead_bindings::simplify(b, after)));
+    assert_eq!(
+        analysis::size_estimate(after).nodes < analysis::size_estimate(before).nodes,
+        removes
+    );
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn unused_safe_values() {
@@ -90,7 +85,6 @@ fn unused_safe_values() {
             b.let_(bind(&b, value.ty), value, b.int(42)),
             true,
             false,
-            &[],
         );
     }
 }
@@ -99,26 +93,19 @@ fn unused_strict_work_stays() {
     let a = Arena::new();
     let b = Builder::new(&a);
     let trace = b.trace(b.lit(Constant::string(&a, "kept")), b.int(7));
-    for (name, value, fails, logs) in [
-        ("trace", trace, false, &["kept"][..]),
-        ("failure", b.error(INT), true, &[][..]),
-        (
-            "forced_failure",
-            b.force(b.delay(b.error(INT)), INT),
-            true,
-            &[][..],
-        ),
+    for (name, value, fails) in [
+        ("trace", trace, false),
+        ("failure", b.error(INT), true),
+        ("forced_failure", b.force(b.delay(b.error(INT)), INT), true),
         (
             "saturated_builtin",
             b.builtin(F::DivideInteger, &[b.int(1), b.int(0)], INT),
             true,
-            &[][..],
         ),
         (
             "partial_strict_argument",
             b.builtin(F::AddInteger, &[trace], unary(&b)),
             false,
-            &["kept"][..],
         ),
     ] {
         check(
@@ -127,7 +114,6 @@ fn unused_strict_work_stays() {
             b.let_(bind(&b, value.ty), value, b.int(42)),
             false,
             fails,
-            logs,
         );
     }
 }
@@ -143,7 +129,6 @@ fn cascading_unused_bindings() {
         b.let_(x, b.int(7), b.let_(y, b.var(x.name, INT), b.int(42))),
         true,
         false,
-        &[],
     );
 }
 #[test]
@@ -158,7 +143,6 @@ fn used_capture_stays() {
         b.let_(x, b.int(7), b.lam(&[p], b.var(x.name, INT))),
         false,
         false,
-        &[],
     );
 }
 #[test]
@@ -180,7 +164,6 @@ fn constructor_fields_are_strict() {
             b.let_(bind(&b, ty), value, b.int(42)),
             removes,
             fails,
-            &[],
         );
     }
 }
@@ -231,7 +214,6 @@ fn unused_closure_releases_capture() {
         b.let_(x, b.int(7), b.let_(bind(&b, lam.ty), lam, b.int(42))),
         true,
         false,
-        &[],
     );
 }
 
@@ -263,7 +245,7 @@ fn accepted_cleanup_removes_safe_ignored_arguments() {
         let baseline = crate::harness::eval_core_raw(&a, before);
         let candidate = crate::harness::eval_core_raw(&a, after);
         assert_eq!(baseline.observable, candidate.observable);
-        assert_eq!(candidate.logs, logs);
+
         assert_eq!(baseline.logs, candidate.logs);
         insta::assert_snapshot!(
             name,

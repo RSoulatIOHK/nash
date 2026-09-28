@@ -212,10 +212,7 @@ fn unit_roots_and_power_assert_payloads() {
     assert_eq!(unit(&programs[1]), (false, vec!["\0assert\x000".into()]));
     let (passed, logs) = unit(&programs[2]);
     assert!(!passed);
-    assert_eq!(logs, ["\0assert\x000", "\0assert\x000\x001\x001"]);
-    assert_eq!(programs[2].asserts[0].captures.len(), 2);
-    assert!(!programs[2].asserts[0].captures[0].shown);
-    assert!(programs[2].asserts[0].captures[1].shown);
+
     insta::with_settings!({description => source, omit_expression => true}, {
         insta::assert_snapshot!(format!("{:#?}\n{logs:?}", programs[2].asserts));
     });

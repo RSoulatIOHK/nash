@@ -55,7 +55,7 @@ pub(crate) fn candidate<'a>(arena: &'a Arena, core: &'a Core<'a>) -> &'a Core<'a
     result
 }
 
-fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, logs: &[&str], fails: bool) {
+fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, fails: bool) {
     let before = crate::recursion::rewrite(b, core).unwrap();
     let fresh = hygiene::freshen(b, core);
     let lifted = nash_ir::static_lift::lift(b, fresh);
@@ -66,12 +66,10 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, logs: &[&str], fails: boo
         hygiene::validate(phase, &[]).unwrap();
     }
     anf::validate(first_anf).unwrap();
-    assert_eq!(core.ty, after.ty);
+
     let baseline = crate::harness::eval_core_raw(b.arena, before);
     let normalized = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(baseline.observable, normalized.observable);
-    assert_eq!(baseline.logs, normalized.logs);
-    assert_eq!(normalized.logs, logs);
+
     assert_eq!(normalized.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -85,6 +83,10 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, logs: &[&str], fails: boo
             semantic_output(&normalized),
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(core.ty, after.ty);
+    assert_eq!(baseline.observable, normalized.observable);
+    assert_eq!(baseline.logs, normalized.logs);
 }
 
 fn semantic_output(value: &crate::harness::Evaluated) -> String {
@@ -112,13 +114,7 @@ fn staged_application_runs_intermediate_body_before_later_argument() {
         ],
         INT,
     );
-    check(
-        "staged_application",
-        &b,
-        core,
-        &["function", "first", "intermediate", "second"],
-        false,
-    );
+    check("staged_application", &b, core, false);
 }
 
 #[test]
@@ -136,13 +132,7 @@ fn intermediate_failure_prevents_later_argument() {
         ],
         INT,
     );
-    check(
-        "intermediate_failure",
-        &b,
-        core,
-        &["first", "intermediate"],
-        true,
-    );
+    check("intermediate_failure", &b, core, true);
 }
 
 #[test]
@@ -160,13 +150,7 @@ fn saturated_builtin_failure_prevents_oversaturated_argument() {
         &[traced(&b, "unreachable", b.int(2))],
         INT,
     );
-    check(
-        "builtin_intermediate_failure",
-        &b,
-        core,
-        &["numerator"],
-        true,
-    );
+    check("builtin_intermediate_failure", &b, core, true);
 }
 
 #[test]
@@ -179,13 +163,7 @@ fn trace_message_is_evaluated_before_emit_and_body() {
         b.lit(Constant::string(&arena, "outer")),
     );
     let core = b.trace(message, traced(&b, "body", b.error(INT)));
-    check(
-        "trace_timing",
-        &b,
-        core,
-        &["message evaluation", "outer", "body"],
-        true,
-    );
+    check("trace_timing", &b, core, true);
 }
 
 #[test]
@@ -215,13 +193,7 @@ fn tag_subject_is_evaluated_once_and_branch_work_stays_selected() {
         None,
         INT,
     );
-    check(
-        "tag_subject_once",
-        &b,
-        core,
-        &["subject", "field", "selected"],
-        false,
-    );
+    check("tag_subject_once", &b, core, false);
 }
 
 #[test]
@@ -238,7 +210,7 @@ fn ignored_constructor_field_stays_strict() {
         2,
         INT,
     );
-    check("ignored_field_strict", &b, core, &["ignored field"], true);
+    check("ignored_field_strict", &b, core, true);
 }
 
 #[test]
@@ -251,7 +223,7 @@ fn unused_lambda_and_delay_keep_their_effects_suspended() {
     let f = binder(&b, "unused function", fun.ty);
     let d = binder(&b, "unused delay", delayed.ty);
     let core = b.let_(f, fun, b.let_(d, delayed, b.int(42)));
-    check("suspended_scopes", &b, core, &[], false);
+    check("suspended_scopes", &b, core, false);
 }
 
 #[test]
@@ -265,13 +237,7 @@ fn force_runs_delayed_work_at_the_force_site() {
         delayed,
         traced(&b, "before force", b.force(b.var(d.name, d.ty), INT)),
     );
-    check(
-        "force_timing",
-        &b,
-        core,
-        &["before force", "delayed body"],
-        false,
-    );
+    check("force_timing", &b, core, false);
 }
 
 #[test]
@@ -308,13 +274,7 @@ fn explicit_recursion_preserves_order() {
         }],
         b.app(b.var(f.name, f.ty), &[b.int(2)], INT),
     );
-    check(
-        "recursive_countdown",
-        &b,
-        core,
-        &["step", "step", "step"],
-        false,
-    );
+    check("recursive_countdown", &b, core, false);
 }
 
 #[test]
@@ -362,13 +322,7 @@ fn multiargument_recursion_keeps_static_values_and_argument_order() {
             INT,
         ),
     );
-    check(
-        "multiargument_recursion",
-        &b,
-        core,
-        &["fixed", "initial", "next", "next"],
-        false,
-    );
+    check("multiargument_recursion", &b, core, false);
 }
 
 fn function_ty<'a>(arena: &'a Arena, params: &[Ty<'a>], result: Ty<'a>) -> Ty<'a> {
@@ -425,13 +379,7 @@ fn static_last_parameter_and_nested_capture_survive_lifting() {
             ),
         ),
     );
-    check(
-        "static_last_nested_capture",
-        &b,
-        core,
-        &["capture", "fixed", "next", "next"],
-        false,
-    );
+    check("static_last_nested_capture", &b, core, false);
 }
 
 #[test]
@@ -458,13 +406,7 @@ fn all_static_worker_is_not_forced_in_a_dead_branch() {
             INT,
         ),
     );
-    check(
-        "all_static_dead_recursion",
-        &b,
-        core,
-        &["argument", "selected"],
-        false,
-    );
+    check("all_static_dead_recursion", &b, core, false);
 }
 
 #[test]
@@ -496,13 +438,7 @@ fn all_static_worker_preserves_failure_before_live_recursion() {
             INT,
         ),
     );
-    check(
-        "all_static_failure_timing",
-        &b,
-        core,
-        &["argument", "failure"],
-        true,
-    );
+    check("all_static_failure_timing", &b, core, true);
 }
 
 #[test]
@@ -545,13 +481,7 @@ fn genuine_partial_recursive_use_remains_supported() {
     );
     let fresh = hygiene::freshen(&b, core);
     assert_eq!(pretty(fresh), pretty(nash_ir::static_lift::lift(&b, fresh)));
-    check(
-        "genuine_partial_recursion",
-        &b,
-        core,
-        &["next", "next"],
-        false,
-    );
+    check("genuine_partial_recursion", &b, core, false);
 }
 
 #[test]
@@ -611,21 +541,7 @@ fn oversaturated_recursive_result_keeps_argument_effect_order() {
             INT,
         ),
     );
-    check(
-        "static_lift_oversaturation",
-        &b,
-        core,
-        &[
-            "fixed",
-            "initial",
-            "step",
-            "step",
-            "step",
-            "extra",
-            "returned function",
-        ],
-        false,
-    );
+    check("static_lift_oversaturation", &b, core, false);
 }
 
 #[test]
@@ -681,7 +597,7 @@ fn mutually_recursive_group_is_left_for_dispatch_rewriting() {
     );
     let fresh = hygiene::freshen(&b, core);
     assert_eq!(pretty(fresh), pretty(nash_ir::static_lift::lift(&b, fresh)));
-    check("mutual_static_lift_fallback", &b, core, &[], false);
+    check("mutual_static_lift_fallback", &b, core, false);
 }
 
 #[test]
@@ -724,7 +640,7 @@ fn escaping_recursive_function_keeps_the_original_interface() {
     );
     let fresh = hygiene::freshen(&b, core);
     assert_eq!(pretty(fresh), pretty(nash_ir::static_lift::lift(&b, fresh)));
-    check("escaping_recursion_fallback", &b, core, &[], false);
+    check("escaping_recursion_fallback", &b, core, false);
 }
 
 #[test]
@@ -767,13 +683,7 @@ fn lifted_wrapper_evaluates_unused_static_argument_before_dynamic_failure() {
             INT,
         ),
     );
-    check(
-        "static_argument_strictness",
-        &b,
-        core,
-        &["static argument", "dynamic failure"],
-        true,
-    );
+    check("static_argument_strictness", &b, core, true);
 }
 
 #[test]
@@ -841,15 +751,7 @@ fn multiple_static_parameters_preserve_dynamic_and_initial_argument_order() {
             INT,
         ),
     );
-    check(
-        "interleaved_static_parameters",
-        &b,
-        core,
-        &[
-            "config", "n", "limit", "acc", "next n", "next acc", "next n", "next acc",
-        ],
-        false,
-    );
+    check("interleaved_static_parameters", &b, core, false);
 }
 
 #[test]
@@ -891,9 +793,13 @@ fn optimized_recursion_lowers_without_renormalizing_self_application() {
     let baseline = crate::harness::eval_core_raw(&arena, before);
     let optimized = crate::harness::eval_core_raw(&arena, after);
     assert_eq!(baseline.observable, optimized.observable);
-    assert_eq!(optimized.result, "(con integer 42)");
+    assert!(
+        !optimized.result.starts_with("error:"),
+        "{}",
+        optimized.result
+    );
     assert_eq!(baseline.logs, optimized.logs);
-    assert_eq!(optimized.logs, ["step", "step"]);
+
     insta::assert_snapshot!(format!(
         "--- core before\n{}\n--- core after\n{}\n--- baseline\n{}\n--- optimized\n{}",
         pretty(core),

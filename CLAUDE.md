@@ -52,6 +52,23 @@ We use **insta** for snapshot testing with extremely granular tests:
 
 Macros are defined in each module's test submodule for proper namespacing.
 
+Snapshot expectations have one source of truth: the `.snap` file. Do not also
+assert exact results, logs, diagnostic variants, counts, or text fragments
+already present in that snapshot. Render actual compiler/evaluator output,
+never a string selected from the expected outcome.
+
+Keep parse/compile and success/error guards. Checks of independent properties
+(type preservation, scope validity, pointer identity, roundtrips, or semantic
+equivalence) are still required. When a fixture also has a snapshot, run these
+property checks after it so output changes first produce an insta diff. Reuse
+the fixture instead of compiling it again for a duplicate test.
+
+Keep test helpers local to their test module and snapshots in its `snapshots/`
+directory. Optimizer snapshots show both before and after Core or UPLC at the
+pass's layer. Optimizer performance experiments and budget regression tests
+belong in the separate `tools/optimizer-perf` workspace, outside normal test runs. Use
+`cargo nextest run --workspace` for the repository test suite.
+
 Internal dev-dependencies are path-only (`nash-report = { path = "../nash-report" }`, no
 `version`). Cargo strips them at publish, so test-only edges never constrain the publish
 order or require an unpublished crate on the registry.

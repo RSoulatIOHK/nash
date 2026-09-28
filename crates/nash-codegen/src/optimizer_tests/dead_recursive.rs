@@ -52,29 +52,18 @@ fn count(core: &Core<'_>) -> usize {
     });
     n
 }
-fn check(
-    name: &str,
-    b: &Builder<'_>,
-    before: &Core<'_>,
-    members: usize,
-    logs: &[&str],
-    fails: bool,
-) {
+fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, members: usize, fails: bool) {
     let after = dead_recursive::prune(b, before);
     hygiene::validate(before, &[]).unwrap();
     hygiene::validate(after, &[]).unwrap();
-    assert_eq!(before.ty, after.ty);
-    assert_eq!(count(after), members);
-    assert!(std::ptr::eq(after, dead_recursive::prune(b, after)));
+
     let anf = nash_ir::anf::normalize(b, before);
     nash_ir::anf::validate(dead_recursive::prune(b, anf)).unwrap();
     let baseline =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, before).unwrap());
     let candidate =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, after).unwrap());
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -88,6 +77,12 @@ fn check(
             candidate.logs
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(count(after), members);
+    assert!(std::ptr::eq(after, dead_recursive::prune(b, after)));
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn unused_self_and_mutual_cycles() {
@@ -108,7 +103,6 @@ fn unused_self_and_mutual_cycles() {
         &b,
         b.let_rec(&[self_def], b.int(42)),
         0,
-        &[],
         false,
     );
     let fs = def(&b, f, &[x], call(&b, g, &[b.var(x.name, INT)]));
@@ -118,7 +112,6 @@ fn unused_self_and_mutual_cycles() {
         &b,
         b.let_rec(&[fs, gs], trace(&b, "continuation", b.int(42))),
         0,
-        &["continuation"],
         false,
     );
     check(
@@ -126,7 +119,6 @@ fn unused_self_and_mutual_cycles() {
         &b,
         b.let_rec(&[def(&b, f, &[x], b.error(INT))], b.int(42)),
         0,
-        &[],
         false,
     );
 }
@@ -164,7 +156,7 @@ fn transitive_chain_retains_order_and_drops_cycle() {
             .collect::<Vec<_>>(),
         ["g", "f"]
     );
-    check("transitive", &b, root, 2, &["f", "g"], false);
+    check("transitive", &b, root, 2, false);
 }
 #[test]
 fn returned_partial_and_suspended_references_are_roots() {
@@ -193,7 +185,7 @@ fn returned_partial_and_suspended_references_are_roots() {
         &[b.int(40), b.int(2)],
         INT,
     );
-    check("returned", &b, returned, 1, &[], false);
+    check("returned", &b, returned, 1, false);
     let partial = b.app(
         b.var(f.name, f.ty),
         &[b.int(40)],
@@ -204,11 +196,10 @@ fn returned_partial_and_suspended_references_are_roots() {
         &b,
         b.app(b.let_rec(&defs, partial), &[b.int(2)], INT),
         1,
-        &[],
         false,
     );
     let delayed = b.let_rec(&defs, b.delay(call(&b, f, &[b.int(40), b.int(2)])));
-    check("delayed_capture", &b, b.force(delayed, INT), 1, &[], false);
+    check("delayed_capture", &b, b.force(delayed, INT), 1, false);
     let p = bind(&b, "p", INT);
     let closure = b.let_rec(
         &defs,
@@ -219,7 +210,6 @@ fn returned_partial_and_suspended_references_are_roots() {
         &b,
         b.app(closure, &[b.int(2)], INT),
         1,
-        &[],
         false,
     );
 }
@@ -276,7 +266,6 @@ fn singleton_preserves_static_metadata_and_captures() {
         &b,
         b.let_(capture, b.int(2), group),
         1,
-        &[],
         false,
     );
 }
@@ -291,7 +280,7 @@ fn reachable_failure_stays() {
         call(&b, f, &[b.int(42)]),
     );
     assert!(std::ptr::eq(root, dead_recursive::prune(&b, root)));
-    check("reachable_failure", &b, root, 1, &["failure"], true);
+    check("reachable_failure", &b, root, 1, true);
 }
 #[test]
 fn delayed_workers_and_nested_groups() {
@@ -314,7 +303,6 @@ fn delayed_workers_and_nested_groups() {
         &b,
         b.let_rec(&[member], b.int(7)),
         0,
-        &[],
         false,
     );
     check(
@@ -322,7 +310,6 @@ fn delayed_workers_and_nested_groups() {
         &b,
         b.let_rec(&[member], b.force(b.var(worker.name, worker.ty), INT)),
         1,
-        &[],
         false,
     );
     let f = function(&b, "outer", 1);
@@ -334,7 +321,7 @@ fn delayed_workers_and_nested_groups() {
         b.int(42),
     );
     let root = b.let_rec(&[def(&b, f, &[x], b.var(x.name, INT))], inner);
-    check("nested_dead_capture", &b, root, 0, &[], false);
+    check("nested_dead_capture", &b, root, 0, false);
 }
 #[test]
 fn unsupported_recursive_values_stay_rejected() {
@@ -382,7 +369,7 @@ fn reachable_mutual_cycle_survives() {
         ],
         call(&b, f, &[b.int(4)]),
     );
-    check("live_mutual_cycle", &b, root, 2, &[], false);
+    check("live_mutual_cycle", &b, root, 2, false);
 }
 #[test]
 fn cold_and_nested_references_remain_live() {
@@ -402,7 +389,6 @@ fn cold_and_nested_references_remain_live() {
         &b,
         b.let_rec(&[outer], inner),
         2,
-        &[],
         false,
     );
     let cold = b.let_rec(
@@ -414,26 +400,16 @@ fn cold_and_nested_references_remain_live() {
         ),
     );
     assert!(std::ptr::eq(cold, dead_recursive::prune(&b, cold)));
-    check("cold_reference", &b, cold, 1, &[], false);
+    check("cold_reference", &b, cold, 1, false);
 }
 
 #[test]
 fn accepted_cleanup_releases_dead_captures_but_preserves_effects() {
     let a = Arena::new();
     let b = Builder::new(&a);
-    for (name, captured, suspended, logs) in [
-        (
-            "cleanup_dead_delay_capture",
-            b.delay(b.error(INT)),
-            true,
-            &[][..],
-        ),
-        (
-            "cleanup_strict_capture",
-            trace(&b, "kept", b.int(7)),
-            false,
-            &["kept"][..],
-        ),
+    for (name, captured, suspended) in [
+        ("cleanup_dead_delay_capture", b.delay(b.error(INT)), true),
+        ("cleanup_strict_capture", trace(&b, "kept", b.int(7)), false),
     ] {
         let capture = bind(&b, "capture", captured.ty);
         let f = function(&b, "dead", 1);
@@ -469,7 +445,7 @@ fn accepted_cleanup_releases_dead_captures_but_preserves_effects() {
             crate::harness::eval_core_raw(&a, crate::recursion::rewrite(&b, after).unwrap());
         assert_eq!(baseline.observable, candidate.observable);
         assert_eq!(baseline.logs, candidate.logs);
-        assert_eq!(candidate.logs, logs);
+
         insta::assert_snapshot!(
             name,
             format!(

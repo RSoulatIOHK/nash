@@ -6,7 +6,7 @@ use nash_ir::{
 };
 
 macro_rules! boolean_case_snapshot {
-    ($name:ident, $source:literal, $expected:literal, $logs:expr) => {
+    ($name:ident, $source:literal) => {
         #[test]
         fn $name() {
             let source = indoc::indoc!($source);
@@ -25,7 +25,7 @@ macro_rules! boolean_case_snapshot {
                 }
                 anf::validate(after).unwrap();
                 hygiene::validate(after, &[]).unwrap();
-                assert_eq!(compiled.core.ty, after.ty);
+
                 let lower = |core| {
                     let rewritten = crate::recursion::rewrite(&b, core).unwrap();
                     let term = crate::lower::lower_with_constant_sharing(arena, rewritten).unwrap();
@@ -33,15 +33,18 @@ macro_rules! boolean_case_snapshot {
                 };
                 let baseline = lower(accepted);
                 let optimized = lower(after);
-                assert_eq!(baseline.observable, optimized.observable);
-                assert_eq!(baseline.logs, optimized.logs);
-                assert_eq!(optimized.result, $expected);
-                assert_eq!(optimized.logs, $logs);
+                assert!(!optimized.result.starts_with("error:"), "{}", optimized.result);
+
+
+
                 insta::with_settings!({description => source, omit_expression => true}, {
                     insta::assert_snapshot!(stringify!($name), format!(
                         "--- source Core\n{}\n--- Core before Boolean folding\n{}\n--- Core after Boolean folding and cleanup\n{}\n--- UPLC before\n{}\n--- UPLC after\n{}\n--- result\n{}\n--- logs\n{:?}",
                         pretty(compiled.core), pretty(accepted), pretty(after), baseline.uplc, optimized.uplc, optimized.result, optimized.logs));
                 });
+                assert_eq!(compiled.core.ty, after.ty);
+                assert_eq!(baseline.observable, optimized.observable);
+                assert_eq!(baseline.logs, optimized.logs);
             });
         }
     };
@@ -54,9 +57,7 @@ boolean_case_snapshot!(
     import Logic exposing ((&&), (||))
     main : bool
     main = (True && False) || (True && True)
-"#,
-    "(con bool True)",
-    Vec::<String>::new()
+"#
 );
 boolean_case_snapshot!(
     cold_trace,
@@ -66,9 +67,7 @@ boolean_case_snapshot!(
     import Builtin exposing (..)
     main : bool
     main = if True then False else trace "wrong" True
-"#,
-    "(con bool False)",
-    Vec::<String>::new()
+"#
 );
 boolean_case_snapshot!(
     retained_trace,
@@ -82,7 +81,5 @@ boolean_case_snapshot!(
             strict = trace "before" False
         in
         if True then strict else True
-"#,
-    "(con bool False)",
-    vec!["before".to_owned()]
+"#
 );

@@ -849,14 +849,7 @@ fn big_list_tail_binding_is_only_reconstructed_when_used() {
         )
         .unwrap();
         let evaluated = crate::harness::eval_core(&arena, core);
-        assert_eq!(
-            evaluated.result,
-            if keep_tail {
-                "(con data (List [I 2]))"
-            } else {
-                "(con integer 42)"
-            }
-        );
+
         insta::with_settings!({
             description => nash_ir::pretty::pretty(core),
             omit_expression => true,

@@ -22,23 +22,20 @@ fn trace<'a>(b: &Builder<'a>, name: &'a str, value: &'a Core<'a>) -> &'a Core<'a
 fn call<'a>(b: &Builder<'a>, f: Binder<'a>, args: &[&'a Core<'a>]) -> &'a Core<'a> {
     b.app(b.var(f.name, f.ty), args, INT)
 }
-fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, changed: bool, logs: &[&str], fails: bool) {
+fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, changed: bool, fails: bool) {
     let before = anf::normalize(b, core);
     let after = unused_params::reduce(b, before);
-    assert_eq!(!std::ptr::eq(before, after), changed);
-    assert!(std::ptr::eq(after, unused_params::reduce(b, after)));
+
     for phase in [before, after] {
         anf::validate(phase).unwrap();
         hygiene::validate(phase, &[]).unwrap();
     }
-    assert_eq!(before.ty, after.ty);
+
     let baseline =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, before).unwrap());
     let candidate =
         crate::harness::eval_core_raw(b.arena, crate::recursion::rewrite(b, after).unwrap());
-    assert_eq!(baseline.observable, candidate.observable);
-    assert_eq!(baseline.logs, candidate.logs);
-    assert_eq!(candidate.logs, logs);
+
     assert_eq!(candidate.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -52,6 +49,12 @@ fn check(name: &str, b: &Builder<'_>, core: &Core<'_>, changed: bool, logs: &[&s
             candidate.logs
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(!std::ptr::eq(before, after), changed);
+    assert!(std::ptr::eq(after, unused_params::reduce(b, after)));
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(baseline.observable, candidate.observable);
+    assert_eq!(baseline.logs, candidate.logs);
 }
 #[test]
 fn removes_first_middle_and_last_parameters() {
@@ -77,7 +80,6 @@ fn removes_first_middle_and_last_parameters() {
                 b.builtin(F::AddInteger, &[invoke(), invoke()], INT),
             ),
             true,
-            &[],
             false,
         );
     }
@@ -94,27 +96,13 @@ fn all_unused_runs_body_per_call_and_stays_cold() {
         &[call(&b, f, &[b.int(1)]), call(&b, f, &[b.int(2)])],
         INT,
     );
-    check(
-        "all_unused_twice",
-        &b,
-        b.let_(f, value, calls),
-        true,
-        &["body", "body"],
-        false,
-    );
+    check("all_unused_twice", &b, b.let_(f, value, calls), true, false);
     let cold = b.if_(
         b.lit(Constant::bool(&a, true)),
         b.int(42),
         call(&b, f, &[b.int(1)]),
     );
-    check(
-        "all_unused_cold",
-        &b,
-        b.let_(f, value, cold),
-        true,
-        &[],
-        false,
-    );
+    check("all_unused_cold", &b, b.let_(f, value, cold), true, false);
 }
 #[test]
 fn strict_removed_arguments_keep_effects_and_failure() {
@@ -133,7 +121,6 @@ fn strict_removed_arguments_keep_effects_and_failure() {
             call(&b, f, &[trace(&b, "argument", b.int(7)), b.int(42)]),
         ),
         true,
-        &["argument", "body"],
         false,
     );
     check(
@@ -145,7 +132,6 @@ fn strict_removed_arguments_keep_effects_and_failure() {
             call(&b, f, &[trace(&b, "argument", b.error(INT)), b.int(42)]),
         ),
         true,
-        &["argument"],
         true,
     );
     let all_unused = b.lam(&[x], trace(&b, "unreachable", b.int(42)));
@@ -155,7 +141,6 @@ fn strict_removed_arguments_keep_effects_and_failure() {
         &b,
         b.let_(f, all_unused, call(&b, f, &[b.error(INT)])),
         true,
-        &[],
         true,
     );
 }
@@ -174,7 +159,6 @@ fn partial_staged_escaping_and_oversaturated_uses_block_changes() {
         &b,
         b.let_(f, value, b.app(partial, &[b.int(42)], INT)),
         false,
-        &[],
         false,
     );
     check(
@@ -186,7 +170,6 @@ fn partial_staged_escaping_and_oversaturated_uses_block_changes() {
             call(&b, f, &[b.int(0), trace(&b, "later argument", b.int(42))]),
         ),
         false,
-        &["later argument"],
         false,
     );
     let alias = bind(&b, "alias", f.ty);
@@ -207,7 +190,6 @@ fn partial_staged_escaping_and_oversaturated_uses_block_changes() {
         &b,
         b.let_(f, value, escaped),
         false,
-        &[],
         false,
     );
     let z = bind(&b, "z", INT);
@@ -218,7 +200,6 @@ fn partial_staged_escaping_and_oversaturated_uses_block_changes() {
         &b,
         b.let_(f, value, call(&b, f, &[b.int(0), b.int(42)])),
         false,
-        &[],
         false,
     );
 }
@@ -241,7 +222,6 @@ fn suspended_captures_and_unique_names_are_respected() {
         &b,
         b.let_(f, value, b.app(returned, &[b.int(7)], INT)),
         true,
-        &[],
         false,
     );
 }
@@ -309,7 +289,7 @@ fn recursive_signatures_and_unsupported_views_are_unchanged() {
         }],
         call(&b, f, &[b.int(0), b.int(42)]),
     );
-    check("recursive_unchanged", &b, recursive, false, &[], false);
+    check("recursive_unchanged", &b, recursive, false, false);
     let opaque = b.let_(
         f,
         value,

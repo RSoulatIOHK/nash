@@ -11,15 +11,13 @@ const INT: Ty<'static> = Ty::Const(&ConstTy::Int);
 fn trace<'a>(b: &Builder<'a>, s: &'a str, x: &'a Core<'a>) -> &'a Core<'a> {
     b.trace(b.lit(Constant::string(b.arena, s)), x)
 }
-fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: bool) {
+fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, fails: bool) {
     let after = known_bool::reduce(b, before);
-    assert_eq!(before.ty, after.ty);
+
     hygiene::validate(after, &[]).unwrap();
     let left = crate::harness::eval_core_raw(b.arena, before);
     let right = crate::harness::eval_core_raw(b.arena, after);
-    assert_eq!(left.observable, right.observable);
-    assert_eq!(left.logs, right.logs);
-    assert_eq!(right.logs, logs);
+
     assert_eq!(right.result.starts_with("error:"), fails);
     insta::assert_snapshot!(
         name,
@@ -33,6 +31,10 @@ fn check(name: &str, b: &Builder<'_>, before: &Core<'_>, logs: &[&str], fails: b
             right.logs
         )
     );
+    // Properties independent of the expected snapshot.
+    assert_eq!(before.ty, after.ty);
+    assert_eq!(left.observable, right.observable);
+    assert_eq!(left.logs, right.logs);
 }
 #[test]
 fn known_true_false_and_unselected_effects() {
@@ -49,7 +51,6 @@ fn known_true_false_and_unselected_effects() {
                 if value { good } else { bad },
                 if value { bad } else { good },
             ),
-            &["chosen"],
             false,
         );
     }
@@ -61,7 +62,6 @@ fn known_true_false_and_unselected_effects() {
             trace(&b, "chosen", b.error(INT)),
             b.int(42),
         ),
-        &["chosen"],
         true,
     );
 }
@@ -79,12 +79,11 @@ fn defaults_missing_matches_and_reversed_order() {
         "default",
         &b,
         b.case(CaseKind::Bool, yes, &bs, Some(b.int(42)), INT),
-        &[],
         false,
     );
     let missing = b.case(CaseKind::Bool, yes, &bs, None, INT);
     assert!(std::ptr::eq(missing, known_bool::reduce(&b, missing)));
-    check("missing", &b, missing, &[], true);
+    check("missing", &b, missing, true);
     check(
         "reversed",
         &b,
@@ -102,7 +101,6 @@ fn defaults_missing_matches_and_reversed_order() {
             Some(b.error(INT)),
             INT,
         ),
-        &[],
         false,
     );
 }
@@ -119,17 +117,16 @@ fn earlier_strict_work_remains_and_effectful_subject_is_not_folded() {
         "strict_trace",
         &b,
         b.let_(x, trace(&b, "before", b.int(0)), c),
-        &["before"],
         false,
     );
-    check("strict_failure", &b, b.let_(x, b.error(INT), c), &[], true);
+    check("strict_failure", &b, b.let_(x, b.error(INT), c), true);
     let c = b.if_(
         trace(&b, "subject", b.lit(Constant::bool(&a, true))),
         b.int(42),
         b.error(INT),
     );
     assert!(std::ptr::eq(c, known_bool::reduce(&b, c)));
-    check("effectful_subject", &b, c, &["subject"], false);
+    check("effectful_subject", &b, c, false);
 }
 #[test]
 fn returned_functions_delays_and_nested_cases() {
@@ -145,7 +142,6 @@ fn returned_functions_delays_and_nested_cases() {
         "returned_function",
         &b,
         b.app(b.if_(yes, f, b.error(f.ty)), &[b.int(42)], INT),
-        &["called"],
         false,
     );
     let d = b.delay(trace(&b, "forced", b.int(42)));
@@ -153,7 +149,6 @@ fn returned_functions_delays_and_nested_cases() {
         "returned_delay",
         &b,
         b.force(b.if_(yes, d, b.error(d.ty)), INT),
-        &["forced"],
         false,
     );
     check(
@@ -164,7 +159,6 @@ fn returned_functions_delays_and_nested_cases() {
             b.int(42),
             b.error(INT),
         ),
-        &[],
         false,
     );
 }

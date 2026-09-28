@@ -260,8 +260,7 @@ mod tests {
         GraphicalReportHandler::new_themed(GraphicalTheme::unicode_nocolor())
             .render_report(&mut output, &rendered)
             .unwrap();
-        assert!(output.contains("[member/src/Main.nash:1:5]"), "{output}");
-        assert!(output.contains("[member/src/Other.nash:1:5]"), "{output}");
+
         assert_eq!(report.related[0].path, "Other.nash");
         assert_source_snapshot!("Main.nash:\n\nf = x + 1\n\nOther.nash:\n\nx = y", output);
     }
@@ -305,7 +304,7 @@ mod tests {
             Doc::text("After."),
         );
         let output = plain(&pair);
-        assert!(output.contains("[Main.nash:1:5]"));
+
         assert_source_snapshot!("f = x + 1", output);
     }
     #[test]
@@ -349,8 +348,7 @@ mod tests {
         let report = Report::snippet("TEST", narrow, None, Doc::text("Before:"), Doc::Empty)
             .with_region(wide);
         let output = render_plain(&report, &source, "Main.nash");
-        assert!(output.contains("[Main.nash:4:9]"), "{output}");
-        assert!(output.contains("case x of"), "{output}");
+
         assert_source_snapshot!(input, output);
     }
 }
@@ -385,9 +383,6 @@ mod source_edge_tests {
         assert_eq!((labels[1].offset(), labels[1].len()), (1, 4));
         assert_eq!((labels[2].offset(), labels[2].len()), (10, 1));
         let output = render_plain(&report, &source, "Main.nash");
-        for expected in ["Unicode origin", "tabbed origin", "Main.nash:3:1"] {
-            assert!(output.contains(expected), "{output}");
-        }
         assert_source_snapshot!(source.text(), output);
     }
 }

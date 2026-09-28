@@ -839,9 +839,7 @@ mod tests {
         let result = parse(json, "test.jsonc");
         assert!(result.is_err());
         let err = result.unwrap_err();
-        // Error should contain line/column info
-        let msg = err.to_string();
-        assert!(msg.contains("4:") || msg.contains("line 4"));
+
         config_error_snapshot!(@error json, err);
     }
 }

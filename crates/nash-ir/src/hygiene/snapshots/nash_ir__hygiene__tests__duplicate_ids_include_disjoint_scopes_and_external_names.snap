@@ -1,20 +1,19 @@
 ---
 source: crates/nash-ir/src/hygiene/tests.rs
-expression: "validate(tree, &[x.name])"
+assertion_line: 221
+expression: "validate(tree, &[x.name]).expect_err(\"invalid scope\")"
 ---
-Err(
-    [
-        DuplicateBinder(
-            Name {
-                text: "x",
-                unique: 1,
-            },
-        ),
-        DuplicateBinder(
-            Name {
-                text: "y",
-                unique: 1,
-            },
-        ),
-    ],
-)
+[
+    DuplicateBinder(
+        Name {
+            text: "x",
+            unique: 1,
+        },
+    ),
+    DuplicateBinder(
+        Name {
+            text: "y",
+            unique: 1,
+        },
+    ),
+]

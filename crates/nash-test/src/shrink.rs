@@ -712,7 +712,7 @@ mod tests {
             }),
         };
         assert!(ce.consider(&[C(1), C(10), C(42)]));
-        assert_eq!(ce.steps, 3);
+
         insta::with_settings!({omit_expression => true}, {
             insta::assert_snapshot!(format!("result: {}\nchoices: {:?}\nevaluations: {}", ce.value, ce.choices, ce.steps));
         });
@@ -808,7 +808,7 @@ mod tests {
         assert!(!ce.flat_attempt(&[6]));
         assert!(!ce.flat_attempt(&[8]));
         assert!(!ce.flat_attempt(&[7]));
-        assert_eq!(calls.get(), 3);
+
         insta::with_settings!({omit_expression => true}, {
             insta::assert_snapshot!(format!("value: {}\nretained: {:?}\nstrict evaluations: {}\nrebuilding evaluations: {}", ce.value, ce.choices, ce.cache.db.len(), calls.get()));
         });
