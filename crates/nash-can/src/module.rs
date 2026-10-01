@@ -155,7 +155,7 @@ pub fn canonicalize<'a>(
             }
         }
     }
-    let tests = canonicalize_tests(bump, &test_env, module.tests, false, &mut warnings)?;
+    let tests = canonicalize_tests(bump, &test_env, module.tests, &mut warnings)?;
     let mut proof_env = env.clone();
     if let Some(tests) = module.proofs {
         let defaults = crate::defaults::test_imports(bump, home, context.interfaces);
@@ -191,7 +191,7 @@ pub fn canonicalize<'a>(
             }
         }
     }
-    let proofs = canonicalize_tests(bump, &proof_env, module.proofs, true, &mut warnings)?;
+    let proofs = canonicalize_proofs(bump, &proof_env, module.proofs, &mut warnings)?;
     let binops = canonicalize_binops(bump, &env, module.binops);
     let exports = canonicalize_exports(bump, module)?;
     if matches!(module.kind, nash_ast::ModuleKind::Validator(_))
@@ -249,7 +249,6 @@ fn canonicalize_tests<'a>(
     bump: &'a Bump,
     env: &Env<'a>,
     tests: Option<&nash_source::Tests<'a>>,
-    proof: bool,
     warnings: &mut Vec<Warning<'a>>,
 ) -> Result<&'a [nash_ast::Test<'a>], Vec<Error<'a>>> {
     let Some(tests) = tests else {
@@ -266,62 +265,165 @@ fn canonicalize_tests<'a>(
             second,
         },
     )?;
-    let empty = BTreeMap::new();
-    let base = environment::Scope::new(env, None, &empty)?;
     let mut result = Vec::new();
     for test in tests.tests {
-        if proof && test.value.budget.is_some() {
-            return Err(vec![Error::ProofBudget {
-                region: test.region,
-            }]);
-        }
         let (binders, block) = match test.value.body {
-            nash_source::TestBody::Unit(body) => (&[][..], body),
-            nash_source::TestBody::Prop { binders, body } => (binders, body),
+            nash_source::TestBody::Unit(body) => (Vec::new(), body),
+            nash_source::TestBody::Prop { binders, body } => (
+                binders
+                    .iter()
+                    .map(|b| (b.value.pattern, b.value.generator))
+                    .collect(),
+                body,
+            ),
         };
-        let patterns: Vec<_> = binders.iter().map(|b| b.value.pattern).collect();
-        let (patterns, bindings) =
-            pattern::verify_all(bump, env, DuplicatePatternContext::Destruct, &patterns)?;
-        let mut can_binders = Vec::new();
-        for (binder, pattern) in binders.iter().zip(patterns) {
-            let generator = expression::canonicalize_expr(
-                bump,
-                &base,
-                binder.value.generator,
-                &mut expression::FreeLocals::new(),
-                warnings,
-            )?;
-            if proof
-                && !matches!(generator.value, nash_ast::Expr::VarForeign { reference, .. }
-                if reference.home.package == Some(nash_ast::primitives::BASE) && reference.home.name == "Proof")
-            {
-                return Err(vec![Error::ProofDomain {
-                    region: binder.value.generator.region,
-                }]);
-            }
-            can_binders.push(nash_ast::ViaBinder { pattern, generator });
-        }
-        let scope = base.add_locals(&bindings)?;
-        let mut free = expression::FreeLocals::new();
-        let body = expression::canonicalize_test_block(
-            bump,
-            &scope,
-            block.stmts,
-            block.last,
-            &mut free,
-            warnings,
-        )?;
-        expression::verify_bindings(WarningContext::Def, &bindings, free, warnings);
+        let (binders, body) =
+            canonicalize_specification_body(bump, env, &binders, block, warnings)?;
         result.push(nash_ast::Test {
             region: test.region,
             name: test.value.name,
             expect: test.value.expect,
             budget: test.value.budget,
-            binders: bump.alloc_slice_fill_iter(can_binders),
+            binders: bump.alloc_slice_fill_iter(
+                binders
+                    .into_iter()
+                    .map(|(pattern, generator)| nash_ast::ViaBinder { pattern, generator }),
+            ),
             body,
         });
     }
     Ok(bump.alloc_slice_fill_iter(result))
+}
+
+fn canonicalize_proofs<'a>(
+    bump: &'a Bump,
+    env: &Env<'a>,
+    proofs: Option<&nash_source::Proofs<'a>>,
+    warnings: &mut Vec<Warning<'a>>,
+) -> Result<&'a [nash_ast::Proof<'a>], Vec<Error<'a>>> {
+    let Some(proofs) = proofs else {
+        return Ok(&[]);
+    };
+    dups::detect(
+        proofs
+            .proofs
+            .iter()
+            .map(|p| (p.value.name.value, p.value.name.region)),
+        |name, first, second| Error::DuplicateProof {
+            name,
+            first,
+            second,
+        },
+    )?;
+    let mut result = Vec::new();
+    for proof in proofs.proofs {
+        let (binders, block) = match proof.value.body {
+            nash_source::ProofBody::Unit(body) => (Vec::new(), body),
+            nash_source::ProofBody::Prop { binders, body } => (
+                binders
+                    .iter()
+                    .map(|b| (b.value.pattern, b.value.domain))
+                    .collect(),
+                body,
+            ),
+        };
+        let (binders, body) =
+            canonicalize_specification_body(bump, env, &binders, block, warnings)?;
+        for (_, domain) in &binders {
+            if !matches!(domain.value, nash_ast::Expr::VarForeign { reference, .. }
+                if reference.home.package == Some(nash_ast::primitives::BASE)
+                    && reference.home.name == "Proof"
+                    && matches!(reference.name, "int" | "integer" | "bool" | "bytes" | "byteString" | "string" | "data" | "spendingV1" | "spendingV2" | "spendingV3" | "mintingV1" | "mintingV2" | "mintingV3"))
+            {
+                return Err(vec![Error::ProofDomain {
+                    region: domain.region,
+                }]);
+            }
+        }
+        // Resolve aliases before recognizing the partial-correctness marker.
+        let obligation = match body.value {
+            nash_ast::Expr::Call {
+                function,
+                arguments: [computation, postcondition],
+            } if matches!(function.value, nash_ast::Expr::VarForeign { reference, .. }
+                    if reference.home.package == Some(nash_ast::primitives::BASE)
+                        && reference.home.name == "Proof" && reference.name == "returns") =>
+            {
+                if proof.value.expect != nash_ast::Expect::Pass {
+                    return Err(vec![Error::ProofPartialExpectation {
+                        region: proof.region,
+                    }]);
+                }
+                nash_ast::ProofObligation::Returns {
+                    computation,
+                    postcondition,
+                }
+            }
+            _ => nash_ast::ProofObligation::Execution {
+                expect: proof.value.expect,
+                body,
+            },
+        };
+        result.push(nash_ast::Proof {
+            region: proof.region,
+            name: proof.value.name,
+            binders: bump.alloc_slice_fill_iter(
+                binders
+                    .into_iter()
+                    .map(|(pattern, domain)| nash_ast::ProofBinder { pattern, domain }),
+            ),
+            obligation,
+        });
+    }
+    Ok(bump.alloc_slice_fill_iter(result))
+}
+
+type SourceBinder<'a> = (
+    &'a Located<nash_source::Pattern<'a>>,
+    &'a Located<nash_source::Expr<'a>>,
+);
+type CanonicalBinder<'a> = (
+    &'a Located<nash_ast::Pattern<'a>>,
+    &'a Located<nash_ast::Expr<'a>>,
+);
+type CanonicalSpecification<'a> = (Vec<CanonicalBinder<'a>>, &'a Located<nash_ast::Expr<'a>>);
+
+/// Share name/pattern resolution and sequencing, without conflating declaration types.
+fn canonicalize_specification_body<'a>(
+    bump: &'a Bump,
+    env: &Env<'a>,
+    binders: &[SourceBinder<'a>],
+    block: &nash_source::Block<'a>,
+    warnings: &mut Vec<Warning<'a>>,
+) -> Result<CanonicalSpecification<'a>, Vec<Error<'a>>> {
+    let empty = BTreeMap::new();
+    let base = environment::Scope::new(env, None, &empty)?;
+    let patterns: Vec<_> = binders.iter().map(|(pattern, _)| *pattern).collect();
+    let (patterns, bindings) =
+        pattern::verify_all(bump, env, DuplicatePatternContext::Destruct, &patterns)?;
+    let mut canonical = Vec::new();
+    for ((_, value), pattern) in binders.iter().zip(patterns) {
+        let value = expression::canonicalize_expr(
+            bump,
+            &base,
+            value,
+            &mut expression::FreeLocals::new(),
+            warnings,
+        )?;
+        canonical.push((pattern, value));
+    }
+    let scope = base.add_locals(&bindings)?;
+    let mut free = expression::FreeLocals::new();
+    let body = expression::canonicalize_specification_block(
+        bump,
+        &scope,
+        block.stmts,
+        block.last,
+        &mut free,
+        warnings,
+    )?;
+    expression::verify_bindings(WarningContext::Def, &bindings, free, warnings);
+    Ok((canonical, body))
 }
 
 fn canonicalize_decls<'a>(
@@ -1221,11 +1323,24 @@ fn canonicalize_binops<'a>(
 fn collect_used_modules<'a>(module: &CanModule<'a>) -> BTreeSet<&'a str> {
     let mut used = BTreeSet::new();
     let home = module.name;
-    for test in module.tests.iter().chain(module.proofs) {
+    for test in module.tests {
         collect_from_expr(&test.body.value, home, &mut used);
         for binder in test.binders {
             collect_from_expr(&binder.generator.value, home, &mut used);
             collect_from_pattern(&binder.pattern.value, home, &mut used);
+        }
+    }
+    for proof in module.proofs {
+        for body in proof.obligation.expressions() {
+            collect_from_expr(&body.value, home, &mut used);
+        }
+        for binder in proof.binders {
+            collect_from_expr(&binder.domain.value, home, &mut used);
+            collect_from_pattern(&binder.pattern.value, home, &mut used);
+        }
+        // The canonical partial obligation no longer contains its marker call.
+        if matches!(proof.obligation, nash_ast::ProofObligation::Returns { .. }) {
+            used.insert("Proof");
         }
     }
     for binop in module.binops {

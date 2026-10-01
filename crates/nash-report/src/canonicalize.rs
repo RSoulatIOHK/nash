@@ -295,14 +295,25 @@ pub fn to_report_with_name(source: &Source<'_>, error: &Error<'_>, expected_name
                 "Use `x via Proof.int` or a ledger domain such as `ctx via Proof.spendingV3`. Random generators are only available in tests.",
             ),
         ),
-        Error::ProofBudget { region } => Report::snippet(
-            "UNSUPPORTED PROOF BUDGET",
+        Error::ProofPartialExpectation { region } => Report::snippet(
+            "INVALID PARTIAL CORRECTNESS EXPECTATION",
             *region,
             None,
-            Doc::text("Execution-budget constraints are not supported in proof blocks."),
             Doc::text(
-                "Use tests to measure execution budgets. Proofs use a separately checked CEK step bound.",
+                "Proof.returns is a partial-correctness claim and cannot use fail or fail once.",
             ),
+            Doc::text(
+                "Remove the failure modifier. The postcondition must hold on every successful return.",
+            ),
+        ),
+        Error::DuplicateProof {
+            name,
+            first,
+            second,
+        } => name_clash(
+            *first,
+            *second,
+            &format!("This file has multiple proofs named `{name}`."),
         ),
         Error::DuplicateTest {
             name,
@@ -998,7 +1009,8 @@ pub fn to_report_with_name(source: &Source<'_>, error: &Error<'_>, expected_name
         Error::ExportNotFound { .. } => "nash::names::export_not_found",
         Error::ExportOpenAlias { .. } => "nash::names::export_open_alias",
         Error::ProofDomain { .. } => "nash::proof::invalid_domain",
-        Error::ProofBudget { .. } => "nash::proof::unsupported_budget",
+        Error::ProofPartialExpectation { .. } => "nash::proof::invalid_expectation",
+        Error::DuplicateProof { .. } => "nash::names::duplicate_proof",
         Error::DuplicateTest { .. } => "nash::names::duplicate_test",
         Error::DuplicateDecl { .. } => "nash::names::duplicate_decl",
         Error::DuplicateType { .. } => "nash::names::duplicate_type",

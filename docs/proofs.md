@@ -9,6 +9,13 @@ unfinished states at zero fuel, rather than using the upstream convention that
 turns fuel exhaustion into an error. Lean-blaster checks the resulting
 obligation. No independently translated Nash semantics are introduced.
 
+The source and canonical ASTs keep proofs separate from tests: `ProofBinder`
+names a symbolic `domain`, and `ProofObligation` distinguishes execution claims
+from successful-return postconditions. Partial-correctness obligations cannot
+carry failure modifiers. Shared parser and formatter helpers preserve the common
+syntax; proof budgets are rejected during parsing and invalid domains or partial
+failure modifiers during canonicalization.
+
 ```elm
 module Identity exposing (identity)
 

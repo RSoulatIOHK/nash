@@ -615,9 +615,15 @@ fn scan_module(
             module
                 .tests
                 .into_iter()
-                .chain(module.proofs)
                 .filter(|_| include_tests)
-                .flat_map(|tests| tests.imports.iter()),
+                .flat_map(|tests| tests.imports.iter())
+                .chain(
+                    module
+                        .proofs
+                        .into_iter()
+                        .filter(|_| include_tests)
+                        .flat_map(|proofs| proofs.imports.iter()),
+                ),
         ) {
             if let Some(uri) = resolve_import(import.import.value, current, known_modules)
                 && !imports.contains(&uri)

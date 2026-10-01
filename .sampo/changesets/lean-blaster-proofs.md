@@ -23,3 +23,8 @@ limits, and explicit inconclusive checker exhaustion. Add universal properties
 to existing conversion, ordering and arithmetic fixtures and authorization
 properties to the vesting examples. Extend deadline, signer and malformed-context
 regressions while preserving runtime and oracle coverage.
+
+Represent proofs with dedicated source and canonical AST types, symbolic-domain
+binders, and distinct execution and successful-return obligations. Reject proof
+budgets during parsing and report proof-specific domain, expectation and
+postcondition errors before code generation.

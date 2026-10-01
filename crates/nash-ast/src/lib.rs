@@ -68,9 +68,51 @@ pub struct ViaBinder<'a> {
     pub generator: &'a Located<Expr<'a>>,
 }
 
+/// A canonical proof never carries randomized generators or measured budgets.
+#[derive(Debug)]
+pub struct Proof<'a> {
+    pub region: Region,
+    pub name: &'a Located<&'a str>,
+    pub binders: &'a [ProofBinder<'a>],
+    pub obligation: ProofObligation<'a>,
+}
+
+#[derive(Debug)]
+pub struct ProofBinder<'a> {
+    pub pattern: &'a Located<Pattern<'a>>,
+    pub domain: &'a Located<Expr<'a>>,
+}
+
+#[derive(Debug)]
+pub enum ProofObligation<'a> {
+    Execution {
+        expect: Expect,
+        body: &'a Located<Expr<'a>>,
+    },
+    /// Successful returns must satisfy this Boolean postcondition. Failure
+    /// modifiers cannot be represented on a partial-correctness obligation.
+    Returns {
+        computation: &'a Located<Expr<'a>>,
+        postcondition: &'a Located<Expr<'a>>,
+    },
+}
+
+impl<'a> ProofObligation<'a> {
+    pub fn expressions(&self) -> impl Iterator<Item = &'a Located<Expr<'a>>> {
+        let expressions = match *self {
+            Self::Execution { body, .. } => [Some(body), None],
+            Self::Returns {
+                computation,
+                postcondition,
+            } => [Some(computation), Some(postcondition)],
+        };
+        expressions.into_iter().flatten()
+    }
+}
+
 pub struct Module<'a> {
     pub tests: &'a [Test<'a>],
-    pub proofs: &'a [Test<'a>],
+    pub proofs: &'a [Proof<'a>],
     pub traits: &'a [&'a Located<Trait<'a>>],
     pub impls: &'a [&'a Located<Impl<'a>>],
     pub kind: ModuleKind,

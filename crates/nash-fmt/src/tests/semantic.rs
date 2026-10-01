@@ -121,6 +121,10 @@ structure!(Impl {
     attributes
 });
 structure!(Tests { imports, tests });
+structure!(Proofs { imports, proofs });
+structure!(Proof { name, expect, body });
+variants!(ProofBody{Unit(block),Prop{binders,body}});
+structure!(ProofBinder { pattern, domain });
 structure!(Test {
     name,
     expect,

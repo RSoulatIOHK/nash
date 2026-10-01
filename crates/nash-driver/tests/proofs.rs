@@ -455,3 +455,54 @@ async fn vesting_authorization_proofs_compile_and_export() {
     let files = nash_proof::export(&programs, &output, 1000, 1500, 30).unwrap();
     assert_eq!(files.len(), 2);
 }
+
+#[tokio::test]
+async fn proof_aliases_and_independent_name_scopes_survive_canonicalization() {
+    let programs = compile(
+        r#"module Main exposing (..)
+tests
+    test "shared" = do
+        assert True
+proof
+    import Proof as Universal exposing (returns)
+    prop "shared" = let value via Universal.int in do
+        returns value (\result -> result == value)
+"#,
+    )
+    .await
+    .unwrap();
+    assert_eq!(programs.len(), 1);
+    assert_eq!(programs[0].domains, vec![nash_proof::Domain::Int]);
+    assert!(programs[0].postcondition.is_some());
+}
+
+#[tokio::test]
+async fn proof_specific_errors_are_reported_before_codegen() {
+    for (declarations, expected) in [
+        (
+            "test \"duplicate\" = do\n        assert True\n    test \"duplicate\" = do\n        assert True",
+            "duplicate_proof",
+        ),
+        (
+            "prop \"not a domain\" = let value via Proof.returns in do\n        assert True",
+            "invalid_domain",
+        ),
+        (
+            "prop \"wrong condition\" = let value via Proof.int in do\n        Proof.returns value (\\result -> result + 1)",
+            "postcondition",
+        ),
+        (
+            "prop \"invalid existential modifier\" fail once = let value via Proof.int in do\n        Proof.returns value (\\_ -> True)",
+            "invalid_expectation",
+        ),
+        (
+            "test \"non-unit execution\" = do\n        Proof.bool",
+            "proof body",
+        ),
+    ] {
+        let source =
+            format!("module Main exposing (..)\nproof\n    import Proof\n    {declarations}\n");
+        let error = compile(&source).await.unwrap_err();
+        assert!(error.contains(expected), "expected {expected}: {error}");
+    }
+}

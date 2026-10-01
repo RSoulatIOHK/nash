@@ -29,7 +29,7 @@ pub fn check<'a>(bump: &'a Bump, module: &Module<'a>) -> Result<(), Vec<Error<'a
         definitions.extend_from_slice(impl_.value.methods);
     }
     checker.defs(definitions);
-    for test in module.tests.iter().chain(module.proofs) {
+    for test in module.tests {
         for binder in test.binders {
             checker.patterns(
                 binder.pattern.region,
@@ -39,6 +39,19 @@ pub fn check<'a>(bump: &'a Bump, module: &Module<'a>) -> Result<(), Vec<Error<'a
             checker.expr(binder.generator);
         }
         checker.expr(test.body);
+    }
+    for proof in module.proofs {
+        for binder in proof.binders {
+            checker.patterns(
+                binder.pattern.region,
+                Context::BadDestruct,
+                &[binder.pattern],
+            );
+            checker.expr(binder.domain);
+        }
+        for expression in proof.obligation.expressions() {
+            checker.expr(expression);
+        }
     }
     if checker.errors.is_empty() {
         Ok(())

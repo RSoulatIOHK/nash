@@ -3,7 +3,7 @@ use crate::{
     build::{Binding, Build, Engine, TraceConfig},
     decision_tree::{self, MatchBranch, MatchInputs},
 };
-use nash_ast::{Expr, ModuleName, NodeId, primitives};
+use nash_ast::{Expr, ModuleName, NodeId, ProofObligation, primitives};
 use nash_ir::{
     core::*,
     ty::{ConstTy, Ty},
@@ -20,14 +20,8 @@ pub enum Error<'a> {
         "proof input must use a domain from the bundled Proof module; random generators and arbitrary values are not proof domains"
     )]
     Domain,
-    #[error(
-        "execution-budget constraints are not supported in proof blocks; use tests for measured budgets"
-    )]
-    Budget,
     #[error("ledger domain version must match the proof's Plutus version")]
     LedgerVersion,
-    #[error("Proof.returns is a partial-correctness claim and cannot use fail or fail once")]
-    PartialExpectation,
     #[error(
         "Proof.returns requires an integer, Boolean, bytes, string, unit or Data-represented result"
     )]
@@ -61,7 +55,7 @@ pub fn compile_proofs_matching<'a>(
     build: &Build<'a, '_>,
     module: ModuleName<'a>,
     version: nash_config::PlutusVersion,
-    mut include: impl FnMut(&nash_ast::Test<'a>) -> bool,
+    mut include: impl FnMut(&nash_ast::Proof<'a>) -> bool,
 ) -> Result<Vec<ProofProgram>, Error<'a>> {
     let input = build
         .inputs
@@ -73,14 +67,11 @@ pub fn compile_proofs_matching<'a>(
         if !include(proof) {
             continue;
         }
-        if proof.budget.is_some() {
-            return Err(Error::Budget);
-        }
         let domains = proof
             .binders
             .iter()
             .map(|binder| {
-                let Expr::VarForeign { reference, .. } = binder.generator.value else {
+                let Expr::VarForeign { reference, .. } = binder.domain.value else {
                     return Err(Error::Domain);
                 };
                 if reference.home.package != Some(primitives::BASE)
@@ -132,25 +123,17 @@ pub fn compile_proofs_matching<'a>(
             params.push(value);
             patterns.push((binder, value, records, literals, bindings));
         }
-        let partial = match proof.body.value {
-            Expr::Call {
-                function,
-                arguments: [computation, condition],
-            } if matches!(function.value, Expr::VarForeign { reference, .. }
-                    if reference.home.package == Some(primitives::BASE)
-                        && reference.home.name == "Proof" && reference.name == "returns") =>
-            {
-                Some((*computation, *condition))
-            }
-            _ => None,
+        let (computation, condition, expect) = match proof.obligation {
+            ProofObligation::Execution { body, expect } => (body, None, expect),
+            ProofObligation::Returns {
+                computation,
+                postcondition,
+            } => (computation, Some(postcondition), nash_ast::Expect::Pass),
         };
-        if partial.is_some() && proof.expect != nash_ast::Expect::Pass {
-            return Err(Error::PartialExpectation);
-        }
-        let body = engine.expr(partial.map_or(proof.body, |(value, _)| value), &ctx)?;
+        let body = engine.expr(computation, &ctx)?;
         let mut postcondition = None;
         let mut checker = None;
-        if let Some((_, condition)) = partial {
+        if let Some(condition) = condition {
             let result = match body.ty {
                 Ty::Const(ConstTy::Int) => ReturnDomain::Int,
                 Ty::Const(ConstTy::Bool) => ReturnDomain::Bool,
@@ -225,7 +208,7 @@ pub fn compile_proofs_matching<'a>(
         programs.push(ProofProgram {
             module: module.name.to_owned(),
             name: proof.name.value.to_owned(),
-            expect: proof.expect,
+            expect,
             domains,
             flat: flat::encode(compiled.program).map_err(|e| Error::Encoding(e.to_string()))?,
             postcondition,

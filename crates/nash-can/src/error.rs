@@ -38,8 +38,13 @@ pub enum Error<'a> {
     ProofDomain {
         region: Region,
     },
-    ProofBudget {
+    ProofPartialExpectation {
         region: Region,
+    },
+    DuplicateProof {
+        name: &'a str,
+        first: Region,
+        second: Region,
     },
     DuplicateTest {
         name: &'a str,

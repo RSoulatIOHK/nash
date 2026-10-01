@@ -14,7 +14,7 @@ pub struct Module<'a> {
     pub traits: &'a [&'a Located<Trait<'a>>],
     pub impls: &'a [&'a Located<Impl<'a>>],
     pub tests: Option<&'a Tests<'a>>,
-    pub proofs: Option<&'a Tests<'a>>,
+    pub proofs: Option<&'a Proofs<'a>>,
     pub binops: &'a [&'a Located<Infix<'a>>],
 }
 
@@ -85,6 +85,35 @@ pub struct Test<'a> {
     pub expect: Expect,
     pub budget: Option<Budget>,
     pub body: TestBody<'a>,
+}
+
+/// A proof block has its own declarations and private imports.
+#[derive(Debug)]
+pub struct Proofs<'a> {
+    pub imports: &'a [&'a Import<'a>],
+    pub proofs: &'a [&'a Located<Proof<'a>>],
+}
+
+#[derive(Debug)]
+pub struct Proof<'a> {
+    pub name: &'a Located<&'a str>,
+    pub expect: Expect,
+    pub body: ProofBody<'a>,
+}
+
+#[derive(Debug)]
+pub enum ProofBody<'a> {
+    Unit(&'a Block<'a>),
+    Prop {
+        binders: &'a [&'a Located<ProofBinder<'a>>],
+        body: &'a Block<'a>,
+    },
+}
+
+#[derive(Debug)]
+pub struct ProofBinder<'a> {
+    pub pattern: &'a Located<Pattern<'a>>,
+    pub domain: &'a Located<Expr<'a>>,
 }
 
 #[derive(Debug)]
