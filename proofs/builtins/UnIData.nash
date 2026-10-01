@@ -1,0 +1,35 @@
+module UnIData exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.unIData p0
+
+
+proof
+    import Proof
+
+    prop "unboxes every integer" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation (Builtin.iData x) == x)
+
+    prop "bytes Data is not integer Data" fail =
+        let
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ = operation (Primitive.coerce (Builtin.bData x))
+                in
+                    ()
+
+    test "constructor Data cannot be used as an integer" fail =
+        do
+            let
+                _ = operation (Primitive.coerce (Builtin.constrData 0 []))
+            in
+                ()

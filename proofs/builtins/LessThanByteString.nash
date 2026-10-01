@@ -1,0 +1,30 @@
+module LessThanByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.lessThanByteString p0 p1
+
+
+proof
+    import Proof
+
+    prop "irreflexive" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert (not (operation x x))
+
+    prop "asymmetric" =
+        let
+            x via Proof.bytes
+            y via Proof.bytes
+        in
+            do
+                assert (not (operation x y && operation y x))
+
+    test "unsigned lexicographic ordering" =
+        do
+            assert (operation #"00ff" #"0100" && not (operation #"ff" #"00"))

@@ -1,0 +1,38 @@
+module LengthOfByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.lengthOfByteString p0
+
+
+proof
+    import Proof
+
+    prop "nonnegative" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert (operation x >= 0)
+
+    test "empty length is zero" =
+        do
+            assert (operation #"" == 0)
+
+    prop "append adds lengths" =
+        let
+            x via Proof.bytes
+            y via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        operation (Builtin.appendByteString x y) ==
+                            Builtin.addInteger (operation x) (operation y)
+                    )
+
+    test "bytes are counted rather than UTF8 codepoints" =
+        do
+            assert (operation #"00c3a9ff" == 4)

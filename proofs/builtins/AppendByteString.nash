@@ -1,0 +1,46 @@
+module AppendByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.appendByteString p0 p1
+
+
+proof
+    import Proof
+
+    prop "left and right identity" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert (operation #"" x == x && operation x #"" == x)
+
+    prop "associative" =
+        let
+            x via Proof.bytes
+            y via Proof.bytes
+            z via Proof.bytes
+        in
+            do
+                assert
+                    (operation (operation x y) z == operation x (operation y z))
+
+    prop "length is additive" =
+        let
+            x via Proof.bytes
+            y via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        Builtin.lengthOfByteString (operation x y) ==
+                            Builtin.addInteger
+                                (Builtin.lengthOfByteString x)
+                                (Builtin.lengthOfByteString y)
+                    )
+
+    test "preserves byte order" =
+        do
+            assert (operation #"00ff" #"0180" == #"00ff0180")

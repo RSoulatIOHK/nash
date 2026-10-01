@@ -1,0 +1,26 @@
+module LengthOfArray exposing (..)
+
+
+import Builtin
+
+
+{-| The pinned PlutusCoreBlaster revision has no array/value model. These are
+executable source obligations; Lean verification is pending model support. -}
+operation : array Data -> int
+operation p0 = Builtin.lengthOfArray p0
+
+
+proof
+    import Proof
+
+    test "empty array length" =
+        do
+            assert (operation (Builtin.listToArray []) == 0)
+
+    prop "length after list conversion" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert (operation (Builtin.listToArray [ x, y ]) == 2)

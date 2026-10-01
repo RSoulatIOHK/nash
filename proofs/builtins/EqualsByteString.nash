@@ -1,0 +1,46 @@
+module EqualsByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.equalsByteString p0 p1
+
+
+proof
+    import Proof
+
+    prop "reflexive" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert (operation x x)
+
+    prop "symmetric" =
+        let
+            x via Proof.bytes
+            y via Proof.bytes
+        in
+            do
+                assert (operation x y == operation y x)
+
+    prop "transitive" =
+        let
+            x via Proof.bytes
+            y via Proof.bytes
+            z via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        if operation x y && operation y z then
+                            operation x z
+                        else
+                            True
+                    )
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert
+                (not (operation #"00" #"0000") && not (operation #"00" #"01"))

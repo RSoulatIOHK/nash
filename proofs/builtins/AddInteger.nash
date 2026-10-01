@@ -1,0 +1,103 @@
+module AddInteger exposing (..)
+
+
+import Builtin
+
+
+{-| UPLC addition uses arbitrary-precision integers. Both native int values and
+Data-represented Int values must preserve that behavior through Nash compilation.
+The symbolic domains below contain every mathematical integer, with no bit bound.
+-}
+add : int -> int -> int
+add = Builtin.addInteger
+
+
+boxedAdd : Int -> Int -> Int
+boxedAdd x y = Builtin.iData (add (Builtin.unIData x) (Builtin.unIData y))
+
+
+proof
+    import Proof
+
+    prop "commutative" =
+        let
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert (add x y == add y x)
+
+    prop "associative" =
+        let
+            x via Proof.int
+            y via Proof.int
+            z via Proof.int
+        in
+            do
+                assert (add (add x y) z == add x (add y z))
+
+    prop "left identity" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (add 0 x == x)
+
+    prop "right identity" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (add x 0 == x)
+
+    prop "additive inverse" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (add x (Builtin.subtractInteger 0 x) == 0)
+
+    prop "successor never wraps at any integer width" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (add x 1 > x)
+
+    prop "boxed successor never wraps at any integer width" =
+        let
+            x via Proof.integer
+        in
+            do
+                assert
+                    (
+                        Builtin.unIData (boxedAdd x (Builtin.iData 1)) >
+                            Builtin.unIData x
+                    )
+
+    test "crosses signed 64-bit boundary" =
+        do
+            assert (add 9223372036854775807 1 == 9223372036854775808)
+
+    test "crosses unsigned 128-bit boundary" =
+        do
+            let
+                before =
+                    Builtin.byteStringToInteger
+                        True
+                        #"ffffffffffffffffffffffffffffffff"
+
+                after =
+                    Builtin.byteStringToInteger
+                        True
+                        #"0100000000000000000000000000000000"
+            in
+                assert (add before 1 == after)
+
+    test "crosses negative signed 64-bit boundary" =
+        do
+            assert (add (-9223372036854775808) (-1) == -9223372036854775809)
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert (add 17 5 == 22)

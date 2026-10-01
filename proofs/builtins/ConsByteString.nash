@@ -1,0 +1,97 @@
+module ConsByteString exposing (..)
+
+
+import Builtin
+
+
+{-| Plutus V3 uses strict byte validation; V1/V2 reduce the byte modulo 256. -}
+operation p0 p1 = Builtin.consByteString p0 p1
+
+
+proof
+    import Proof
+
+    prop "prepends zero and preserves length" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        Builtin.indexByteString (operation 0 x) 0 ==
+                            0 &&
+                            Builtin.lengthOfByteString (operation 0 x) ==
+                            Builtin.addInteger (Builtin.lengthOfByteString x) 1
+                    )
+
+    prop "valid byte survives at the head" =
+        let
+            n via Proof.int
+            x via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        if n >= 0 && n <= 255 then
+                            Builtin.indexByteString (operation n x) 0 == n
+                        else
+                            True
+                    )
+
+    prop "negative byte rejects in Plutus V3" fail =
+        let
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ = operation (-1) x
+                in
+                    ()
+
+    prop "byte above 255 rejects in Plutus V3" fail =
+        let
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ = operation 256 x
+                in
+                    ()
+
+    prop "all negative byte values reject" fail =
+        let
+            n via Proof.int
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ =
+                        operation
+                            (
+                                if n < 0 then
+                                    n
+                                else
+                                    -1 - n
+                            )
+                            x
+                in
+                    ()
+
+    prop "all byte values above 255 reject" fail =
+        let
+            n via Proof.int
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ =
+                        operation
+                            (
+                                if n > 255 then
+                                    n
+                                else
+                                    256
+                            )
+                            x
+                in
+                    ()

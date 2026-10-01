@@ -1,0 +1,49 @@
+module ReplicateByte exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.replicateByte p0 p1
+
+
+proof
+    test "zero count produces empty bytes" =
+        do
+            assert (operation 0 255 == #"")
+
+    test "repeats exactly the requested byte" =
+        do
+            assert (operation 3 128 == #"808080")
+
+    test "invalid byte rejects" fail =
+        do
+            let
+                _ = operation 1 256
+            in
+                ()
+
+    test "negative count rejects" fail =
+        do
+            let
+                _ = operation (-1) 0
+            in
+                ()
+
+    test "negative byte rejects" fail =
+        do
+            let
+                _ = operation 1 (-1)
+            in
+                ()
+
+    test "count above 8192 rejects" fail =
+        do
+            let
+                _ = operation 8193 0
+            in
+                ()
+
+    test "largest supported count is accepted" =
+        do
+            assert (Builtin.lengthOfByteString (operation 8192 0) == 8192)

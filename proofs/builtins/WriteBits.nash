@@ -1,0 +1,61 @@
+module WriteBits exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 p2 = Builtin.writeBits p0 p1 p2
+
+
+proof
+    import Proof
+
+    prop "write then read" =
+        let
+            bit via Proof.bool
+        in
+            do
+                assert (Builtin.readBit (operation #"00" [ 0 ] bit) 0 == bit)
+
+    prop "empty index list is identity" =
+        let
+            x via Proof.bytes
+            bit via Proof.bool
+        in
+            do
+                assert (operation x [] bit == x)
+
+    test "invalid index rejects" fail =
+        do
+            let
+                _ = operation #"00" [ 8 ] True
+            in
+                ()
+
+    test "index above 128 bits rejects without host overflow" fail =
+        do
+            let
+                _ =
+                    operation
+                        #"00"
+                        [ Builtin.byteStringToInteger
+                            True
+                            #"0100000000000000000000000000000000"
+                        ]
+                        True
+            in
+                ()
+
+    test "negative index rejects" fail =
+        do
+            let
+                _ = operation #"00" [ -1 ] True
+            in
+                ()
+
+    test "all indices must be valid" fail =
+        do
+            let
+                _ = operation #"00" [ 0, 8 ] True
+            in
+                ()

@@ -1,0 +1,19 @@
+module FstPair exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.fstPair p0
+
+
+proof
+    import Proof
+
+    prop "projects the correct component" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert (operation (Builtin.mkPairData x y) == x)

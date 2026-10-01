@@ -1,0 +1,33 @@
+module ConstrData exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.constrData p0 p1
+
+
+proof
+    import Proof
+
+    prop "constructor tag and fields survive roundtrip" =
+        let
+            tag via Proof.int
+            x via Proof.data
+        in
+            do
+                assert
+                    (
+                        Builtin.fstPair
+                            (Builtin.unConstrData (operation tag [ x ])) ==
+                            tag &&
+                            Builtin.headList
+                                (
+                                    Builtin.sndPair
+                                        (
+                                            Builtin.unConstrData
+                                                (operation tag [ x ])
+                                        )
+                                ) ==
+                            x
+                    )

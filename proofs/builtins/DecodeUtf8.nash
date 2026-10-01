@@ -1,0 +1,57 @@
+module DecodeUtf8 exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.decodeUtf8 p0
+
+
+proof
+    import Proof
+
+    prop "inverse on encoded strings" =
+        let
+            text via Proof.string
+        in
+            do
+                assert (operation (Builtin.encodeUtf8 text) == text)
+
+    test "non ASCII decoding" =
+        do
+            assert (operation #"c3a9cebb" == "éλ")
+
+    test "invalid UTF8 rejects" fail =
+        do
+            let
+                _ = operation #"ff"
+            in
+                ()
+
+    test "truncated UTF8 rejects" fail =
+        do
+            let
+                _ = operation #"c3"
+            in
+                ()
+
+    test "overlong UTF8 is rejected" fail =
+        do
+            let
+                _ = operation #"c080"
+            in
+                ()
+
+    test "UTF8 surrogate codepoints are rejected" fail =
+        do
+            let
+                _ = operation #"eda080"
+            in
+                ()
+
+    test "codepoint above Unicode maximum is rejected" fail =
+        do
+            let
+                _ = operation #"f4908080"
+            in
+                ()

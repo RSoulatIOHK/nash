@@ -1,0 +1,61 @@
+module RotateByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.rotateByteString p0 p1
+
+
+proof
+    import Proof
+
+    prop "zero rotation is identity" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert (operation x 0 == x)
+
+    prop "rotation by width is identity" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        operation
+                            x
+                            (
+                                Builtin.multiplyInteger
+                                    8
+                                    (Builtin.lengthOfByteString x)
+                            ) ==
+                            x
+                    )
+
+    prop "inverse rotation" =
+        let
+            x via Proof.bytes
+            n via Proof.int
+        in
+            do
+                assert
+                    (
+                        operation (operation x n) (Builtin.subtractInteger 0 n) ==
+                            x
+                    )
+
+    test "large rotation is reduced by bit width" =
+        do
+            assert
+                (
+                    operation
+                        #"01"
+                        (
+                            Builtin.byteStringToInteger
+                                True
+                                #"0100000000000000000000000000000000"
+                        ) ==
+                        #"01"
+                )

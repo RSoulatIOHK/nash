@@ -1,0 +1,25 @@
+module MkPairData exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.mkPairData p0 p1
+
+
+proof
+    import Proof
+
+    prop "both projections recover their arguments" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert
+                    (
+                        Builtin.fstPair (operation x y) ==
+                            x &&
+                            Builtin.sndPair (operation x y) ==
+                            y
+                    )

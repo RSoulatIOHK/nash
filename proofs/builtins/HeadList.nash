@@ -1,0 +1,27 @@
+module HeadList exposing (..)
+
+
+import Builtin
+
+
+operation : list Data -> Data
+operation p0 = Builtin.headList p0
+
+
+proof
+    import Proof
+
+    prop "head of a nonempty list" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert (operation [ x, y ] == x)
+
+    test "empty list rejects" fail =
+        do
+            let
+                _ = operation []
+            in
+                ()

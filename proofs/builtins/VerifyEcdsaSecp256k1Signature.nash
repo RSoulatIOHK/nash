@@ -1,0 +1,33 @@
+module VerifyEcdsaSecp256k1Signature exposing (..)
+
+
+import Builtin
+
+
+{-| Malformed-key rejection is specified explicitly. Signature soundness and completeness require cryptographic contracts absent from the pinned model. -}
+operation p0 p1 p2 = Builtin.verifyEcdsaSecp256k1Signature p0 p1 p2
+
+
+proof
+    import Proof
+
+    prop "empty public key rejects" fail =
+        let
+            message via Proof.bytes
+        in
+            do
+                let
+                    _ = operation #"" message #""
+                in
+                    ()
+
+    test "valid key with truncated signature rejects" fail =
+        do
+            let
+                _ =
+                    operation
+                        #"0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                        #"0000000000000000000000000000000000000000000000000000000000000000"
+                        #"00"
+            in
+                ()

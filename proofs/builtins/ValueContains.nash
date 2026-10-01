@@ -1,0 +1,46 @@
+module ValueContains exposing (..)
+
+
+import Builtin
+import Cardano.Value
+
+
+{-| The pinned PlutusCoreBlaster revision has no array/value model. These are
+executable source obligations; Lean verification is pending model support. -}
+operation p0 p1 = Builtin.valueContains p0 p1
+
+
+empty : value
+empty = Cardano.Value.empty
+
+
+coin : int -> value
+coin amount = Builtin.insertCoin #"" #"" amount empty
+
+
+proof
+    test "nonnegative value contains itself" =
+        do
+            assert (operation (coin 5) (coin 5))
+
+    test "quantity containment" =
+        do
+            assert
+                (
+                    operation (coin 5) (coin 3) &&
+                        not (operation (coin 3) (coin 5))
+                )
+
+    test "negative first quantity rejects" fail =
+        do
+            let
+                _ = operation (coin (-1)) (coin 1)
+            in
+                ()
+
+    test "negative second quantity rejects" fail =
+        do
+            let
+                _ = operation (coin 1) (coin (-1))
+            in
+                ()

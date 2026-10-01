@@ -1,0 +1,30 @@
+module FindFirstSetBit exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.findFirstSetBit p0
+
+
+proof
+    import Proof
+
+    prop "minus one exactly for all zero bits" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert ((operation x == -1) == (Builtin.countSetBits x == 0))
+
+    test "least significant indexing" =
+        do
+            assert
+                (
+                    operation #"80" ==
+                        7 &&
+                        operation #"01" ==
+                        0 &&
+                        operation #"00" ==
+                        -1
+                )

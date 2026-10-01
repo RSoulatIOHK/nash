@@ -1,0 +1,27 @@
+module ListToArray exposing (..)
+
+
+import Builtin
+
+
+{-| The pinned PlutusCoreBlaster revision has no array/value model. These are
+executable source obligations; Lean verification is pending model support. -}
+operation p0 = Builtin.listToArray p0
+
+
+proof
+    import Proof
+
+    prop "preserves order" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert
+                    (
+                        Builtin.indexArray (operation [ x, y ]) 0 ==
+                            x &&
+                            Builtin.indexArray (operation [ x, y ]) 1 ==
+                            y
+                    )

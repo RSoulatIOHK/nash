@@ -1,0 +1,25 @@
+module Bls12381G2Compress exposing (..)
+
+
+import Builtin
+
+
+{-| These group laws are partial correctness over successfully decoded points. They do not assert that arbitrary bytes decode to a valid point. The pinned Lean model has opaque group operations without algebraic lemmas; these obligations are pending there. -}
+operation p0 = Builtin.bls12_381_g2_compress p0
+
+
+point : bytes -> bls_g2
+point encoded = Builtin.bls12_381_g2_uncompress encoded
+
+
+proof
+    import Proof
+
+    prop "fixed compressed width on valid points" =
+        let
+            x via Proof.bytes
+        in
+            do
+                Proof.returns
+                    (Builtin.lengthOfByteString (operation (point x)) == 96)
+                    (\holds -> holds)

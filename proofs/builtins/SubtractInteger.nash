@@ -1,0 +1,48 @@
+module SubtractInteger exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.subtractInteger p0 p1
+
+
+proof
+    import Proof
+
+    prop "right identity" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x 0 == x)
+
+    prop "self subtraction is zero" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x x == 0)
+
+    prop "inverse of addition" =
+        let
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert (Builtin.addInteger (operation x y) y == x)
+
+    prop "predecessor never wraps at any integer width" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x 1 < x)
+
+    test "argument order" =
+        do
+            assert (operation 7 2 == 5 && operation 2 7 == -5)
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert (operation (-9223372036854775808) 1 == -9223372036854775809)

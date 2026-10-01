@@ -1,0 +1,56 @@
+module ReadBit exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.readBit p0 p1
+
+
+proof
+    import Proof
+
+    test "least significant bit indexing" =
+        do
+            assert (operation #"01" 0 && not (operation #"01" 7))
+
+    prop "negative bit index rejects" fail =
+        let
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ = operation x (-1)
+                in
+                    ()
+
+    prop "index equal to bit count rejects" fail =
+        let
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ =
+                        operation
+                            x
+                            (
+                                Builtin.multiplyInteger
+                                    8
+                                    (Builtin.lengthOfByteString x)
+                            )
+                in
+                    ()
+
+    test "index above 128 bits rejects without host overflow" fail =
+        do
+            let
+                _ =
+                    operation
+                        #"ff"
+                        (
+                            Builtin.byteStringToInteger
+                                True
+                                #"0100000000000000000000000000000000"
+                        )
+            in
+                ()

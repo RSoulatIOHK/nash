@@ -1,0 +1,18 @@
+module IData exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.iData p0
+
+
+proof
+    import Proof
+
+    prop "integer roundtrip has no width bound" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (Builtin.unIData (operation x) == x)

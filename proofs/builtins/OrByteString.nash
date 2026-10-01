@@ -1,0 +1,35 @@
+module OrByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 p2 = Builtin.orByteString p0 p1 p2
+
+
+proof
+    import Proof
+
+    prop "commutative for both padding modes" =
+        let
+            pad via Proof.bool
+            x via Proof.bytes
+            y via Proof.bytes
+        in
+            do
+                assert (operation pad x y == operation pad y x)
+
+    prop "self law" =
+        let
+            pad via Proof.bool
+            x via Proof.bytes
+        in
+            do
+                assert (operation pad x x == x)
+
+    prop "truncating mode with empty input" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert (operation False x #"" == #"")

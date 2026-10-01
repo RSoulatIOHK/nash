@@ -177,6 +177,17 @@ cross this boundary yet. `fail` and `fail once` modifiers are rejected for
 statements does not select partial correctness: only the direct body call is
 recognized. Outside that position it is an ordinary strict assertion helper.
 
+## Builtin semantic specifications
+
+The [builtin proof project](../proofs/README.md) contains one Nash file per
+builtin and 324 readable obligations: algebraic laws, unbounded integer behavior,
+conversion roundtrips, boundary cases and invalid-input rejection. Its explicit
+verification snapshot records 64 SMT-verified obligations and all remaining
+limitations. The standard regression executes the actual source obligations,
+requires nonvacuous partial-correctness samples, and rejects deliberate opcode,
+argument-order, wrap and saturation mutations. This suite also exposed and guards
+the local evaluator's index and shift fixes.
+
 ## Compiler validation
 
 A separate [builtin compilation suite](builtin-compilation.md) validates all

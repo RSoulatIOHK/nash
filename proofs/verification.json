@@ -1,0 +1,2342 @@
+{
+  "fuel": 300,
+  "postcondition_fuel": 300,
+  "solver_timeout_seconds": 10,
+  "wall_timeout_seconds": 25,
+  "trust": "smt_verified",
+  "backend": {
+    "lean": "4.24.0",
+    "Blaster": "bafdd4f7976037cd7bd8e443df04af096dc5b96e",
+    "PlutusCore": "41fe7eadf460dc66bef22b85656bc36408638bdc",
+    "CardanoLedgerApi": "3f9f7c6b6ecf0012e1397bab0a814daa36e70ba2"
+  },
+  "obligations": [
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "commutative",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "associative",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "left identity",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "right identity",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "additive inverse",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "successor never wraps at any integer width",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "boxed successor never wraps at any integer width",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "crosses signed 64-bit boundary",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "crosses unsigned 128-bit boundary",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "crosses negative signed 64-bit boundary",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AddInteger.nash",
+      "module": "AddInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "3a8e3aa12a6c780234160c664ae3c4365d707fbb3f945ebd9bf7e1019acc6055",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/AndByteString.nash",
+      "module": "AndByteString",
+      "name": "commutative for both padding modes",
+      "source_sha256": "efd4079cba62107e8aef8811d504c9706243469ed49cc2d9ed9435a30284ccac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AndByteString.nash",
+      "module": "AndByteString",
+      "name": "self law",
+      "source_sha256": "efd4079cba62107e8aef8811d504c9706243469ed49cc2d9ed9435a30284ccac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AndByteString.nash",
+      "module": "AndByteString",
+      "name": "truncating mode with empty input",
+      "source_sha256": "efd4079cba62107e8aef8811d504c9706243469ed49cc2d9ed9435a30284ccac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendByteString.nash",
+      "module": "AppendByteString",
+      "name": "left and right identity",
+      "source_sha256": "dcbd160b48c1ca7c81c01c936646b0e6ed41c74e2bc874bc3b3e47dd22c2b90c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendByteString.nash",
+      "module": "AppendByteString",
+      "name": "associative",
+      "source_sha256": "dcbd160b48c1ca7c81c01c936646b0e6ed41c74e2bc874bc3b3e47dd22c2b90c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendByteString.nash",
+      "module": "AppendByteString",
+      "name": "length is additive",
+      "source_sha256": "dcbd160b48c1ca7c81c01c936646b0e6ed41c74e2bc874bc3b3e47dd22c2b90c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendByteString.nash",
+      "module": "AppendByteString",
+      "name": "preserves byte order",
+      "source_sha256": "dcbd160b48c1ca7c81c01c936646b0e6ed41c74e2bc874bc3b3e47dd22c2b90c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendString.nash",
+      "module": "AppendString",
+      "name": "left and right identity",
+      "source_sha256": "add6ff09c26954fa30855ad4f902097165b61abf971125243748b7b40ca0769e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendString.nash",
+      "module": "AppendString",
+      "name": "associative",
+      "source_sha256": "add6ff09c26954fa30855ad4f902097165b61abf971125243748b7b40ca0769e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/AppendString.nash",
+      "module": "AppendString",
+      "name": "preserves Unicode characters",
+      "source_sha256": "add6ff09c26954fa30855ad4f902097165b61abf971125243748b7b40ca0769e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/BData.nash",
+      "module": "BData",
+      "name": "bytes roundtrip",
+      "source_sha256": "5a2845a995de08dd4f527c3cdeafbb18cf5433b64af407dfe55c81ec096cb386",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Blake2b224.nash",
+      "module": "Blake2b224",
+      "name": "digest has the specified byte length",
+      "source_sha256": "ef21cb62ea26311156278cb4e84f5f6ecff493e9dac19cf95dcfff72924ce331",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Blake2b224.nash",
+      "module": "Blake2b224",
+      "name": "empty message known answer detects the wrong hash primitive",
+      "source_sha256": "ef21cb62ea26311156278cb4e84f5f6ecff493e9dac19cf95dcfff72924ce331",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Blake2b256.nash",
+      "module": "Blake2b256",
+      "name": "digest has the specified byte length",
+      "source_sha256": "ef2ccf54332c8873fcc8a4d34025b3c7e383c0c26dfbe3457c6d5b12f22ee194",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Blake2b256.nash",
+      "module": "Blake2b256",
+      "name": "empty message known answer detects the wrong hash primitive",
+      "source_sha256": "ef2ccf54332c8873fcc8a4d34025b3c7e383c0c26dfbe3457c6d5b12f22ee194",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381FinalVerify.nash",
+      "module": "Bls12381FinalVerify",
+      "name": "reflexive on valid Miller loop results",
+      "source_sha256": "f107a395e42fa64c1a8052bfc1457ef9ea042a9423c6ae4a0b8add8bbee4fd64",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1Add.nash",
+      "module": "Bls12381G1Add",
+      "name": "commutative on valid decoded points",
+      "source_sha256": "dc1eaa2bc2e486734c79b72c9ad017711d429a0ad4e122735d320cc91815d329",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1Compress.nash",
+      "module": "Bls12381G1Compress",
+      "name": "fixed compressed width on valid points",
+      "source_sha256": "e819f19f9d112c3343f635ffeea1571bf97eebf777ba22463867513964e3e94a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1Equal.nash",
+      "module": "Bls12381G1Equal",
+      "name": "reflexive on valid points",
+      "source_sha256": "e5cfe4e38f147f8cac205bdbf0f9c45371cdf15622740280d21d9aa5bee1750b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1HashToGroup.nash",
+      "module": "Bls12381G1HashToGroup",
+      "name": "hash to group yields a compressed point of fixed width",
+      "source_sha256": "38a59566e74c78fca4de560b56ec4e86db6352256fec9178b4843f984582fc62",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1HashToGroup.nash",
+      "module": "Bls12381G1HashToGroup",
+      "name": "oversized domain separator rejects",
+      "source_sha256": "38a59566e74c78fca4de560b56ec4e86db6352256fec9178b4843f984582fc62",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/Bls12381G1Neg.nash",
+      "module": "Bls12381G1Neg",
+      "name": "negation is an involution on valid points",
+      "source_sha256": "12c2b4e0583cee36c3c316cda4482fb742a7d1782adb2ecef5cd2270a6454598",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1ScalarMul.nash",
+      "module": "Bls12381G1ScalarMul",
+      "name": "scalar one is the identity on valid points",
+      "source_sha256": "84fe446b0e5cf29823e19d62e8c4ffaf1c0340bf09a7422f4c0a96f05e05d4d6",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1Uncompress.nash",
+      "module": "Bls12381G1Uncompress",
+      "name": "canonical compressed roundtrip on valid encodings",
+      "source_sha256": "f7ccc0ef2477b7cc6f2d4048d1be6dabc30dbec96b24362e3b483d90aeb161ee",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G1Uncompress.nash",
+      "module": "Bls12381G1Uncompress",
+      "name": "empty encoding rejects",
+      "source_sha256": "f7ccc0ef2477b7cc6f2d4048d1be6dabc30dbec96b24362e3b483d90aeb161ee",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/Bls12381G1Uncompress.nash",
+      "module": "Bls12381G1Uncompress",
+      "name": "wrong compressed width rejects",
+      "source_sha256": "f7ccc0ef2477b7cc6f2d4048d1be6dabc30dbec96b24362e3b483d90aeb161ee",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/Bls12381G1Uncompress.nash",
+      "module": "Bls12381G1Uncompress",
+      "name": "canonical infinity is accepted",
+      "source_sha256": "f7ccc0ef2477b7cc6f2d4048d1be6dabc30dbec96b24362e3b483d90aeb161ee",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2Add.nash",
+      "module": "Bls12381G2Add",
+      "name": "commutative on valid decoded points",
+      "source_sha256": "15798ba1820b5ba559e845b348673484f7b4d2c122b5e0f56a4d364b191acb6b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2Compress.nash",
+      "module": "Bls12381G2Compress",
+      "name": "fixed compressed width on valid points",
+      "source_sha256": "8eccd44502c9bc82c31efcffa247a9157d5a2c1162cdfe2569db72ee8b470a67",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2Equal.nash",
+      "module": "Bls12381G2Equal",
+      "name": "reflexive on valid points",
+      "source_sha256": "d068c460205c020a029ba083e7b3226ad6a6cb405e27b556969e21a601470df7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2HashToGroup.nash",
+      "module": "Bls12381G2HashToGroup",
+      "name": "hash to group yields a compressed point of fixed width",
+      "source_sha256": "d8397e7e897801964b2738c79c0bf1304619894038015753d055d2fc0b48a3ce",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2HashToGroup.nash",
+      "module": "Bls12381G2HashToGroup",
+      "name": "oversized domain separator rejects",
+      "source_sha256": "d8397e7e897801964b2738c79c0bf1304619894038015753d055d2fc0b48a3ce",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/Bls12381G2Neg.nash",
+      "module": "Bls12381G2Neg",
+      "name": "negation is an involution on valid points",
+      "source_sha256": "9dfef88a94225db2b4460da3bc97f1def176238813f4fcf5fdf562ae9a34532a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2ScalarMul.nash",
+      "module": "Bls12381G2ScalarMul",
+      "name": "scalar one is the identity on valid points",
+      "source_sha256": "052ca2e508cb66bc31d904cb20133ecc0dd71e4c445966cef7dc5eddfe46221e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2Uncompress.nash",
+      "module": "Bls12381G2Uncompress",
+      "name": "canonical compressed roundtrip on valid encodings",
+      "source_sha256": "fd9927b451e08242761632df367dfaa067ed588f4b45ff7b5edb28cf4ea0905a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381G2Uncompress.nash",
+      "module": "Bls12381G2Uncompress",
+      "name": "empty encoding rejects",
+      "source_sha256": "fd9927b451e08242761632df367dfaa067ed588f4b45ff7b5edb28cf4ea0905a",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/Bls12381G2Uncompress.nash",
+      "module": "Bls12381G2Uncompress",
+      "name": "wrong compressed width rejects",
+      "source_sha256": "fd9927b451e08242761632df367dfaa067ed588f4b45ff7b5edb28cf4ea0905a",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/Bls12381G2Uncompress.nash",
+      "module": "Bls12381G2Uncompress",
+      "name": "canonical infinity is accepted",
+      "source_sha256": "fd9927b451e08242761632df367dfaa067ed588f4b45ff7b5edb28cf4ea0905a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381MillerLoop.nash",
+      "module": "Bls12381MillerLoop",
+      "name": "pairing the same points gives equivalent results",
+      "source_sha256": "4d3da5021b0bf48103eb9a0ab4c4ace51ef81a7865f37a9693b9c0140c840cec",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Bls12381MulMlResult.nash",
+      "module": "Bls12381MulMlResult",
+      "name": "commutative under final verification",
+      "source_sha256": "fcf1e621713613f2884b873c102f896850ebccefc7700f2c24d78908f228bb0c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ByteStringToInteger.nash",
+      "module": "ByteStringToInteger",
+      "name": "empty bytes mean zero",
+      "source_sha256": "c40f41663cf37c0899c2d59aed9b1492e35b392ffb5983970dbedab421afe79f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ByteStringToInteger.nash",
+      "module": "ByteStringToInteger",
+      "name": "endianness",
+      "source_sha256": "c40f41663cf37c0899c2d59aed9b1492e35b392ffb5983970dbedab421afe79f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ByteStringToInteger.nash",
+      "module": "ByteStringToInteger",
+      "name": "arbitrary width conversion stays nonnegative",
+      "source_sha256": "c40f41663cf37c0899c2d59aed9b1492e35b392ffb5983970dbedab421afe79f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ByteStringToInteger.nash",
+      "module": "ByteStringToInteger",
+      "name": "leading zero does not alter big endian value",
+      "source_sha256": "c40f41663cf37c0899c2d59aed9b1492e35b392ffb5983970dbedab421afe79f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseData.nash",
+      "module": "ChooseData",
+      "name": "selects the constructor branch",
+      "source_sha256": "3720d8f49a22b3127811717964b98c31a5d46e614d62cc8407aeb2138e2c02f4",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseData.nash",
+      "module": "ChooseData",
+      "name": "selects the map branch",
+      "source_sha256": "3720d8f49a22b3127811717964b98c31a5d46e614d62cc8407aeb2138e2c02f4",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseData.nash",
+      "module": "ChooseData",
+      "name": "selects the list branch",
+      "source_sha256": "3720d8f49a22b3127811717964b98c31a5d46e614d62cc8407aeb2138e2c02f4",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseData.nash",
+      "module": "ChooseData",
+      "name": "selects the integer branch",
+      "source_sha256": "3720d8f49a22b3127811717964b98c31a5d46e614d62cc8407aeb2138e2c02f4",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseData.nash",
+      "module": "ChooseData",
+      "name": "selects the bytes branch",
+      "source_sha256": "3720d8f49a22b3127811717964b98c31a5d46e614d62cc8407aeb2138e2c02f4",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseList.nash",
+      "module": "ChooseList",
+      "name": "empty list chooses the empty branch",
+      "source_sha256": "0164fd136bbe25b2f0be56c84d6223d7e6e8ece44db1c1d42189b9432f2e4f3f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseList.nash",
+      "module": "ChooseList",
+      "name": "nonempty list chooses the nonempty branch",
+      "source_sha256": "0164fd136bbe25b2f0be56c84d6223d7e6e8ece44db1c1d42189b9432f2e4f3f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseList.nash",
+      "module": "ChooseList",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "0164fd136bbe25b2f0be56c84d6223d7e6e8ece44db1c1d42189b9432f2e4f3f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseUnit.nash",
+      "module": "ChooseUnit",
+      "name": "returns the second argument",
+      "source_sha256": "2d3042cb4cfbacbc0680f60d11fc6aed8cf12c13fa802683871b36929e0a3eff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ChooseUnit.nash",
+      "module": "ChooseUnit",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "2d3042cb4cfbacbc0680f60d11fc6aed8cf12c13fa802683871b36929e0a3eff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ComplementByteString.nash",
+      "module": "ComplementByteString",
+      "name": "involution",
+      "source_sha256": "63a14d511e64af8c599c2bde12d1af7a8e19f42bce07667506bd895f91316ccd",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ComplementByteString.nash",
+      "module": "ComplementByteString",
+      "name": "preserves length",
+      "source_sha256": "63a14d511e64af8c599c2bde12d1af7a8e19f42bce07667506bd895f91316ccd",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ComplementByteString.nash",
+      "module": "ComplementByteString",
+      "name": "complements every bit",
+      "source_sha256": "63a14d511e64af8c599c2bde12d1af7a8e19f42bce07667506bd895f91316ccd",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ConsByteString.nash",
+      "module": "ConsByteString",
+      "name": "prepends zero and preserves length",
+      "source_sha256": "aca6a7be3d9836fd97cbee1f5889ab24b70a2583ed51be9a416387656249707f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ConsByteString.nash",
+      "module": "ConsByteString",
+      "name": "valid byte survives at the head",
+      "source_sha256": "aca6a7be3d9836fd97cbee1f5889ab24b70a2583ed51be9a416387656249707f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ConsByteString.nash",
+      "module": "ConsByteString",
+      "name": "negative byte rejects in Plutus V3",
+      "source_sha256": "aca6a7be3d9836fd97cbee1f5889ab24b70a2583ed51be9a416387656249707f",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ConsByteString.nash",
+      "module": "ConsByteString",
+      "name": "byte above 255 rejects in Plutus V3",
+      "source_sha256": "aca6a7be3d9836fd97cbee1f5889ab24b70a2583ed51be9a416387656249707f",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ConsByteString.nash",
+      "module": "ConsByteString",
+      "name": "all negative byte values reject",
+      "source_sha256": "aca6a7be3d9836fd97cbee1f5889ab24b70a2583ed51be9a416387656249707f",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ConsByteString.nash",
+      "module": "ConsByteString",
+      "name": "all byte values above 255 reject",
+      "source_sha256": "aca6a7be3d9836fd97cbee1f5889ab24b70a2583ed51be9a416387656249707f",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ConstrData.nash",
+      "module": "ConstrData",
+      "name": "constructor tag and fields survive roundtrip",
+      "source_sha256": "fcba123af0e6a1765a70b81ab2a04d3110e2311f66d2ab0d1a34cae1c1885cbd",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/CountSetBits.nash",
+      "module": "CountSetBits",
+      "name": "count is bounded by the bit width",
+      "source_sha256": "8d617db7d1ccbec70297d29137de18782847c03da97c9c708d59ddaf24c2ba67",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/CountSetBits.nash",
+      "module": "CountSetBits",
+      "name": "known counts",
+      "source_sha256": "8d617db7d1ccbec70297d29137de18782847c03da97c9c708d59ddaf24c2ba67",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "inverse on encoded strings",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "non ASCII decoding",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "invalid UTF8 rejects",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "truncated UTF8 rejects",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "overlong UTF8 is rejected",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "UTF8 surrogate codepoints are rejected",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/DecodeUtf8.nash",
+      "module": "DecodeUtf8",
+      "name": "codepoint above Unicode maximum is rejected",
+      "source_sha256": "991556c25a18fe32d2b8e1ac4d165b2be8460508b09c10b9170c8048593aa087",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/DivideInteger.nash",
+      "module": "DivideInteger",
+      "name": "division by one",
+      "source_sha256": "7e1241661337239cf0a5bf1b840566d486efaca0209822688f0575a94dcca83c",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/DivideInteger.nash",
+      "module": "DivideInteger",
+      "name": "quotient and remainder reconstruct the dividend",
+      "source_sha256": "7e1241661337239cf0a5bf1b840566d486efaca0209822688f0575a94dcca83c",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/DivideInteger.nash",
+      "module": "DivideInteger",
+      "name": "negative rounding convention",
+      "source_sha256": "7e1241661337239cf0a5bf1b840566d486efaca0209822688f0575a94dcca83c",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/DivideInteger.nash",
+      "module": "DivideInteger",
+      "name": "zero divisor rejects every dividend",
+      "source_sha256": "7e1241661337239cf0a5bf1b840566d486efaca0209822688f0575a94dcca83c",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/DivideInteger.nash",
+      "module": "DivideInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "7e1241661337239cf0a5bf1b840566d486efaca0209822688f0575a94dcca83c",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/DropList.nash",
+      "module": "DropList",
+      "name": "dropping zero preserves the head",
+      "source_sha256": "229f63138341cf7a42d5a229475bfbf78e44e945c7301f936ea1389d902c89fb",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DropList.nash",
+      "module": "DropList",
+      "name": "dropping one preserves the next element",
+      "source_sha256": "229f63138341cf7a42d5a229475bfbf78e44e945c7301f936ea1389d902c89fb",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DropList.nash",
+      "module": "DropList",
+      "name": "dropping the full list gives empty",
+      "source_sha256": "229f63138341cf7a42d5a229475bfbf78e44e945c7301f936ea1389d902c89fb",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DropList.nash",
+      "module": "DropList",
+      "name": "negative count preserves the list",
+      "source_sha256": "229f63138341cf7a42d5a229475bfbf78e44e945c7301f936ea1389d902c89fb",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/DropList.nash",
+      "module": "DropList",
+      "name": "count beyond length gives empty",
+      "source_sha256": "229f63138341cf7a42d5a229475bfbf78e44e945c7301f936ea1389d902c89fb",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EncodeUtf8.nash",
+      "module": "EncodeUtf8",
+      "name": "decode after encoding",
+      "source_sha256": "4959bcf9829ea6613f9f365f324f8118ca48a96ce4f3a06e91ccbb16714138e7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EncodeUtf8.nash",
+      "module": "EncodeUtf8",
+      "name": "append is preserved",
+      "source_sha256": "4959bcf9829ea6613f9f365f324f8118ca48a96ce4f3a06e91ccbb16714138e7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EncodeUtf8.nash",
+      "module": "EncodeUtf8",
+      "name": "non ASCII encoding",
+      "source_sha256": "4959bcf9829ea6613f9f365f324f8118ca48a96ce4f3a06e91ccbb16714138e7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EncodeUtf8.nash",
+      "module": "EncodeUtf8",
+      "name": "embedded zero is preserved",
+      "source_sha256": "4959bcf9829ea6613f9f365f324f8118ca48a96ce4f3a06e91ccbb16714138e7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsByteString.nash",
+      "module": "EqualsByteString",
+      "name": "reflexive",
+      "source_sha256": "263083b016df90e5cfb513d04b19341ad6f9e6f917af7294de24554a7b34c8c3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsByteString.nash",
+      "module": "EqualsByteString",
+      "name": "symmetric",
+      "source_sha256": "263083b016df90e5cfb513d04b19341ad6f9e6f917af7294de24554a7b34c8c3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsByteString.nash",
+      "module": "EqualsByteString",
+      "name": "transitive",
+      "source_sha256": "263083b016df90e5cfb513d04b19341ad6f9e6f917af7294de24554a7b34c8c3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsByteString.nash",
+      "module": "EqualsByteString",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "263083b016df90e5cfb513d04b19341ad6f9e6f917af7294de24554a7b34c8c3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsData.nash",
+      "module": "EqualsData",
+      "name": "reflexive",
+      "source_sha256": "cb5a90908258c4d48d2b4bc04b1b0c02a34b159bdea9f7975a140b2e8ef0408f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsData.nash",
+      "module": "EqualsData",
+      "name": "symmetric",
+      "source_sha256": "cb5a90908258c4d48d2b4bc04b1b0c02a34b159bdea9f7975a140b2e8ef0408f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsData.nash",
+      "module": "EqualsData",
+      "name": "transitive",
+      "source_sha256": "cb5a90908258c4d48d2b4bc04b1b0c02a34b159bdea9f7975a140b2e8ef0408f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsData.nash",
+      "module": "EqualsData",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "cb5a90908258c4d48d2b4bc04b1b0c02a34b159bdea9f7975a140b2e8ef0408f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsInteger.nash",
+      "module": "EqualsInteger",
+      "name": "reflexive",
+      "source_sha256": "a68aecf09ad5a8173bdbf662adbeeb04b7cf59029857c1a5e2f76e850b7f3816",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/EqualsInteger.nash",
+      "module": "EqualsInteger",
+      "name": "symmetric",
+      "source_sha256": "a68aecf09ad5a8173bdbf662adbeeb04b7cf59029857c1a5e2f76e850b7f3816",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/EqualsInteger.nash",
+      "module": "EqualsInteger",
+      "name": "equivalent to zero difference",
+      "source_sha256": "a68aecf09ad5a8173bdbf662adbeeb04b7cf59029857c1a5e2f76e850b7f3816",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/EqualsInteger.nash",
+      "module": "EqualsInteger",
+      "name": "successive integers are distinct at every width",
+      "source_sha256": "a68aecf09ad5a8173bdbf662adbeeb04b7cf59029857c1a5e2f76e850b7f3816",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/EqualsInteger.nash",
+      "module": "EqualsInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "a68aecf09ad5a8173bdbf662adbeeb04b7cf59029857c1a5e2f76e850b7f3816",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/EqualsString.nash",
+      "module": "EqualsString",
+      "name": "reflexive",
+      "source_sha256": "f5300d7fbf6468ff29a2d6d79e27275366cabe8bcefc03929098d9005f67ba91",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsString.nash",
+      "module": "EqualsString",
+      "name": "symmetric",
+      "source_sha256": "f5300d7fbf6468ff29a2d6d79e27275366cabe8bcefc03929098d9005f67ba91",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsString.nash",
+      "module": "EqualsString",
+      "name": "transitive",
+      "source_sha256": "f5300d7fbf6468ff29a2d6d79e27275366cabe8bcefc03929098d9005f67ba91",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/EqualsString.nash",
+      "module": "EqualsString",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "f5300d7fbf6468ff29a2d6d79e27275366cabe8bcefc03929098d9005f67ba91",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ExpModInteger.nash",
+      "module": "ExpModInteger",
+      "name": "exponent zero gives the modular identity",
+      "source_sha256": "23193aad0cd956725b2a816fbea6a37caa2fecb7c1b9427e008bace7aa6df468",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ExpModInteger.nash",
+      "module": "ExpModInteger",
+      "name": "known modular power",
+      "source_sha256": "23193aad0cd956725b2a816fbea6a37caa2fecb7c1b9427e008bace7aa6df468",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ExpModInteger.nash",
+      "module": "ExpModInteger",
+      "name": "zero modulus rejects",
+      "source_sha256": "23193aad0cd956725b2a816fbea6a37caa2fecb7c1b9427e008bace7aa6df468",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/ExpModInteger.nash",
+      "module": "ExpModInteger",
+      "name": "negative modulus rejects",
+      "source_sha256": "23193aad0cd956725b2a816fbea6a37caa2fecb7c1b9427e008bace7aa6df468",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/ExpModInteger.nash",
+      "module": "ExpModInteger",
+      "name": "missing modular inverse rejects",
+      "source_sha256": "23193aad0cd956725b2a816fbea6a37caa2fecb7c1b9427e008bace7aa6df468",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/ExpModInteger.nash",
+      "module": "ExpModInteger",
+      "name": "negative exponent uses modular inverse",
+      "source_sha256": "23193aad0cd956725b2a816fbea6a37caa2fecb7c1b9427e008bace7aa6df468",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/FindFirstSetBit.nash",
+      "module": "FindFirstSetBit",
+      "name": "minus one exactly for all zero bits",
+      "source_sha256": "b914a1e7e9b08349d74bb1646f46eae186c06cab6738c3b38937f6144ad0704d",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/FindFirstSetBit.nash",
+      "module": "FindFirstSetBit",
+      "name": "least significant indexing",
+      "source_sha256": "b914a1e7e9b08349d74bb1646f46eae186c06cab6738c3b38937f6144ad0704d",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/FstPair.nash",
+      "module": "FstPair",
+      "name": "projects the correct component",
+      "source_sha256": "c5276f530af614f07ac935e3f128a69fa97a23967423b3dcfb7d8dc80a1984ce",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/HeadList.nash",
+      "module": "HeadList",
+      "name": "head of a nonempty list",
+      "source_sha256": "c67e1b3fe1aeb093895803b406b9e3ab07aa13ce3c8e817ee7800bc8cf7e5385",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/HeadList.nash",
+      "module": "HeadList",
+      "name": "empty list rejects",
+      "source_sha256": "c67e1b3fe1aeb093895803b406b9e3ab07aa13ce3c8e817ee7800bc8cf7e5385",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/IData.nash",
+      "module": "IData",
+      "name": "integer roundtrip has no width bound",
+      "source_sha256": "46e7ff3cd58fb4caf6ed3a64e1213e946d22c5168f8ce5fd96de09106ef650a2",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IfThenElse.nash",
+      "module": "IfThenElse",
+      "name": "selects the branch indicated by the condition",
+      "source_sha256": "dfd1580aecf46f091410b87bc64023946ccd4a2b8f7fc88a196e13d635a1ea8b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IfThenElse.nash",
+      "module": "IfThenElse",
+      "name": "selects arbitrary Data values",
+      "source_sha256": "dfd1580aecf46f091410b87bc64023946ccd4a2b8f7fc88a196e13d635a1ea8b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IfThenElse.nash",
+      "module": "IfThenElse",
+      "name": "unselected arguments are still evaluated",
+      "source_sha256": "dfd1580aecf46f091410b87bc64023946ccd4a2b8f7fc88a196e13d635a1ea8b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IfThenElse.nash",
+      "module": "IfThenElse",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "dfd1580aecf46f091410b87bc64023946ccd4a2b8f7fc88a196e13d635a1ea8b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IndexArray.nash",
+      "module": "IndexArray",
+      "name": "selects each position",
+      "source_sha256": "f7e6bac94e0624ab2d287977b22610a445dac3004d91cb5cac5702a85b91aaac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IndexArray.nash",
+      "module": "IndexArray",
+      "name": "negative index rejects",
+      "source_sha256": "f7e6bac94e0624ab2d287977b22610a445dac3004d91cb5cac5702a85b91aaac",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/IndexArray.nash",
+      "module": "IndexArray",
+      "name": "index equal to length rejects",
+      "source_sha256": "f7e6bac94e0624ab2d287977b22610a445dac3004d91cb5cac5702a85b91aaac",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/IndexArray.nash",
+      "module": "IndexArray",
+      "name": "index must not truncate to a machine word",
+      "source_sha256": "f7e6bac94e0624ab2d287977b22610a445dac3004d91cb5cac5702a85b91aaac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IndexArray.nash",
+      "module": "IndexArray",
+      "name": "index above 128 bits rejects without host overflow",
+      "source_sha256": "f7e6bac94e0624ab2d287977b22610a445dac3004d91cb5cac5702a85b91aaac",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/IndexByteString.nash",
+      "module": "IndexByteString",
+      "name": "valid indices return a byte",
+      "source_sha256": "5d62bea74e6a730ab523b5f5d4920663422497b2e0dced15b619c9ab03ac263f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IndexByteString.nash",
+      "module": "IndexByteString",
+      "name": "cons supplies index zero",
+      "source_sha256": "5d62bea74e6a730ab523b5f5d4920663422497b2e0dced15b619c9ab03ac263f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IndexByteString.nash",
+      "module": "IndexByteString",
+      "name": "negative index rejects",
+      "source_sha256": "5d62bea74e6a730ab523b5f5d4920663422497b2e0dced15b619c9ab03ac263f",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/IndexByteString.nash",
+      "module": "IndexByteString",
+      "name": "index equal to length rejects",
+      "source_sha256": "5d62bea74e6a730ab523b5f5d4920663422497b2e0dced15b619c9ab03ac263f",
+      "status": "backend_error",
+      "reason": "The SMT translator does not support an encountered Fin/BitVec datatype."
+    },
+    {
+      "file": "builtins/IndexByteString.nash",
+      "module": "IndexByteString",
+      "name": "index must not truncate to a machine word",
+      "source_sha256": "5d62bea74e6a730ab523b5f5d4920663422497b2e0dced15b619c9ab03ac263f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IndexByteString.nash",
+      "module": "IndexByteString",
+      "name": "index above 128 bits rejects without host overflow",
+      "source_sha256": "5d62bea74e6a730ab523b5f5d4920663422497b2e0dced15b619c9ab03ac263f",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "insert then lookup",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "zero quantity removes the coin",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "nonzero quantity rejects currency ID above 32 bytes",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "nonzero quantity rejects token name above 32 bytes",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "positive quantity above signed 128 bits rejects",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "zero quantity accepts long identifiers",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/InsertCoin.nash",
+      "module": "InsertCoin",
+      "name": "reinsertion replaces rather than adds",
+      "source_sha256": "f8cb439f708e30b61df149c9b27b9b363b771c7735f4ea50e23f2205103fcf8e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "zero with minimal width is empty",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "endianness and leading padding",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "unsigned byte roundtrip",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "negative integer rejects",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "insufficient width rejects",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "negative width rejects",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "width above 8192 rejects",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/IntegerToByteString.nash",
+      "module": "IntegerToByteString",
+      "name": "largest supported width is accepted",
+      "source_sha256": "84e35ce21ff4b21a11cf0fe4724669c58edd027a1e81f81624f8ca781a0e6795",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Keccak256.nash",
+      "module": "Keccak256",
+      "name": "digest has the specified byte length",
+      "source_sha256": "0e802e224b2873a001a0743d088a2208a718ac933618ac38c0cc90d247738fb0",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LengthOfArray.nash",
+      "module": "LengthOfArray",
+      "name": "empty array length",
+      "source_sha256": "17aec38c6ee47865ea254427800b50a96d7aa3676eae0c00ddb24c94b12f2203",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LengthOfArray.nash",
+      "module": "LengthOfArray",
+      "name": "length after list conversion",
+      "source_sha256": "17aec38c6ee47865ea254427800b50a96d7aa3676eae0c00ddb24c94b12f2203",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LengthOfByteString.nash",
+      "module": "LengthOfByteString",
+      "name": "nonnegative",
+      "source_sha256": "866001394f3eeebabce6eb33254a6af3eb1d5dd189d2115a7b0f983cc8a3fa43",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LengthOfByteString.nash",
+      "module": "LengthOfByteString",
+      "name": "empty length is zero",
+      "source_sha256": "866001394f3eeebabce6eb33254a6af3eb1d5dd189d2115a7b0f983cc8a3fa43",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LengthOfByteString.nash",
+      "module": "LengthOfByteString",
+      "name": "append adds lengths",
+      "source_sha256": "866001394f3eeebabce6eb33254a6af3eb1d5dd189d2115a7b0f983cc8a3fa43",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LengthOfByteString.nash",
+      "module": "LengthOfByteString",
+      "name": "bytes are counted rather than UTF8 codepoints",
+      "source_sha256": "866001394f3eeebabce6eb33254a6af3eb1d5dd189d2115a7b0f983cc8a3fa43",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LessThanByteString.nash",
+      "module": "LessThanByteString",
+      "name": "irreflexive",
+      "source_sha256": "02fd1873ff7285f9fd3b2f4e192404ea05f06ea9c91443853208aaa51923172a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LessThanByteString.nash",
+      "module": "LessThanByteString",
+      "name": "asymmetric",
+      "source_sha256": "02fd1873ff7285f9fd3b2f4e192404ea05f06ea9c91443853208aaa51923172a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LessThanByteString.nash",
+      "module": "LessThanByteString",
+      "name": "unsigned lexicographic ordering",
+      "source_sha256": "02fd1873ff7285f9fd3b2f4e192404ea05f06ea9c91443853208aaa51923172a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LessThanEqualsByteString.nash",
+      "module": "LessThanEqualsByteString",
+      "name": "reflexive",
+      "source_sha256": "6b00fdee94ad2b0d4cb58dcb0fdeea5bfede44e02f94ac572cca90ea7e074387",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LessThanEqualsByteString.nash",
+      "module": "LessThanEqualsByteString",
+      "name": "agrees with strict order or equality",
+      "source_sha256": "6b00fdee94ad2b0d4cb58dcb0fdeea5bfede44e02f94ac572cca90ea7e074387",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LessThanEqualsInteger.nash",
+      "module": "LessThanEqualsInteger",
+      "name": "reflexive",
+      "source_sha256": "dc2e5d35ca06921fb417e189e81e2bbabf18b350dfc334a25756d19848f944ec",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/LessThanEqualsInteger.nash",
+      "module": "LessThanEqualsInteger",
+      "name": "antisymmetric",
+      "source_sha256": "dc2e5d35ca06921fb417e189e81e2bbabf18b350dfc334a25756d19848f944ec",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/LessThanEqualsInteger.nash",
+      "module": "LessThanEqualsInteger",
+      "name": "agrees with strict order or equality",
+      "source_sha256": "dc2e5d35ca06921fb417e189e81e2bbabf18b350dfc334a25756d19848f944ec",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/LessThanEqualsInteger.nash",
+      "module": "LessThanEqualsInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "dc2e5d35ca06921fb417e189e81e2bbabf18b350dfc334a25756d19848f944ec",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/LessThanInteger.nash",
+      "module": "LessThanInteger",
+      "name": "irreflexive",
+      "source_sha256": "7e297299a3ac48729855b3cfe216f7e9df5e0f34fb2584b5147d2a6768bfa147",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/LessThanInteger.nash",
+      "module": "LessThanInteger",
+      "name": "strict successor order at every width",
+      "source_sha256": "7e297299a3ac48729855b3cfe216f7e9df5e0f34fb2584b5147d2a6768bfa147",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/LessThanInteger.nash",
+      "module": "LessThanInteger",
+      "name": "asymmetric",
+      "source_sha256": "7e297299a3ac48729855b3cfe216f7e9df5e0f34fb2584b5147d2a6768bfa147",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/LessThanInteger.nash",
+      "module": "LessThanInteger",
+      "name": "transitive",
+      "source_sha256": "7e297299a3ac48729855b3cfe216f7e9df5e0f34fb2584b5147d2a6768bfa147",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/LessThanInteger.nash",
+      "module": "LessThanInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "7e297299a3ac48729855b3cfe216f7e9df5e0f34fb2584b5147d2a6768bfa147",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ListData.nash",
+      "module": "ListData",
+      "name": "list elements survive roundtrip",
+      "source_sha256": "034a0b9cdf82e37cd7fd1d26ca72dcb5a2692319b6da7f76ff79efcabc1631ad",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ListToArray.nash",
+      "module": "ListToArray",
+      "name": "preserves order",
+      "source_sha256": "befc87b01312836833a4784f979c14ae9e3caf12af8a0a760be49fede1731526",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LookupCoin.nash",
+      "module": "LookupCoin",
+      "name": "absent asset has zero quantity",
+      "source_sha256": "4eedfe77733162b690777a4a61bdeebeedbc40a345dbb61daebd749d874c3457",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LookupCoin.nash",
+      "module": "LookupCoin",
+      "name": "returns the inserted quantity",
+      "source_sha256": "4eedfe77733162b690777a4a61bdeebeedbc40a345dbb61daebd749d874c3457",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/LookupCoin.nash",
+      "module": "LookupCoin",
+      "name": "long nonexistent identifier gives zero",
+      "source_sha256": "4eedfe77733162b690777a4a61bdeebeedbc40a345dbb61daebd749d874c3457",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MapData.nash",
+      "module": "MapData",
+      "name": "map entry survives roundtrip",
+      "source_sha256": "c6934265ccc1808db2c48a083bce631b1908834aff87e91a7d74c95ff1c59f3f",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkCons.nash",
+      "module": "MkCons",
+      "name": "head of cons is its element",
+      "source_sha256": "bb21e43e2315d53ab0841682f90a054dbb48d9748579e1b6ae29dc401d1ed510",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkCons.nash",
+      "module": "MkCons",
+      "name": "tail of cons is its original list",
+      "source_sha256": "bb21e43e2315d53ab0841682f90a054dbb48d9748579e1b6ae29dc401d1ed510",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkCons.nash",
+      "module": "MkCons",
+      "name": "cons is never empty",
+      "source_sha256": "bb21e43e2315d53ab0841682f90a054dbb48d9748579e1b6ae29dc401d1ed510",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkNilData.nash",
+      "module": "MkNilData",
+      "name": "produces the empty list",
+      "source_sha256": "d5e708f1d140b27b5c9e111e6878a6670a32090ce9ca140a10ae2ab77b59588d",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkNilData.nash",
+      "module": "MkNilData",
+      "name": "empty result has no head",
+      "source_sha256": "d5e708f1d140b27b5c9e111e6878a6670a32090ce9ca140a10ae2ab77b59588d",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkNilPairData.nash",
+      "module": "MkNilPairData",
+      "name": "produces the empty list",
+      "source_sha256": "123eb956be08903b6a031fbf4dd27f1da1583f01a085d305e48ec53c803113d5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkNilPairData.nash",
+      "module": "MkNilPairData",
+      "name": "empty result has no head",
+      "source_sha256": "123eb956be08903b6a031fbf4dd27f1da1583f01a085d305e48ec53c803113d5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/MkPairData.nash",
+      "module": "MkPairData",
+      "name": "both projections recover their arguments",
+      "source_sha256": "8e4b9a314085bb303ae25b9eccb8571e983a8af4f50433fbf77feac220578d94",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ModInteger.nash",
+      "module": "ModInteger",
+      "name": "remainder modulo one is zero",
+      "source_sha256": "c1c66b2f1ace739a8ffa2309bc9d14592cc1e3fbc5e60f4d664dc6ea3729cba6",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ModInteger.nash",
+      "module": "ModInteger",
+      "name": "division reconstruction",
+      "source_sha256": "c1c66b2f1ace739a8ffa2309bc9d14592cc1e3fbc5e60f4d664dc6ea3729cba6",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ModInteger.nash",
+      "module": "ModInteger",
+      "name": "positive modulus bounds the remainder",
+      "source_sha256": "c1c66b2f1ace739a8ffa2309bc9d14592cc1e3fbc5e60f4d664dc6ea3729cba6",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ModInteger.nash",
+      "module": "ModInteger",
+      "name": "negative rounding convention",
+      "source_sha256": "c1c66b2f1ace739a8ffa2309bc9d14592cc1e3fbc5e60f4d664dc6ea3729cba6",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ModInteger.nash",
+      "module": "ModInteger",
+      "name": "zero divisor rejects every dividend",
+      "source_sha256": "c1c66b2f1ace739a8ffa2309bc9d14592cc1e3fbc5e60f4d664dc6ea3729cba6",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ModInteger.nash",
+      "module": "ModInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "c1c66b2f1ace739a8ffa2309bc9d14592cc1e3fbc5e60f4d664dc6ea3729cba6",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "commutative",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "associative",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "distributive over addition",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "multiplicative identity",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "zero annihilates",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "square is nonnegative without machine overflow",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "crosses signed 64-bit boundary",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/MultiplyInteger.nash",
+      "module": "MultiplyInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "d2a91324f674ef643bf8cac3b0d68907147c9734eb1d55425d4a3df9fb919d23",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/NullList.nash",
+      "module": "NullList",
+      "name": "empty list is null",
+      "source_sha256": "d90c8266f2c6e2316bd72a7e47243fca0dc3cebc26c056b72d8022fcc000831d",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/NullList.nash",
+      "module": "NullList",
+      "name": "singleton list is not null",
+      "source_sha256": "d90c8266f2c6e2316bd72a7e47243fca0dc3cebc26c056b72d8022fcc000831d",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/OrByteString.nash",
+      "module": "OrByteString",
+      "name": "commutative for both padding modes",
+      "source_sha256": "c76c5d0c7f8b5cd5c300d8994b1e9f4113dc8096c8f530bad26a692401371230",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/OrByteString.nash",
+      "module": "OrByteString",
+      "name": "self law",
+      "source_sha256": "c76c5d0c7f8b5cd5c300d8994b1e9f4113dc8096c8f530bad26a692401371230",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/OrByteString.nash",
+      "module": "OrByteString",
+      "name": "truncating mode with empty input",
+      "source_sha256": "c76c5d0c7f8b5cd5c300d8994b1e9f4113dc8096c8f530bad26a692401371230",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/QuotientInteger.nash",
+      "module": "QuotientInteger",
+      "name": "division by one",
+      "source_sha256": "8f92a13ef16e47fffb82ef378c046d22c3493135e03884a09840dbe875b37c93",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/QuotientInteger.nash",
+      "module": "QuotientInteger",
+      "name": "quotient and remainder reconstruct the dividend",
+      "source_sha256": "8f92a13ef16e47fffb82ef378c046d22c3493135e03884a09840dbe875b37c93",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/QuotientInteger.nash",
+      "module": "QuotientInteger",
+      "name": "negative rounding convention",
+      "source_sha256": "8f92a13ef16e47fffb82ef378c046d22c3493135e03884a09840dbe875b37c93",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/QuotientInteger.nash",
+      "module": "QuotientInteger",
+      "name": "zero divisor rejects every dividend",
+      "source_sha256": "8f92a13ef16e47fffb82ef378c046d22c3493135e03884a09840dbe875b37c93",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/QuotientInteger.nash",
+      "module": "QuotientInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "8f92a13ef16e47fffb82ef378c046d22c3493135e03884a09840dbe875b37c93",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReadBit.nash",
+      "module": "ReadBit",
+      "name": "least significant bit indexing",
+      "source_sha256": "c2032885e10e60ade90b7d2ec5718565cd2dac02619c419bb43d9e77e6204f9e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ReadBit.nash",
+      "module": "ReadBit",
+      "name": "negative bit index rejects",
+      "source_sha256": "c2032885e10e60ade90b7d2ec5718565cd2dac02619c419bb43d9e77e6204f9e",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReadBit.nash",
+      "module": "ReadBit",
+      "name": "index equal to bit count rejects",
+      "source_sha256": "c2032885e10e60ade90b7d2ec5718565cd2dac02619c419bb43d9e77e6204f9e",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReadBit.nash",
+      "module": "ReadBit",
+      "name": "index above 128 bits rejects without host overflow",
+      "source_sha256": "c2032885e10e60ade90b7d2ec5718565cd2dac02619c419bb43d9e77e6204f9e",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/RemainderInteger.nash",
+      "module": "RemainderInteger",
+      "name": "remainder modulo one is zero",
+      "source_sha256": "3c480cdceb54125e8f87ed5667745fc45fb2f001c932463d85d7ec6f498d0947",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/RemainderInteger.nash",
+      "module": "RemainderInteger",
+      "name": "division reconstruction",
+      "source_sha256": "3c480cdceb54125e8f87ed5667745fc45fb2f001c932463d85d7ec6f498d0947",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/RemainderInteger.nash",
+      "module": "RemainderInteger",
+      "name": "remainder has the dividend sign",
+      "source_sha256": "3c480cdceb54125e8f87ed5667745fc45fb2f001c932463d85d7ec6f498d0947",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/RemainderInteger.nash",
+      "module": "RemainderInteger",
+      "name": "negative rounding convention",
+      "source_sha256": "3c480cdceb54125e8f87ed5667745fc45fb2f001c932463d85d7ec6f498d0947",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/RemainderInteger.nash",
+      "module": "RemainderInteger",
+      "name": "zero divisor rejects every dividend",
+      "source_sha256": "3c480cdceb54125e8f87ed5667745fc45fb2f001c932463d85d7ec6f498d0947",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/RemainderInteger.nash",
+      "module": "RemainderInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "3c480cdceb54125e8f87ed5667745fc45fb2f001c932463d85d7ec6f498d0947",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "zero count produces empty bytes",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "repeats exactly the requested byte",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "invalid byte rejects",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "negative count rejects",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "negative byte rejects",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "count above 8192 rejects",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/ReplicateByte.nash",
+      "module": "ReplicateByte",
+      "name": "largest supported count is accepted",
+      "source_sha256": "bfc02d6daff02ef5066e00f8f863a941655784696939b53d32923ea5d0f851d3",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Ripemd160.nash",
+      "module": "Ripemd160",
+      "name": "digest has the specified byte length",
+      "source_sha256": "54dcb28b5abda7f7def4d07c88719d299ea85ca84178df3a627414ef8329ea01",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Ripemd160.nash",
+      "module": "Ripemd160",
+      "name": "empty message known answer detects the wrong hash primitive",
+      "source_sha256": "54dcb28b5abda7f7def4d07c88719d299ea85ca84178df3a627414ef8329ea01",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/RotateByteString.nash",
+      "module": "RotateByteString",
+      "name": "zero rotation is identity",
+      "source_sha256": "5c0afa3feee1dd5a7c422ea807b29729e70b738848c6f131dc3fb8f7166b2447",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/RotateByteString.nash",
+      "module": "RotateByteString",
+      "name": "rotation by width is identity",
+      "source_sha256": "5c0afa3feee1dd5a7c422ea807b29729e70b738848c6f131dc3fb8f7166b2447",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/RotateByteString.nash",
+      "module": "RotateByteString",
+      "name": "inverse rotation",
+      "source_sha256": "5c0afa3feee1dd5a7c422ea807b29729e70b738848c6f131dc3fb8f7166b2447",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/RotateByteString.nash",
+      "module": "RotateByteString",
+      "name": "large rotation is reduced by bit width",
+      "source_sha256": "5c0afa3feee1dd5a7c422ea807b29729e70b738848c6f131dc3fb8f7166b2447",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/ScaleValue.nash",
+      "module": "ScaleValue",
+      "name": "zero annihilates quantities",
+      "source_sha256": "48339d3ca100d527144709992e93ac284a742d59cf74ece393273c1ae1cb1589",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ScaleValue.nash",
+      "module": "ScaleValue",
+      "name": "multiplicative identity",
+      "source_sha256": "48339d3ca100d527144709992e93ac284a742d59cf74ece393273c1ae1cb1589",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ScaleValue.nash",
+      "module": "ScaleValue",
+      "name": "scales quantities",
+      "source_sha256": "48339d3ca100d527144709992e93ac284a742d59cf74ece393273c1ae1cb1589",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ScaleValue.nash",
+      "module": "ScaleValue",
+      "name": "quantity overflow rejects",
+      "source_sha256": "48339d3ca100d527144709992e93ac284a742d59cf74ece393273c1ae1cb1589",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ScaleValue.nash",
+      "module": "ScaleValue",
+      "name": "out of bounds multiplier rejects",
+      "source_sha256": "48339d3ca100d527144709992e93ac284a742d59cf74ece393273c1ae1cb1589",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/SerialiseData.nash",
+      "module": "SerialiseData",
+      "name": "canonical CBOR integer encoding",
+      "source_sha256": "64c3959b6325508a269fcbeaf09f25a33e91f95ce83fa639b6ded8d0baafa659",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Sha2256.nash",
+      "module": "Sha2256",
+      "name": "digest has the specified byte length",
+      "source_sha256": "cdbaa425599b5bbef0707b916196a5ccaa1c068384ca93eddaed6e4dffa2a66c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Sha2256.nash",
+      "module": "Sha2256",
+      "name": "empty message known answer detects the wrong hash primitive",
+      "source_sha256": "cdbaa425599b5bbef0707b916196a5ccaa1c068384ca93eddaed6e4dffa2a66c",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Sha3256.nash",
+      "module": "Sha3256",
+      "name": "digest has the specified byte length",
+      "source_sha256": "a09f08e6f2946d5aac17be4a2d9549f432aecc25964732a1e26e8bee3416d29b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Sha3256.nash",
+      "module": "Sha3256",
+      "name": "empty message known answer detects the wrong hash primitive",
+      "source_sha256": "a09f08e6f2946d5aac17be4a2d9549f432aecc25964732a1e26e8bee3416d29b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ShiftByteString.nash",
+      "module": "ShiftByteString",
+      "name": "zero shift is identity",
+      "source_sha256": "cf1c719bc17823d3c5bfcb1749e8a7f0fafbd55aca241d2c71b3fab09c72f2a5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ShiftByteString.nash",
+      "module": "ShiftByteString",
+      "name": "direction and zero fill",
+      "source_sha256": "cf1c719bc17823d3c5bfcb1749e8a7f0fafbd55aca241d2c71b3fab09c72f2a5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ShiftByteString.nash",
+      "module": "ShiftByteString",
+      "name": "shifting out every bit produces zero",
+      "source_sha256": "cf1c719bc17823d3c5bfcb1749e8a7f0fafbd55aca241d2c71b3fab09c72f2a5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ShiftByteString.nash",
+      "module": "ShiftByteString",
+      "name": "large shift does not truncate to a host word",
+      "source_sha256": "cf1c719bc17823d3c5bfcb1749e8a7f0fafbd55aca241d2c71b3fab09c72f2a5",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/ShiftByteString.nash",
+      "module": "ShiftByteString",
+      "name": "whole byte shifts preserve the remaining bytes",
+      "source_sha256": "cf1c719bc17823d3c5bfcb1749e8a7f0fafbd55aca241d2c71b3fab09c72f2a5",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/SliceByteString.nash",
+      "module": "SliceByteString",
+      "name": "zero count produces empty bytes",
+      "source_sha256": "c8693d7d6a8f72c68917995760caf764990a0d24f6c40f6a206959e32c718aff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SliceByteString.nash",
+      "module": "SliceByteString",
+      "name": "negative count produces empty bytes",
+      "source_sha256": "c8693d7d6a8f72c68917995760caf764990a0d24f6c40f6a206959e32c718aff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SliceByteString.nash",
+      "module": "SliceByteString",
+      "name": "whole slice preserves the bytes",
+      "source_sha256": "c8693d7d6a8f72c68917995760caf764990a0d24f6c40f6a206959e32c718aff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SliceByteString.nash",
+      "module": "SliceByteString",
+      "name": "negative offset is clamped independently of count",
+      "source_sha256": "c8693d7d6a8f72c68917995760caf764990a0d24f6c40f6a206959e32c718aff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SliceByteString.nash",
+      "module": "SliceByteString",
+      "name": "offset at the end gives empty bytes",
+      "source_sha256": "c8693d7d6a8f72c68917995760caf764990a0d24f6c40f6a206959e32c718aff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SliceByteString.nash",
+      "module": "SliceByteString",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "c8693d7d6a8f72c68917995760caf764990a0d24f6c40f6a206959e32c718aff",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SndPair.nash",
+      "module": "SndPair",
+      "name": "projects the correct component",
+      "source_sha256": "4299259aabf7dbc5caf39f2944ade060632f8067c0313baec2a47f613522d723",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/SubtractInteger.nash",
+      "module": "SubtractInteger",
+      "name": "right identity",
+      "source_sha256": "beb39b6b1fb1cda54df42822c8eb963b870ac38fdee24755bea6bb80a4846664",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/SubtractInteger.nash",
+      "module": "SubtractInteger",
+      "name": "self subtraction is zero",
+      "source_sha256": "beb39b6b1fb1cda54df42822c8eb963b870ac38fdee24755bea6bb80a4846664",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/SubtractInteger.nash",
+      "module": "SubtractInteger",
+      "name": "inverse of addition",
+      "source_sha256": "beb39b6b1fb1cda54df42822c8eb963b870ac38fdee24755bea6bb80a4846664",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/SubtractInteger.nash",
+      "module": "SubtractInteger",
+      "name": "predecessor never wraps at any integer width",
+      "source_sha256": "beb39b6b1fb1cda54df42822c8eb963b870ac38fdee24755bea6bb80a4846664",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/SubtractInteger.nash",
+      "module": "SubtractInteger",
+      "name": "argument order",
+      "source_sha256": "beb39b6b1fb1cda54df42822c8eb963b870ac38fdee24755bea6bb80a4846664",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/SubtractInteger.nash",
+      "module": "SubtractInteger",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "beb39b6b1fb1cda54df42822c8eb963b870ac38fdee24755bea6bb80a4846664",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/TailList.nash",
+      "module": "TailList",
+      "name": "tail preserves subsequent elements",
+      "source_sha256": "f26fc640c4944dbb5d2900a8e151274f7c5a3cc20345305095a5f85d031fd4ac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/TailList.nash",
+      "module": "TailList",
+      "name": "singleton tail is empty",
+      "source_sha256": "f26fc640c4944dbb5d2900a8e151274f7c5a3cc20345305095a5f85d031fd4ac",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/TailList.nash",
+      "module": "TailList",
+      "name": "empty list rejects",
+      "source_sha256": "f26fc640c4944dbb5d2900a8e151274f7c5a3cc20345305095a5f85d031fd4ac",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/Trace.nash",
+      "module": "Trace",
+      "name": "preserves the value",
+      "source_sha256": "23b38eb0f8518fc409262a485f41922b61a858e3aadd5589cec62f82a7e47646",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/Trace.nash",
+      "module": "Trace",
+      "name": "detects wrong opcode argument order or signedness",
+      "source_sha256": "23b38eb0f8518fc409262a485f41922b61a858e3aadd5589cec62f82a7e47646",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnBData.nash",
+      "module": "UnBData",
+      "name": "unboxes every bytestring",
+      "source_sha256": "7aa45a411f7453c906a2c9860933f4136f6d98e303b159c2b3e6a64108ec7448",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnBData.nash",
+      "module": "UnBData",
+      "name": "integer Data is not bytes Data",
+      "source_sha256": "7aa45a411f7453c906a2c9860933f4136f6d98e303b159c2b3e6a64108ec7448",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnBData.nash",
+      "module": "UnBData",
+      "name": "constructor Data cannot be used as bytes",
+      "source_sha256": "7aa45a411f7453c906a2c9860933f4136f6d98e303b159c2b3e6a64108ec7448",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnConstrData.nash",
+      "module": "UnConstrData",
+      "name": "recovers tag and first field",
+      "source_sha256": "4cd1dea95442f5064e5675af43b6ba7a90a693c473bf57f992d61ecea64f739b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnConstrData.nash",
+      "module": "UnConstrData",
+      "name": "integer Data is not constructor Data",
+      "source_sha256": "4cd1dea95442f5064e5675af43b6ba7a90a693c473bf57f992d61ecea64f739b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnConstrData.nash",
+      "module": "UnConstrData",
+      "name": "bytes Data cannot be used as a constructor",
+      "source_sha256": "4cd1dea95442f5064e5675af43b6ba7a90a693c473bf57f992d61ecea64f739b",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnIData.nash",
+      "module": "UnIData",
+      "name": "unboxes every integer",
+      "source_sha256": "864f4539a6c426a73e69af1826d37360047d346b87060f9399c720ae7824cfd5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnIData.nash",
+      "module": "UnIData",
+      "name": "bytes Data is not integer Data",
+      "source_sha256": "864f4539a6c426a73e69af1826d37360047d346b87060f9399c720ae7824cfd5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnIData.nash",
+      "module": "UnIData",
+      "name": "constructor Data cannot be used as an integer",
+      "source_sha256": "864f4539a6c426a73e69af1826d37360047d346b87060f9399c720ae7824cfd5",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnListData.nash",
+      "module": "UnListData",
+      "name": "recovers the first element",
+      "source_sha256": "a424030664ca78f042ae3aebabbcaa2396dad154dd4bb776b9299f43237006a7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnListData.nash",
+      "module": "UnListData",
+      "name": "integer Data is not list Data",
+      "source_sha256": "a424030664ca78f042ae3aebabbcaa2396dad154dd4bb776b9299f43237006a7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnListData.nash",
+      "module": "UnListData",
+      "name": "bytes Data cannot be used as a list",
+      "source_sha256": "a424030664ca78f042ae3aebabbcaa2396dad154dd4bb776b9299f43237006a7",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnMapData.nash",
+      "module": "UnMapData",
+      "name": "recovers a map entry",
+      "source_sha256": "cb21e0d32bf13ceeff37605908e8a24bc270af49490cdcccb486f9cbe6bdf44a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnMapData.nash",
+      "module": "UnMapData",
+      "name": "integer Data is not map Data",
+      "source_sha256": "cb21e0d32bf13ceeff37605908e8a24bc270af49490cdcccb486f9cbe6bdf44a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnMapData.nash",
+      "module": "UnMapData",
+      "name": "bytes Data cannot be used as a map",
+      "source_sha256": "cb21e0d32bf13ceeff37605908e8a24bc270af49490cdcccb486f9cbe6bdf44a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnValueData.nash",
+      "module": "UnValueData",
+      "name": "decoding and encoding recover quantities",
+      "source_sha256": "6de5bc8f2ff995e4bf1ad529a2a07331fb2c13f8e7c0ee22e4d7a48d8dd07272",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnValueData.nash",
+      "module": "UnValueData",
+      "name": "integer Data is not a value",
+      "source_sha256": "6de5bc8f2ff995e4bf1ad529a2a07331fb2c13f8e7c0ee22e4d7a48d8dd07272",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnValueData.nash",
+      "module": "UnValueData",
+      "name": "empty inner asset map rejects",
+      "source_sha256": "6de5bc8f2ff995e4bf1ad529a2a07331fb2c13f8e7c0ee22e4d7a48d8dd07272",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/UnValueData.nash",
+      "module": "UnValueData",
+      "name": "zero encoded quantity rejects",
+      "source_sha256": "6de5bc8f2ff995e4bf1ad529a2a07331fb2c13f8e7c0ee22e4d7a48d8dd07272",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/UnValueData.nash",
+      "module": "UnValueData",
+      "name": "duplicate asset names reject",
+      "source_sha256": "6de5bc8f2ff995e4bf1ad529a2a07331fb2c13f8e7c0ee22e4d7a48d8dd07272",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/UnValueData.nash",
+      "module": "UnValueData",
+      "name": "out of order asset names reject",
+      "source_sha256": "6de5bc8f2ff995e4bf1ad529a2a07331fb2c13f8e7c0ee22e4d7a48d8dd07272",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/UnionValue.nash",
+      "module": "UnionValue",
+      "name": "empty value is the identity",
+      "source_sha256": "ad6428ffc4053362b0db1d15658123c80bbaee1465b3e7df5f28d378ccf6c83e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnionValue.nash",
+      "module": "UnionValue",
+      "name": "adds the same asset quantities",
+      "source_sha256": "ad6428ffc4053362b0db1d15658123c80bbaee1465b3e7df5f28d378ccf6c83e",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/UnionValue.nash",
+      "module": "UnionValue",
+      "name": "quantity overflow rejects",
+      "source_sha256": "ad6428ffc4053362b0db1d15658123c80bbaee1465b3e7df5f28d378ccf6c83e",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ValueContains.nash",
+      "module": "ValueContains",
+      "name": "nonnegative value contains itself",
+      "source_sha256": "647b4655d719739edac87da837f39fe19bb5cbb5a13b4a8f7659c4636c07d2cd",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ValueContains.nash",
+      "module": "ValueContains",
+      "name": "quantity containment",
+      "source_sha256": "647b4655d719739edac87da837f39fe19bb5cbb5a13b4a8f7659c4636c07d2cd",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/ValueContains.nash",
+      "module": "ValueContains",
+      "name": "negative first quantity rejects",
+      "source_sha256": "647b4655d719739edac87da837f39fe19bb5cbb5a13b4a8f7659c4636c07d2cd",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ValueContains.nash",
+      "module": "ValueContains",
+      "name": "negative second quantity rejects",
+      "source_sha256": "647b4655d719739edac87da837f39fe19bb5cbb5a13b4a8f7659c4636c07d2cd",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/ValueData.nash",
+      "module": "ValueData",
+      "name": "encoding and decoding recover quantities",
+      "source_sha256": "fbc2eef0a2db366d2c6094237004e212ffe75e802e16429e37fc4876143b1ca4",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/VerifyEcdsaSecp256k1Signature.nash",
+      "module": "VerifyEcdsaSecp256k1Signature",
+      "name": "empty public key rejects",
+      "source_sha256": "e0be60afd4e2fe6f10053ee76c578a0cf43f90739194c818e6c5f7d2350f389f",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/VerifyEcdsaSecp256k1Signature.nash",
+      "module": "VerifyEcdsaSecp256k1Signature",
+      "name": "valid key with truncated signature rejects",
+      "source_sha256": "e0be60afd4e2fe6f10053ee76c578a0cf43f90739194c818e6c5f7d2350f389f",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/VerifyEd25519Signature.nash",
+      "module": "VerifyEd25519Signature",
+      "name": "empty public key rejects",
+      "source_sha256": "4e94508fd10045bed2fbad31a12abd62d0176b0926f62d65a482014a51cb78a9",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/VerifyEd25519Signature.nash",
+      "module": "VerifyEd25519Signature",
+      "name": "valid key with truncated signature rejects",
+      "source_sha256": "4e94508fd10045bed2fbad31a12abd62d0176b0926f62d65a482014a51cb78a9",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/VerifyEd25519Signature.nash",
+      "module": "VerifyEd25519Signature",
+      "name": "RFC8032 empty message signature verifies",
+      "source_sha256": "4e94508fd10045bed2fbad31a12abd62d0176b0926f62d65a482014a51cb78a9",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/VerifyEd25519Signature.nash",
+      "module": "VerifyEd25519Signature",
+      "name": "changed message returns False instead of rejecting",
+      "source_sha256": "4e94508fd10045bed2fbad31a12abd62d0176b0926f62d65a482014a51cb78a9",
+      "status": "timeout",
+      "reason": "Did not finish within the wall limit; no proof or rejection witness claimed."
+    },
+    {
+      "file": "builtins/VerifySchnorrSecp256k1Signature.nash",
+      "module": "VerifySchnorrSecp256k1Signature",
+      "name": "empty public key rejects",
+      "source_sha256": "69f8daa3b5c1950e974e685c6e2fab93358239e36f8ac03ffdf1dd1d9ed0ce01",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/VerifySchnorrSecp256k1Signature.nash",
+      "module": "VerifySchnorrSecp256k1Signature",
+      "name": "valid key with truncated signature rejects",
+      "source_sha256": "69f8daa3b5c1950e974e685c6e2fab93358239e36f8ac03ffdf1dd1d9ed0ce01",
+      "status": "counterexample_in_opaque_model",
+      "reason": "The SMT interpretation assigns unconstrained behavior to the opaque cryptographic primitive; this is not a concrete Nash counterexample."
+    },
+    {
+      "file": "builtins/WriteBits.nash",
+      "module": "WriteBits",
+      "name": "write then read",
+      "source_sha256": "50a4ccf15143d85ca616e60b7587f98d0a11c47b6cf36307e74c0cceaf2c165a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/WriteBits.nash",
+      "module": "WriteBits",
+      "name": "empty index list is identity",
+      "source_sha256": "50a4ccf15143d85ca616e60b7587f98d0a11c47b6cf36307e74c0cceaf2c165a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/WriteBits.nash",
+      "module": "WriteBits",
+      "name": "invalid index rejects",
+      "source_sha256": "50a4ccf15143d85ca616e60b7587f98d0a11c47b6cf36307e74c0cceaf2c165a",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/WriteBits.nash",
+      "module": "WriteBits",
+      "name": "index above 128 bits rejects without host overflow",
+      "source_sha256": "50a4ccf15143d85ca616e60b7587f98d0a11c47b6cf36307e74c0cceaf2c165a",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/WriteBits.nash",
+      "module": "WriteBits",
+      "name": "negative index rejects",
+      "source_sha256": "50a4ccf15143d85ca616e60b7587f98d0a11c47b6cf36307e74c0cceaf2c165a",
+      "status": "verified"
+    },
+    {
+      "file": "builtins/WriteBits.nash",
+      "module": "WriteBits",
+      "name": "all indices must be valid",
+      "source_sha256": "50a4ccf15143d85ca616e60b7587f98d0a11c47b6cf36307e74c0cceaf2c165a",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/XorByteString.nash",
+      "module": "XorByteString",
+      "name": "commutative for both padding modes",
+      "source_sha256": "b91410c7e60d3f970d1fae5319917cf7c282050d4ade87a43a65f9ac415dbc09",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/XorByteString.nash",
+      "module": "XorByteString",
+      "name": "self law",
+      "source_sha256": "b91410c7e60d3f970d1fae5319917cf7c282050d4ade87a43a65f9ac415dbc09",
+      "status": "not_checked"
+    },
+    {
+      "file": "builtins/XorByteString.nash",
+      "module": "XorByteString",
+      "name": "truncating mode with empty input",
+      "source_sha256": "b91410c7e60d3f970d1fae5319917cf7c282050d4ade87a43a65f9ac415dbc09",
+      "status": "not_checked"
+    },
+    {
+      "file": "pending/builtins/Bls12381G1MultiScalarMul.nash",
+      "module": "Bls12381G1MultiScalarMul",
+      "name": "singleton agrees with scalar multiplication",
+      "source_sha256": "c285ef425c387db5846b1572a8ccd6b1ee1b10bfb1ec5f5b997c0aafe39c9526",
+      "status": "compiler_blocked"
+    },
+    {
+      "file": "pending/builtins/Bls12381G1MultiScalarMul.nash",
+      "module": "Bls12381G1MultiScalarMul",
+      "name": "different scalar and point counts reject",
+      "source_sha256": "c285ef425c387db5846b1572a8ccd6b1ee1b10bfb1ec5f5b997c0aafe39c9526",
+      "status": "compiler_blocked"
+    },
+    {
+      "file": "pending/builtins/Bls12381G1MultiScalarMul.nash",
+      "module": "Bls12381G1MultiScalarMul",
+      "name": "scalar above the signed 4096 bit range rejects",
+      "source_sha256": "c285ef425c387db5846b1572a8ccd6b1ee1b10bfb1ec5f5b997c0aafe39c9526",
+      "status": "compiler_blocked"
+    },
+    {
+      "file": "pending/builtins/Bls12381G2MultiScalarMul.nash",
+      "module": "Bls12381G2MultiScalarMul",
+      "name": "singleton agrees with scalar multiplication",
+      "source_sha256": "4790b57b9a70997e6c15d92b306fe49de5e3e5139a41573571886996d015a111",
+      "status": "compiler_blocked"
+    },
+    {
+      "file": "pending/builtins/Bls12381G2MultiScalarMul.nash",
+      "module": "Bls12381G2MultiScalarMul",
+      "name": "different scalar and point counts reject",
+      "source_sha256": "4790b57b9a70997e6c15d92b306fe49de5e3e5139a41573571886996d015a111",
+      "status": "compiler_blocked"
+    },
+    {
+      "file": "pending/builtins/Bls12381G2MultiScalarMul.nash",
+      "module": "Bls12381G2MultiScalarMul",
+      "name": "scalar above the signed 4096 bit range rejects",
+      "source_sha256": "4790b57b9a70997e6c15d92b306fe49de5e3e5139a41573571886996d015a111",
+      "status": "compiler_blocked"
+    }
+  ]
+}

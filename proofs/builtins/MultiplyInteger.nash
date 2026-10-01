@@ -1,0 +1,71 @@
+module MultiplyInteger exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.multiplyInteger p0 p1
+
+
+proof
+    import Proof
+
+    prop "commutative" =
+        let
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert (operation x y == operation y x)
+
+    prop "associative" =
+        let
+            x via Proof.int
+            y via Proof.int
+            z via Proof.int
+        in
+            do
+                assert
+                    (operation (operation x y) z == operation x (operation y z))
+
+    prop "distributive over addition" =
+        let
+            x via Proof.int
+            y via Proof.int
+            z via Proof.int
+        in
+            do
+                assert
+                    (
+                        operation x (Builtin.addInteger y z) ==
+                            Builtin.addInteger (operation x y) (operation x z)
+                    )
+
+    prop "multiplicative identity" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x 1 == x && operation 1 x == x)
+
+    prop "zero annihilates" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x 0 == 0)
+
+    prop "square is nonnegative without machine overflow" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x x >= 0)
+
+    test "crosses signed 64-bit boundary" =
+        do
+            assert (operation 4294967296 4294967296 == 18446744073709551616)
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert (operation (-4294967296) 4294967296 == -18446744073709551616)

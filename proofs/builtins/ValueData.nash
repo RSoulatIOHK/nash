@@ -1,0 +1,31 @@
+module ValueData exposing (..)
+
+
+import Builtin
+import Cardano.Value
+
+
+{-| The pinned PlutusCoreBlaster revision has no array/value model. These are
+executable source obligations; Lean verification is pending model support. -}
+operation p0 = Builtin.valueData p0
+
+
+empty : value
+empty = Cardano.Value.empty
+
+
+coin : int -> value
+coin amount = Builtin.insertCoin #"" #"" amount empty
+
+
+proof
+    test "encoding and decoding recover quantities" =
+        do
+            assert
+                (
+                    Builtin.lookupCoin
+                        #""
+                        #""
+                        (Builtin.unValueData (operation (coin 5))) ==
+                        5
+                )

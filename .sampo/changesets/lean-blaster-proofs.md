@@ -9,6 +9,7 @@ cargo/nash-nitpick: patch
 cargo/nash-report: minor
 cargo/nash-fmt: minor
 cargo/nash-codegen: minor
+cargo/nash-plutus: patch
 cargo/nash-driver: minor
 cargo/nash-cli: minor
 cargo/nash-proof: minor
@@ -33,3 +34,9 @@ Add independent compilation contracts for all 101 builtins and all application
 prefixes. Export kernel-checked syntax certificates and universal CEK equality
 corollaries for the 91 builtins supported by pinned PlutusCoreBlaster. Document
 the ten missing array/value models and the translation-validation scope.
+
+Add one Nash semantic specification per builtin with algebraic laws, representation
+roundtrips, boundary cases and invalid-input rejection obligations. Record verified
+and pending results explicitly and execute the source obligations in regressions,
+including negative controls. Fix host-word index truncation, oversized index panics,
+large shift/rotation panics and whole-byte left-shift copying in the local evaluator.

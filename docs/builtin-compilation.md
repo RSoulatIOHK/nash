@@ -1,5 +1,9 @@
 # Builtin compilation certificates
 
+The readable [Nash semantic proof files](../proofs/README.md) specify each
+builtin's algebra, representations, boundaries and failure modes. The certificates
+below complement those properties by checking the independent calling convention.
+
 The builtin regression validates all **101 entries** in Nash's synthetic
 `Builtin` module against a frozen UPLC compilation contract. It generates
 **283 source declarations**: a first-class reference and every application

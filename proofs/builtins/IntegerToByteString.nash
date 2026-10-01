@@ -1,0 +1,73 @@
+module IntegerToByteString exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 p2 = Builtin.integerToByteString p0 p1 p2
+
+
+proof
+    import Proof
+
+    test "zero with minimal width is empty" =
+        do
+            assert (operation True 0 0 == #"" && operation False 0 0 == #"")
+
+    test "endianness and leading padding" =
+        do
+            assert
+                (
+                    operation True 3 258 ==
+                        #"000102" &&
+                        operation False 3 258 ==
+                        #"020100"
+                )
+
+    prop "unsigned byte roundtrip" =
+        let
+            n via Proof.int
+        in
+            do
+                assert
+                    (
+                        if n >= 0 && n < 256 then
+                            Builtin.byteStringToInteger
+                                True
+                                (operation True 1 n) ==
+                                n
+                        else
+                            True
+                    )
+
+    test "negative integer rejects" fail =
+        do
+            let
+                _ = operation True 0 (-1)
+            in
+                ()
+
+    test "insufficient width rejects" fail =
+        do
+            let
+                _ = operation True 1 256
+            in
+                ()
+
+    test "negative width rejects" fail =
+        do
+            let
+                _ = operation True (-1) 1
+            in
+                ()
+
+    test "width above 8192 rejects" fail =
+        do
+            let
+                _ = operation True 8193 1
+            in
+                ()
+
+    test "largest supported width is accepted" =
+        do
+            assert (Builtin.lengthOfByteString (operation True 8192 1) == 8192)

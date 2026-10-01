@@ -1,0 +1,51 @@
+module LessThanEqualsInteger exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.lessThanEqualsInteger p0 p1
+
+
+proof
+    import Proof
+
+    prop "reflexive" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x x)
+
+    prop "antisymmetric" =
+        let
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert
+                    (
+                        if operation x y && operation y x then
+                            Builtin.equalsInteger x y
+                        else
+                            True
+                    )
+
+    prop "agrees with strict order or equality" =
+        let
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert
+                    (
+                        operation x y ==
+                            (
+                                Builtin.lessThanInteger x y ||
+                                    Builtin.equalsInteger x y
+                            )
+                    )
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert (operation (-1) 0 && not (operation 0 (-1)))

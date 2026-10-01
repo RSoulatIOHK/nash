@@ -1,0 +1,52 @@
+module LessThanInteger exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.lessThanInteger p0 p1
+
+
+proof
+    import Proof
+
+    prop "irreflexive" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (not (operation x x))
+
+    prop "strict successor order at every width" =
+        let
+            x via Proof.int
+        in
+            do
+                assert (operation x (Builtin.addInteger x 1))
+
+    prop "asymmetric" =
+        let
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert (not (operation x y && operation y x))
+
+    prop "transitive" =
+        let
+            x via Proof.int
+            y via Proof.int
+            z via Proof.int
+        in
+            do
+                assert
+                    (
+                        if operation x y && operation y z then
+                            operation x z
+                        else
+                            True
+                    )
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert (operation (-1) 0 && not (operation 0 (-1)))

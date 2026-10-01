@@ -1,0 +1,53 @@
+module EqualsData exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 = Builtin.equalsData p0 p1
+
+
+proof
+    import Proof
+
+    prop "reflexive" =
+        let
+            x via Proof.data
+        in
+            do
+                assert (operation x x)
+
+    prop "symmetric" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert (operation x y == operation y x)
+
+    prop "transitive" =
+        let
+            x via Proof.data
+            y via Proof.data
+            z via Proof.data
+        in
+            do
+                assert
+                    (
+                        if operation x y && operation y z then
+                            operation x z
+                        else
+                            True
+                    )
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert
+                (
+                    not
+                        (
+                            operation
+                                (Primitive.coerce (Builtin.iData 0))
+                                (Primitive.coerce (Builtin.bData #"00"))
+                        )
+                )

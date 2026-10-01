@@ -1,0 +1,39 @@
+module LookupCoin exposing (..)
+
+
+import Builtin
+import Cardano.Value
+
+
+{-| The pinned PlutusCoreBlaster revision has no array/value model. These are
+executable source obligations; Lean verification is pending model support. -}
+operation p0 p1 p2 = Builtin.lookupCoin p0 p1 p2
+
+
+empty : value
+empty = Cardano.Value.empty
+
+
+coin : int -> value
+coin amount = Builtin.insertCoin #"" #"" amount empty
+
+
+proof
+    test "absent asset has zero quantity" =
+        do
+            assert (operation #"" #"" empty == 0)
+
+    test "returns the inserted quantity" =
+        do
+            assert (operation #"" #"" (coin 5) == 5)
+
+    test "long nonexistent identifier gives zero" =
+        do
+            assert
+                (
+                    operation
+                        #"000000000000000000000000000000000000000000000000000000000000000000"
+                        #""
+                        (coin 5) ==
+                        0
+                )

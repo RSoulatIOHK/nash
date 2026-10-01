@@ -1,0 +1,27 @@
+module Blake2b224 exposing (..)
+
+
+import Builtin
+
+
+{-| Digest length is the semantic obligation here. This does not claim collision resistance or correctness of the underlying cryptographic implementation. The pinned Lean model exposes an opaque hash without length lemmas; this obligation is pending there. -}
+operation p0 = Builtin.blake2b_224 p0
+
+
+proof
+    import Proof
+
+    prop "digest has the specified byte length" =
+        let
+            message via Proof.bytes
+        in
+            do
+                assert (Builtin.lengthOfByteString (operation message) == 28)
+
+    test "empty message known answer detects the wrong hash primitive" =
+        do
+            assert
+                (
+                    operation #"" ==
+                        #"836cc68931c2e4e3e838602eca1902591d216837bafddfe6f0c8cb07"
+                )

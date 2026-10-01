@@ -1,0 +1,20 @@
+module SerialiseData exposing (..)
+
+
+import Builtin
+
+
+{-| These are explicit CBOR examples, not a completeness theorem for serialization. -}
+operation p0 = Builtin.serialiseData p0
+
+
+proof
+    test "canonical CBOR integer encoding" =
+        do
+            assert
+                (
+                    operation (Primitive.coerce (Builtin.iData 0)) ==
+                        #"00" &&
+                        operation (Primitive.coerce (Builtin.iData (-1))) ==
+                        #"20"
+                )

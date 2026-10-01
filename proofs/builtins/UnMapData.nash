@@ -1,0 +1,61 @@
+module UnMapData exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.unMapData p0
+
+
+wrongShape : int -> Map Data Data
+wrongShape x = Primitive.coerce (Builtin.iData x)
+
+
+wrongBytes : bytes -> Map Data Data
+wrongBytes x = Primitive.coerce (Builtin.bData x)
+
+
+proof
+    import Proof
+
+    prop "recovers a map entry" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert
+                    (
+                        Builtin.sndPair
+                            (
+                                Builtin.headList
+                                    (
+                                        operation
+                                            (
+                                                Builtin.mapData
+                                                    [ Builtin.mkPairData x y ]
+                                            )
+                                    )
+                            ) ==
+                            y
+                    )
+
+    prop "integer Data is not map Data" fail =
+        let
+            x via Proof.int
+        in
+            do
+                let
+                    _ = operation (wrongShape x)
+                in
+                    ()
+
+    prop "bytes Data cannot be used as a map" fail =
+        let
+            x via Proof.bytes
+        in
+            do
+                let
+                    _ = operation (wrongBytes x)
+                in
+                    ()

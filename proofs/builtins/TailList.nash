@@ -1,0 +1,39 @@
+module TailList exposing (..)
+
+
+import Builtin
+
+
+operation : list Data -> list Data
+operation p0 = Builtin.tailList p0
+
+
+proof
+    import Proof
+
+    prop "tail preserves subsequent elements" =
+        let
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert
+                    (
+                        Builtin.headList (operation [ x, y ]) ==
+                            y &&
+                            Builtin.nullList (operation (operation [ x, y ]))
+                    )
+
+    prop "singleton tail is empty" =
+        let
+            x via Proof.data
+        in
+            do
+                assert (Builtin.nullList (operation [ x ]))
+
+    test "empty list rejects" fail =
+        do
+            let
+                _ = operation []
+            in
+                ()

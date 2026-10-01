@@ -1,0 +1,38 @@
+module CountSetBits exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.countSetBits p0
+
+
+proof
+    import Proof
+
+    prop "count is bounded by the bit width" =
+        let
+            x via Proof.bytes
+        in
+            do
+                assert
+                    (
+                        operation x >=
+                            0 &&
+                            operation x <=
+                            Builtin.multiplyInteger
+                                8
+                                (Builtin.lengthOfByteString x)
+                    )
+
+    test "known counts" =
+        do
+            assert
+                (
+                    operation #"00" ==
+                        0 &&
+                        operation #"ff" ==
+                        8 &&
+                        operation #"0103" ==
+                        3
+                )

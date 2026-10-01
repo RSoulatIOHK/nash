@@ -1,0 +1,62 @@
+module IfThenElse exposing (..)
+
+
+import Builtin
+
+
+operation p0 p1 p2 = Builtin.ifThenElse p0 p1 p2
+
+
+badArgument : int
+badArgument = fail
+
+
+proof
+    import Proof
+
+    prop "selects the branch indicated by the condition" =
+        let
+            condition via Proof.bool
+            x via Proof.int
+            y via Proof.int
+        in
+            do
+                assert
+                    (
+                        operation condition x y ==
+                            (
+                                if condition then
+                                    x
+                                else
+                                    y
+                            )
+                    )
+
+    prop "selects arbitrary Data values" =
+        let
+            condition via Proof.bool
+            x via Proof.data
+            y via Proof.data
+        in
+            do
+                assert
+                    (
+                        operation condition x y ==
+                            (
+                                if condition then
+                                    x
+                                else
+                                    y
+                            )
+                    )
+
+    test "unselected arguments are still evaluated" fail =
+        do
+            let
+                _ = operation True 1 badArgument
+            in
+                ()
+
+    test "detects wrong opcode argument order or signedness" =
+        do
+            assert (operation True 17 5 == 17 && operation False 17 5 == 5)

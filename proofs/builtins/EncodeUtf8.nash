@@ -1,0 +1,38 @@
+module EncodeUtf8 exposing (..)
+
+
+import Builtin
+
+
+operation p0 = Builtin.encodeUtf8 p0
+
+
+proof
+    import Proof
+
+    prop "decode after encoding" =
+        let
+            text via Proof.string
+        in
+            do
+                assert (Builtin.decodeUtf8 (operation text) == text)
+
+    prop "append is preserved" =
+        let
+            x via Proof.string
+            y via Proof.string
+        in
+            do
+                assert
+                    (
+                        operation (Builtin.appendString x y) ==
+                            Builtin.appendByteString (operation x) (operation y)
+                    )
+
+    test "non ASCII encoding" =
+        do
+            assert (operation "éλ" == #"c3a9cebb")
+
+    test "embedded zero is preserved" =
+        do
+            assert (operation "a\u{0000}b" == #"610062")
