@@ -189,7 +189,7 @@ impl Printer<'_> {
             cat([Doc::Hard, methods]).nest(),
         ])
     }
-    fn tests(&mut self, tests: &Tests<'_>) -> Doc {
+    fn tests(&mut self, tests: &Tests<'_>, proof: bool) -> Doc {
         let mut docs = Vec::new();
         for import in tests.imports {
             docs.push(self.import(import));
@@ -242,7 +242,7 @@ impl Printer<'_> {
             ]));
         }
         cat([
-            text("tests"),
+            text(if proof { "proof" } else { "tests" }),
             cat([Doc::Hard, join(docs, cat([Doc::Hard, Doc::Hard]))]).nest(),
         ])
     }
@@ -353,7 +353,10 @@ impl Printer<'_> {
             chunks.push(cat([before, doc]));
         }
         if let Some(tests) = module.tests {
-            chunks.push(self.tests(tests));
+            chunks.push(self.tests(tests, false));
+        }
+        if let Some(proofs) = module.proofs {
+            chunks.push(self.tests(proofs, true));
         }
         let trailing = self.before(Position::new(usize::MAX, usize::MAX));
         if chunks.is_empty() {

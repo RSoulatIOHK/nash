@@ -688,8 +688,17 @@ impl<'a> Solver<'a, '_> {
                         self.infer_definition(uf, env, rank, state, &Rtv::new(), definition, false);
                     state = self.close_locals(uf, scope.state, scope.locals);
                 }
-                for test in module.tests {
-                    self.test_scope = true;
+                for (test, proof) in module
+                    .tests
+                    .iter()
+                    .map(|t| (t, false))
+                    .chain(module.proofs.iter().map(|t| (t, true)))
+                {
+                    self.test_scope = if proof {
+                        SpecificationScope::Proof
+                    } else {
+                        SpecificationScope::Test
+                    };
                     let young = self.young_pool(rank);
                     let start = self.wanted.len();
                     let errors_before = state.errors.len();
@@ -736,7 +745,11 @@ impl<'a> Solver<'a, '_> {
                                 vec![pair],
                             ),
                         );
-                        let generator = self.structure(uf, young, FlatType::Fun1(prng, result));
+                        let generator = if proof {
+                            element
+                        } else {
+                            self.structure(uf, young, FlatType::Fun1(prng, result))
+                        };
                         state = self.infer_expr(
                             uf,
                             env,
@@ -785,7 +798,7 @@ impl<'a> Solver<'a, '_> {
                         )
                         .state;
                 }
-                self.test_scope = false;
+                self.test_scope = SpecificationScope::Production;
                 state.env = env.clone();
                 return state;
             }

@@ -606,6 +606,7 @@ mod graph_tests {
         }
         Module {
             tests: &[],
+            proofs: &[],
             traits: &[],
             impls: &[],
             kind: ModuleKind::Normal,

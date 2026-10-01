@@ -35,6 +35,12 @@ pub struct PossibleNames<'a> {
 
 #[derive(Clone, Debug)]
 pub enum Error<'a> {
+    ProofDomain {
+        region: Region,
+    },
+    ProofBudget {
+        region: Region,
+    },
     DuplicateTest {
         name: &'a str,
         first: Region,

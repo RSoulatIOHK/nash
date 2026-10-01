@@ -29,7 +29,7 @@ pub fn check<'a>(bump: &'a Bump, module: &Module<'a>) -> Result<(), Vec<Error<'a
         definitions.extend_from_slice(impl_.value.methods);
     }
     checker.defs(definitions);
-    for test in module.tests {
+    for test in module.tests.iter().chain(module.proofs) {
         for binder in test.binders {
             checker.patterns(
                 binder.pattern.region,

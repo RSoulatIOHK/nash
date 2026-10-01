@@ -7,9 +7,23 @@ use crate::error::{self, Test as TestErr, Tests as TestsErr};
 
 impl<'a> Parser<'a> {
     pub(crate) fn tests_block(&mut self) -> Result<&'a Tests<'a>, error::Module<'a>> {
+        self.specification_block(false)
+    }
+
+    pub(crate) fn proofs_block(&mut self) -> Result<&'a Tests<'a>, error::Module<'a>> {
+        self.specification_block(true)
+    }
+
+    fn specification_block(&mut self, proof: bool) -> Result<&'a Tests<'a>, error::Module<'a>> {
         self.in_context(
             |bump, error, row, col| error::Module::Tests(bump.alloc(error), row, col),
-            |parser| parser.keyword_tests(error::Module::BadEnd),
+            |parser| {
+                if proof {
+                    parser.keyword_proof(error::Module::BadEnd)
+                } else {
+                    parser.keyword_tests(error::Module::BadEnd)
+                }
+            },
             |parser| {
                 let tests_end = parser.get_position();
                 parser.chomp(TestsErr::Space)?;
@@ -561,6 +575,31 @@ mod tests {
                     do
                         assert (x / 0 == 0)
         "#
+        );
+    }
+}
+
+#[cfg(test)]
+mod proof_tests {
+    #[test]
+    fn tests_and_proofs_are_separate_and_either_order_parses() {
+        for source in [
+            "module Main exposing (..)\ntests\n    test \"t\" = do\n        assert True\nproof\n    prop \"p\" = let x via Proof.int in do\n        assert (x == x)\n",
+            "module Main exposing (..)\nproof\n    test \"p\" = do\n        assert True\ntests\n    test \"t\" = do\n        assert True\n",
+        ] {
+            let bump = bumpalo::Bump::new();
+            let module = crate::Parser::new(&bump, source).module().unwrap();
+            assert_eq!(module.tests.unwrap().tests.len(), 1);
+            assert_eq!(module.proofs.unwrap().tests.len(), 1);
+        }
+    }
+    #[test]
+    fn duplicate_proof_blocks_are_rejected() {
+        let bump = bumpalo::Bump::new();
+        assert!(
+            crate::Parser::new(&bump, "module Main exposing (..)\nproof\nproof\n")
+                .module()
+                .is_err()
         );
     }
 }

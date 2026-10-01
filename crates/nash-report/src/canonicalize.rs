@@ -286,6 +286,24 @@ pub fn to_report_with_name(source: &Source<'_>, error: &Error<'_>, expected_name
             expected,
             actual,
         } => arity(*region, name, "trait", *expected, *actual),
+        Error::ProofDomain { region } => Report::snippet(
+            "INVALID PROOF DOMAIN",
+            *region,
+            None,
+            Doc::text("Proof inputs require a symbolic domain from the bundled Proof module."),
+            Doc::text(
+                "Use `x via Proof.int` or a ledger domain such as `ctx via Proof.spendingV3`. Random generators are only available in tests.",
+            ),
+        ),
+        Error::ProofBudget { region } => Report::snippet(
+            "UNSUPPORTED PROOF BUDGET",
+            *region,
+            None,
+            Doc::text("Execution-budget constraints are not supported in proof blocks."),
+            Doc::text(
+                "Use tests to measure execution budgets. Proofs use a separately checked CEK step bound.",
+            ),
+        ),
         Error::DuplicateTest {
             name,
             first,
@@ -979,6 +997,8 @@ pub fn to_report_with_name(source: &Source<'_>, error: &Error<'_>, expected_name
         Error::BadArity { .. } => "nash::names::bad_arity",
         Error::ExportNotFound { .. } => "nash::names::export_not_found",
         Error::ExportOpenAlias { .. } => "nash::names::export_open_alias",
+        Error::ProofDomain { .. } => "nash::proof::invalid_domain",
+        Error::ProofBudget { .. } => "nash::proof::unsupported_budget",
         Error::DuplicateTest { .. } => "nash::names::duplicate_test",
         Error::DuplicateDecl { .. } => "nash::names::duplicate_decl",
         Error::DuplicateType { .. } => "nash::names::duplicate_type",

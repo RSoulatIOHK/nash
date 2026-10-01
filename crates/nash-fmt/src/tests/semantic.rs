@@ -78,6 +78,7 @@ structure!(Module {
     traits,
     impls,
     tests,
+    proofs,
     binops
 });
 impl Semantic for ModuleKind {

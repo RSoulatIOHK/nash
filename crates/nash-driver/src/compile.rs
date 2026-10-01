@@ -420,6 +420,7 @@ fn compile_module<'s>(
     };
     if exclude_tests {
         module.tests = None;
+        module.proofs = None;
     }
     let name = module.name.map_or(expected_name, |name| name.value);
     let defaults = nash_can::defaults::imports(
@@ -614,6 +615,7 @@ fn scan_module(
             module
                 .tests
                 .into_iter()
+                .chain(module.proofs)
                 .filter(|_| include_tests)
                 .flat_map(|tests| tests.imports.iter()),
         ) {

@@ -68,9 +68,9 @@ pub struct ViaBinder<'a> {
     pub generator: &'a Located<Expr<'a>>,
 }
 
-#[derive(Debug)]
 pub struct Module<'a> {
     pub tests: &'a [Test<'a>],
+    pub proofs: &'a [Test<'a>],
     pub traits: &'a [&'a Located<Trait<'a>>],
     pub impls: &'a [&'a Located<Impl<'a>>],
     pub kind: ModuleKind,
@@ -921,5 +921,26 @@ mod record_tests {
             ..alias
         };
         assert!(transparent.record_fields().is_none());
+    }
+}
+
+impl std::fmt::Debug for Module<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug = f.debug_struct("Module");
+        debug.field("tests", &self.tests);
+        if !self.proofs.is_empty() {
+            debug.field("proofs", &self.proofs);
+        }
+        debug.field("traits", &self.traits);
+        debug.field("impls", &self.impls);
+        debug.field("kind", &self.kind);
+        debug.field("name", &self.name);
+        debug.field("exports", &self.exports);
+        debug.field("docs", &self.docs);
+        debug.field("decls", &self.decls);
+        debug.field("unions", &self.unions);
+        debug.field("aliases", &self.aliases);
+        debug.field("binops", &self.binops);
+        debug.finish()
     }
 }

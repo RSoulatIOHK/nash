@@ -1,6 +1,5 @@
 use nash_region::{Located, Region};
 
-#[derive(Debug)]
 pub struct Module<'a> {
     pub kind: ModuleKind,
     pub name: Option<&'a Located<&'a str>>,
@@ -15,6 +14,7 @@ pub struct Module<'a> {
     pub traits: &'a [&'a Located<Trait<'a>>],
     pub impls: &'a [&'a Located<Impl<'a>>],
     pub tests: Option<&'a Tests<'a>>,
+    pub proofs: Option<&'a Tests<'a>>,
     pub binops: &'a [&'a Located<Infix<'a>>],
 }
 
@@ -508,4 +508,27 @@ pub enum Exposed<'a> {
 pub enum Privacy {
     Public(Region),
     Private,
+}
+
+impl std::fmt::Debug for Module<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug = f.debug_struct("Module");
+        debug.field("kind", &self.kind);
+        debug.field("name", &self.name);
+        debug.field("exports", &self.exports);
+        debug.field("docs", &self.docs);
+        debug.field("comments", &self.comments);
+        debug.field("imports", &self.imports);
+        debug.field("values", &self.values);
+        debug.field("unions", &self.unions);
+        debug.field("aliases", &self.aliases);
+        debug.field("traits", &self.traits);
+        debug.field("impls", &self.impls);
+        debug.field("tests", &self.tests);
+        if self.proofs.is_some() {
+            debug.field("proofs", &self.proofs);
+        }
+        debug.field("binops", &self.binops);
+        debug.finish()
+    }
 }

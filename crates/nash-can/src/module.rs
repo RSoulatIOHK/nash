@@ -155,7 +155,43 @@ pub fn canonicalize<'a>(
             }
         }
     }
-    let tests = canonicalize_tests(bump, &test_env, module.tests, &mut warnings)?;
+    let tests = canonicalize_tests(bump, &test_env, module.tests, false, &mut warnings)?;
+    let mut proof_env = env.clone();
+    if let Some(tests) = module.proofs {
+        let defaults = crate::defaults::test_imports(bump, home, context.interfaces);
+        environment::foreign::add_imports(bump, &mut proof_env, context.interfaces, &defaults)?;
+        environment::foreign::add_imports(bump, &mut proof_env, context.interfaces, tests.imports)?;
+        // Local declarations take precedence over imported unqualified names,
+        // just as they do when the enclosing module's environment is built.
+        for (name, info) in &env.types {
+            if matches!(info, environment::Info::Specific(owner, _) if *owner == home) {
+                proof_env.types.insert(name, info.clone());
+            }
+        }
+        for (name, info) in &env.ctors {
+            if matches!(info, environment::Info::Specific(owner, _) if *owner == home) {
+                proof_env.ctors.insert(name, info.clone());
+            }
+        }
+        for (name, info) in &env.traits {
+            if matches!(info, environment::Info::Specific(owner, _) if *owner == home) {
+                proof_env.traits.insert(name, info.clone());
+            }
+        }
+        for (name, var) in &env.vars {
+            if matches!(
+                var,
+                environment::Var::TopLevel(_)
+                    | environment::Var::Method {
+                        local_region: Some(_),
+                        ..
+                    }
+            ) {
+                proof_env.vars.insert(name, var.clone());
+            }
+        }
+    }
+    let proofs = canonicalize_tests(bump, &proof_env, module.proofs, true, &mut warnings)?;
     let binops = canonicalize_binops(bump, &env, module.binops);
     let exports = canonicalize_exports(bump, module)?;
     if matches!(module.kind, nash_ast::ModuleKind::Validator(_))
@@ -169,6 +205,7 @@ pub fn canonicalize<'a>(
 
     let can_module = CanModule {
         tests,
+        proofs,
         traits,
         impls,
         kind: module.kind,
@@ -186,6 +223,7 @@ pub fn canonicalize<'a>(
         .imports
         .iter()
         .chain(module.tests.into_iter().flat_map(|t| t.imports.iter()))
+        .chain(module.proofs.into_iter().flat_map(|t| t.imports.iter()))
     {
         let module_name = import.import.value;
         if !used_modules.contains(module_name) {
@@ -199,6 +237,7 @@ pub fn canonicalize<'a>(
     let mut tables = crate::impls::tables(bump, context.interfaces, &can_module, &kind_env)?;
     tables.fields = environment::visible_fields(bump, &env);
     tables.test_fields = environment::visible_fields(bump, &test_env);
+    tables.proof_fields = environment::visible_fields(bump, &proof_env);
     Ok(CanResult {
         tables,
         module: can_module,
@@ -210,6 +249,7 @@ fn canonicalize_tests<'a>(
     bump: &'a Bump,
     env: &Env<'a>,
     tests: Option<&nash_source::Tests<'a>>,
+    proof: bool,
     warnings: &mut Vec<Warning<'a>>,
 ) -> Result<&'a [nash_ast::Test<'a>], Vec<Error<'a>>> {
     let Some(tests) = tests else {
@@ -230,6 +270,11 @@ fn canonicalize_tests<'a>(
     let base = environment::Scope::new(env, None, &empty)?;
     let mut result = Vec::new();
     for test in tests.tests {
+        if proof && test.value.budget.is_some() {
+            return Err(vec![Error::ProofBudget {
+                region: test.region,
+            }]);
+        }
         let (binders, block) = match test.value.body {
             nash_source::TestBody::Unit(body) => (&[][..], body),
             nash_source::TestBody::Prop { binders, body } => (binders, body),
@@ -246,6 +291,14 @@ fn canonicalize_tests<'a>(
                 &mut expression::FreeLocals::new(),
                 warnings,
             )?;
+            if proof
+                && !matches!(generator.value, nash_ast::Expr::VarForeign { reference, .. }
+                if reference.home.package == Some(nash_ast::primitives::BASE) && reference.home.name == "Proof")
+            {
+                return Err(vec![Error::ProofDomain {
+                    region: binder.value.generator.region,
+                }]);
+            }
             can_binders.push(nash_ast::ViaBinder { pattern, generator });
         }
         let scope = base.add_locals(&bindings)?;
@@ -1168,7 +1221,7 @@ fn canonicalize_binops<'a>(
 fn collect_used_modules<'a>(module: &CanModule<'a>) -> BTreeSet<&'a str> {
     let mut used = BTreeSet::new();
     let home = module.name;
-    for test in module.tests {
+    for test in module.tests.iter().chain(module.proofs) {
         collect_from_expr(&test.body.value, home, &mut used);
         for binder in test.binders {
             collect_from_expr(&binder.generator.value, home, &mut used);
