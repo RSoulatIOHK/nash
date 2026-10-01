@@ -1,92 +1,149 @@
 module Main exposing (..)
 
-type Token = Token Int
+
+type Token
+    = Token Int
+
+
 bigList : List Int
-bigList = lift [Builtin.iData 1, Builtin.iData 2]
+bigList = lift [ Builtin.iData 1, Builtin.iData 2 ]
+
+
 bigMap : Map Int Bytes
-bigMap = Builtin.mapData [Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa")]
+bigMap =
+    Builtin.mapData
+        [ Builtin.mkPairData (Builtin.iData 1) (Builtin.bData #"aa") ]
+
 
 nativeMap : map Int Int
-nativeMap = [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3]
+nativeMap = [ Builtin.mkPairData 1 2, Builtin.mkPairData 1 3 ]
+
+
 reversedMap : map Int Int
-reversedMap = [Builtin.mkPairData 1 3, Builtin.mkPairData 1 2]
+reversedMap = [ Builtin.mkPairData 1 3, Builtin.mkPairData 1 2 ]
+
+
 emptyMap : map Int Int
 emptyMap = []
+
+
 sameGeneric : Eq 'a => 'a -> 'a -> bool
 sameGeneric = eq
+
+
 mixedMap : map int (list Data)
-mixedMap = [Builtin.unConstrData (Builtin.constrData 7 [])]
+mixedMap = [ Builtin.unConstrData (Builtin.constrData 7 []) ]
+
 
 tests
-    test "boolean equality and ordering truth tables" = do
-        assert (eq False False && eq True True)
-        assert (neq False True && neq True False)
-        assert (compare False False == EQ)
-        assert (compare False True == LT)
-        assert (compare True False == GT)
-        assert (compare True True == EQ)
-    test "native map alias equality" = do
-        assert (sameGeneric nativeMap nativeMap)
-        assert (nativeMap /= reversedMap)
-        assert (emptyMap == emptyMap)
-        assert (emptyMap /= nativeMap)
-    test "native map operation results" = do
-        assert (Map.union nativeMap emptyMap == nativeMap)
-        assert (Map.toList nativeMap == [Builtin.mkPairData 1 2, Builtin.mkPairData 1 3])
-    test "mixed native map operations" = do
-        assert (Map.get 7 mixedMap == Some [])
-        assert (Map.remove 7 mixedMap == [])
-    test "primitive equality" = do
-        assert (1 == 1)
-        assert (1 /= 2)
-        assert (#"aa" == #"aa")
-        assert (#"aa" /= #"ab")
-        assert ("a" == "a")
-        assert ("a" /= "b")
-        assert (True /= False)
-        assert (() == ())
-    test "list and pair equality" = do
-        assert ([1, 2] == [1, 2])
-        assert ([1] /= [1, 2])
-        assert ([1, 2] /= [1])
-        assert ([1, 2] /= [1, 3])
-        assert (Builtin.unConstrData (Builtin.constrData 1 []) == Builtin.unConstrData (Builtin.constrData 1 []))
-        assert (Builtin.unConstrData (Builtin.constrData 1 []) /= Builtin.unConstrData (Builtin.constrData 2 []))
-    test "Big equality" = do
-        assert (Token 1 == Token 1)
-        assert (Token 1 /= Token 2)
-        assert (bigList == lift [Builtin.iData 1, Builtin.iData 2])
-        assert (bigMap == bigMap)
-        assert (I 1 /= B #"01")
-        assert (Bool.True /= Bool.False)
-        assert (Unit.Unit == Unit.Unit)
-        assert (Option.Some (Token 1) /= Option.None)
-        assert (Ordering.LT /= Ordering.GT)
-    test "little twin equality" = do
-        assert (Some 1 == Some 1)
-        assert (Some 1 /= None)
-        assert (LT /= GT)
-    test "ordering and defaults" = do
-        assert (compare 1 2 == LT)
-        assert (compare 2 2 == EQ)
-        assert (compare 3 2 == GT)
-        assert (compare #"00ff" #"01" == LT)
-        assert (compare "a" "b" == LT)
-    test "boolean and list ordering" = do
-        assert (compare False True == LT)
-        assert (compare () () == EQ)
-        assert (compare [1, 2] [1, 3] == LT)
-        assert (compare [1] [1, 0] == LT)
-        assert (compare [1, 0] [1] == GT)
-        assert (Int.compare (Builtin.iData 2) (Builtin.iData 1) == GT)
-        assert (Bytes.compare (Builtin.bData #"aa") (Builtin.bData #"bb") == LT)
-    test "ordering operators and bounds" = do
-        assert (1 < 2 && 2 <= 2 && 3 > 2 && 3 >= 3)
-        assert (max 1 2 == 2 && min 1 2 == 1)
-    test "tuple equality and ordering" = do
-        assert ((1, True) == (1, True))
-        assert ((1, True, #"aa") /= (1, False, #"aa"))
-        assert ((1, 2, 3, 4) /= (1, 2, 3, 5))
-        assert (compare (1, 2) (1, 3) == LT)
-        assert (compare (1, 2, 3) (1, 2, 2) == GT)
-        assert (compare (1, 2, 3, 4) (1, 2, 3, 4) == EQ)
+    test "boolean equality and ordering truth tables" =
+        do
+            assert (eq False False && eq True True)
+            assert (neq False True && neq True False)
+            assert (compare False False == EQ)
+            assert (compare False True == LT)
+            assert (compare True False == GT)
+            assert (compare True True == EQ)
+
+    test "native map alias equality" =
+        do
+            assert (sameGeneric nativeMap nativeMap)
+            assert (nativeMap /= reversedMap)
+            assert (emptyMap == emptyMap)
+            assert (emptyMap /= nativeMap)
+
+    test "native map operation results" =
+        do
+            assert (Map.union nativeMap emptyMap == nativeMap)
+            assert
+                (
+                    Map.toList nativeMap ==
+                        [ Builtin.mkPairData 1 2, Builtin.mkPairData 1 3 ]
+                )
+
+    test "mixed native map operations" =
+        do
+            assert (Map.get 7 mixedMap == Some [])
+            assert (Map.remove 7 mixedMap == [])
+
+    test "primitive equality" =
+        do
+            assert (1 == 1)
+            assert (1 /= 2)
+            assert (#"aa" == #"aa")
+            assert (#"aa" /= #"ab")
+            assert ("a" == "a")
+            assert ("a" /= "b")
+            assert (True /= False)
+            assert (() == ())
+
+    test "list and pair equality" =
+        do
+            assert ([ 1, 2 ] == [ 1, 2 ])
+            assert ([ 1 ] /= [ 1, 2 ])
+            assert ([ 1, 2 ] /= [ 1 ])
+            assert ([ 1, 2 ] /= [ 1, 3 ])
+            assert
+                (
+                    Builtin.unConstrData (Builtin.constrData 1 []) ==
+                        Builtin.unConstrData (Builtin.constrData 1 [])
+                )
+            assert
+                (
+                    Builtin.unConstrData (Builtin.constrData 1 []) /=
+                        Builtin.unConstrData (Builtin.constrData 2 [])
+                )
+
+    test "Big equality" =
+        do
+            assert (Token 1 == Token 1)
+            assert (Token 1 /= Token 2)
+            assert (bigList == lift [ Builtin.iData 1, Builtin.iData 2 ])
+            assert (bigMap == bigMap)
+            assert (I 1 /= B #"01")
+            assert (Bool.True /= Bool.False)
+            assert (Unit.Unit == Unit.Unit)
+            assert (Option.Some (Token 1) /= Option.None)
+            assert (Ordering.LT /= Ordering.GT)
+
+    test "little twin equality" =
+        do
+            assert (Some 1 == Some 1)
+            assert (Some 1 /= None)
+            assert (LT /= GT)
+
+    test "ordering and defaults" =
+        do
+            assert (compare 1 2 == LT)
+            assert (compare 2 2 == EQ)
+            assert (compare 3 2 == GT)
+            assert (compare #"00ff" #"01" == LT)
+            assert (compare "a" "b" == LT)
+
+    test "boolean and list ordering" =
+        do
+            assert (compare False True == LT)
+            assert (compare () () == EQ)
+            assert (compare [ 1, 2 ] [ 1, 3 ] == LT)
+            assert (compare [ 1 ] [ 1, 0 ] == LT)
+            assert (compare [ 1, 0 ] [ 1 ] == GT)
+            assert (Int.compare (Builtin.iData 2) (Builtin.iData 1) == GT)
+            assert
+                (
+                    Bytes.compare (Builtin.bData #"aa") (Builtin.bData #"bb") ==
+                        LT
+                )
+
+    test "ordering operators and bounds" =
+        do
+            assert (1 < 2 && 2 <= 2 && 3 > 2 && 3 >= 3)
+            assert (max 1 2 == 2 && min 1 2 == 1)
+
+    test "tuple equality and ordering" =
+        do
+            assert (( 1, True ) == ( 1, True ))
+            assert (( 1, True, #"aa" ) /= ( 1, False, #"aa" ))
+            assert (( 1, 2, 3, 4 ) /= ( 1, 2, 3, 5 ))
+            assert (compare ( 1, 2 ) ( 1, 3 ) == LT)
+            assert (compare ( 1, 2, 3 ) ( 1, 2, 2 ) == GT)
+            assert (compare ( 1, 2, 3, 4 ) ( 1, 2, 3, 4 ) == EQ)

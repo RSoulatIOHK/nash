@@ -1,24 +1,42 @@
-validator module Vesting exposing (main)
+validator module Vesting exposing ( main )
+
 
 import Builtin exposing (..)
-import Eq exposing (Eq)
-import Lift exposing (Lift)
-import VestingTx exposing (validAfter, signedBy)
+import Eq exposing ( Eq )
+import Lift exposing ( Lift )
+import VestingTx exposing ( validAfter, signedBy )
 
-type Datum = Datum { owner : Bytes, deadline : Int }
 
-type Redeemer = Claim | Cancel
+type Datum
+    = Datum { owner : Bytes, deadline : Int }
+
+
+type Redeemer
+    = Claim
+    | Cancel
+
 
 -- The ledger supplies one V3 ScriptContext; spending datum is in ScriptInfo.
 main : Data -> unit
 main ctx =
     case ctx of
-        Constr pair(0, [ tx, action, Constr pair(1, [ _, Constr pair(0, [ datum ]) ]) ]) ->
+        Constr
+                pair(0, [ tx
+                , action
+                , Constr pair(1, [ _, Constr pair(0, [ datum ]) ])
+                ]) ->
             check (Primitive.coerce datum) (Primitive.coerce action) tx
-        _ -> fail
+
+        _ ->
+            fail
+
 
 check : Datum -> Redeemer -> Data -> unit
 check datum redeemer tx =
     case redeemer of
-        Claim -> assert (Builtin.lessThanInteger (lower datum.deadline) (validAfter tx))
-        Cancel -> assert (signedBy tx datum.owner)
+        Claim ->
+            assert
+                (Builtin.lessThanInteger (lower datum.deadline) (validAfter tx))
+
+        Cancel ->
+            assert (signedBy tx datum.owner)
