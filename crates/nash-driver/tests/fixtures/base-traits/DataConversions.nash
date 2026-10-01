@@ -423,3 +423,56 @@ tests
     test "Data decode preserves any shape 1" =
         do
             assert (asData (Map entries) == Some (Map entries))
+
+
+proof
+    import Proof
+
+    prop "integer Data roundtrip" =
+        let
+            value via Proof.int
+        in
+            do
+                assert (little (toData value) == value)
+
+    prop "boolean Data roundtrip" =
+        let
+            value via Proof.bool
+        in
+            do
+                assert (fromBool (toData value) == value)
+
+    prop "bytes Data roundtrip" =
+        let
+            value via Proof.bytes
+        in
+            do
+                assert (fromBytes (toData value) == value)
+
+    prop "integer optional decoding" =
+        let
+            value via Proof.int
+        in
+            do
+                assert (asInt (toData value) == Some value)
+
+    prop "integer decoder rejects bytes of any content" =
+        let
+            value via Proof.bytes
+        in
+            do
+                assert (asInt (B value) == None)
+
+    prop "bytes decoder rejects every integer" =
+        let
+            value via Proof.int
+        in
+            do
+                assert (asBytes (I value) == None)
+
+    prop "boolean decoder rejects a constructor with a payload" =
+        let
+            value via Proof.int
+        in
+            do
+                assert (asBool (Builtin.constrData 0 [ I value ]) == None)

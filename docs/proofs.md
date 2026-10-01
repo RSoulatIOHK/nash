@@ -122,11 +122,102 @@ models**, not independently kernel-certified proofs. Counterexamples are the
 library's textual SMT models; automatic decoding, replay and shrinking are not
 yet implemented.
 
+## Partial correctness for recursive functions
+
+Use `Proof.returns computation (\result -> condition)` as the sole expression
+in a passing proof body. The compiler emits two separate UPLC programs: the
+computation and its Boolean postcondition. For example:
+
+```elm
+proof
+    import Proof
+
+    prop "square root is correct when it returns" =
+        let value via Proof.int in
+        do
+            Proof.returns (Int.isqrt value) (\root ->
+                root >= 0 && root * root <= value && value < (root + 1) * (root + 1))
+```
+
+This checks the returned root against adjacent squares, without calling `isqrt`
+again in the specification. The condition can refer to every original symbolic
+input as well as the returned value. Multiple inputs use a single `let`:
+
+```elm
+let left via Proof.int
+    right via Proof.int
+in
+```
+
+A `verified_partial` result means every successful return **within `--fuel`**
+satisfies the condition. An error or exhaustion supplies no successful return;
+it remains rejection under Nash's execution-limit semantics. Partial correctness
+does not establish termination, acceptance, or successful return for any input.
+In particular, an insufficient execution limit can make the implication vacuous.
+It also does not establish correctness of returns beyond that limit.
+
+The postcondition has its own `--postcondition-fuel` limit. A false condition or
+an evaluation error refutes the property. If the checker exhausts on a successful
+computation, the result is `postcondition_exhausted` and the command fails; it
+cannot verify the property. Solver unknowns and timeouts also remain inconclusive.
+The computation, checker completion, and condition are checked independently so
+an assertion failure cannot disappear behind a successful-return guard.
+
+Returned values can be native integers, Booleans, bytes, strings, unit, or
+Data-represented types. Native lists, tuples, custom ADTs and functions cannot
+cross this boundary yet. `fail` and `fail once` modifiers are rejected for
+`Proof.returns`. Wrapping it in another function or placing it inside other
+statements does not select partial correctness: only the direct body call is
+recognized. Outside that position it is an ordinary strict assertion helper.
+
+## Coverage of existing tests
+
+The existing Base fixtures now include 15 proof declarations alongside their
+runtime checks. They use the actual bundled functions and compile through the
+same backend as validators. The three fixtures have also been formatted with
+`nash format`.
+
+| Fixture | Proof coverage | Current verification |
+|---|---|---|
+| `DataConversions.nash` | arbitrary integer, Boolean and byte roundtrips; optional integer decoding; malformed scalar encodings | all seven verified with 500 execution steps |
+| `Equality.nash` | Boolean equality, integer comparison, antisymmetry, min/max partition | Boolean equality verified; three integer obligations currently time out |
+| `IntegerMath.nash` | adjacent-square root specification; greatest-common-divisor and least-common-multiple divisibility specifications; negative square-root rejection | compile/export checked; symbolic execution currently times out |
+
+The gcd and lcm specifications quantify over an additional candidate divisor or
+multiple. They use arithmetic divisibility, not another call to the algorithm
+under verification. Existing oracle examples, finite-grid tests, UTF-8 cases,
+collection tests and cross-language Cardano goldens remain active while the
+more expensive obligations need backend improvements.
+
+The real `Vesting` and `VestingParam` examples also have partial-correctness
+proofs over `Proof.spendingV3`: accepting a ledger-valid context must imply the
+claim deadline or owner-signature policy. They use the existing unchecked
+datum/redeemer casts and do not establish full application encoding validation. Both export successfully; verification
+currently times out. Their serialized-artifact tests now cover exact deadlines,
+just-after deadlines, negative deadlines, different signers, cancellation after
+the deadline, and malformed outer contexts. Artifact encoding, traces, budgets
+and optimized/unoptimized comparisons remain runtime checks.
+
+The default optional regression suite runs the eight verified conversion/Boolean
+obligations directly from their existing fixture files:
+
+```sh
+NASH_PROOF_LEAN_PROJECT=/path/to/prebuilt/lean-project \
+    cargo test -p nash-driver --test proofs live_existing_test_proofs -- --ignored
+```
+
+Use `NASH_PROOF_MATCH=Equality` or `NASH_PROOF_MATCH=IntegerMath` to attempt the
+expensive candidates; `NASH_PROOF_MATCH=/` selects every fixture obligation.
+`NASH_PROOF_FUEL` overrides the default 500 execution steps. Unverified results
+fail the test. This optional suite requires Lean and Z3; regular workspace tests
+always type-check and compile/export all 15 declarations.
+
 ## Command and generated artifacts
 
 ```sh
 nash proof .
 nash verify . --match "integer identity" --fuel 10000 --timeout 30
+nash proof . --fuel 1000 --postcondition-fuel 2000
 nash proof . --emit-only --output build/exported-proofs
 nash proof . --lean-project /path/to/prebuilt/lean-project --json
 ```
@@ -151,8 +242,8 @@ first use; this needs network access and an installed Lean/Lake toolchain.
 already built project without updating it; it must provide the pinned API.
 An appropriate Z3 must be on `PATH` for obligations requiring SMT reasoning.
 
-Defaults: 10,000 CEK steps, 30 seconds per SMT query, 120 seconds total per
-property (including preprocessing). Backend setup is outside that per-property
+Defaults: 10,000 computation steps, 10,000 postcondition steps, 30 seconds per
+SMT query, 120 seconds total per property (including preprocessing). Backend setup is outside that per-property
 limit. On Unix, a timed-out run terminates the Lake/Lean/solver process group.
 The command exits unsuccessfully on refutation, unknown, timeout,
 backend failure, no witness, or an empty selection.
@@ -162,10 +253,28 @@ project and its dependency cache, while preserving each run in its own
 `run-...` directory with its Lean sources and `proofs.json`. Existing generated
 sources remain available for review or direct `lake env lean run-.../ProofN.lean` use.
 
-`examples/proofs` demonstrates the complete flow. An optional integration test
-runs the real backend:
+`examples/proofs` demonstrates the complete flow:
+
+```sh
+nash proof examples/proofs --fuel 80 --postcondition-fuel 150
+```
+
+Increasing fuel can substantially increase preprocessing time, even when a
+smaller execution limit already sufficed. A timeout is an unverified result,
+not a refutation.
+
+An optional integration test runs the real backend and covers expected outcomes and execution exhaustion:
 
 ```sh
 NASH_PROOF_LEAN_PROJECT=/path/to/prebuilt/lean-project \
     cargo test -p nash-driver --test proofs live_backend -- --ignored
+```
+
+Partial-correctness regressions exercise all six supported return representations,
+incorrect results, computation errors/exhaustion, checker errors, and checker
+exhaustion:
+
+```sh
+NASH_PROOF_LEAN_PROJECT=/path/to/prebuilt/lean-project \
+    cargo test -p nash-driver --test proofs live_partial_correctness -- --ignored
 ```

@@ -34,3 +34,10 @@ proof
         in
             do
                 assert (x >= 0)
+
+    prop "function result satisfies its postcondition" =
+        let
+            value via Proof.int
+        in
+            do
+                Proof.returns (addZero value) (\result -> result == value)

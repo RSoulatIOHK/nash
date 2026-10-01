@@ -48,3 +48,48 @@ check minimumLock datum redeemer tx =
 
         Cancel ->
             assert (signedBy tx datum.owner)
+
+
+proof
+    import Proof
+
+    -- Verify authorization with the same unchecked application casts as main.
+    -- This does not claim that the datum/redeemer encoding is fully validated.
+    prop "accepted spending contexts satisfy authorization" =
+        let
+            minimumLock via Proof.int
+            ctx via Proof.spendingV3
+        in
+            do
+                Proof.returns
+                    (main minimumLock ctx)
+                    (
+                        \_ ->
+                            case ctx of
+                                Constr
+                                        pair(0, [ tx
+                                        , rawAction
+                                        , Constr
+                                            pair(1, [ _
+                                            , Constr pair(0, [ rawDatum ])
+                                            ])
+                                        ]) ->
+                                    let
+                                        datum : Datum
+                                        datum = Primitive.coerce rawDatum
+
+                                        action : Redeemer
+                                        action = Primitive.coerce rawAction
+                                    in
+                                        case action of
+                                            Claim ->
+                                                lower datum.deadline +
+                                                    minimumLock <
+                                                    validAfter tx
+
+                                            Cancel ->
+                                                signedBy tx datum.owner
+
+                                _ ->
+                                    False
+                    )

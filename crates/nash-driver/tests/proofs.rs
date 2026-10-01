@@ -136,10 +136,11 @@ proof
             .unwrap()
             .as_nanos()
     ));
-    let files = nash_proof::export(&programs, &directory, 65, 10).unwrap();
+    let files = nash_proof::export(&programs, &directory, 65, 1000, 10).unwrap();
     let config = nash_proof::Config {
         lean_project: project.into(),
         fuel: 65,
+        postcondition_fuel: 1000,
         solver_timeout: 10,
         wall_timeout: std::time::Duration::from_secs(60),
     };
@@ -153,7 +154,7 @@ proof
         assert_eq!(outcome.status, expected, "{}", outcome.diagnostics);
     }
     let limited = directory.join("limited");
-    let files = nash_proof::export(&programs[..1], &limited, 1, 10).unwrap();
+    let files = nash_proof::export(&programs[..1], &limited, 1, 1000, 10).unwrap();
     let config = nash_proof::Config { fuel: 1, ..config };
     let outcome = nash_proof::run(&programs[0], &files[0], &config).unwrap();
     assert_eq!(
@@ -172,8 +173,285 @@ proof
     ] {
         programs[0].expect = expect;
         let directory = directory.join(format!("exhaustion-{index}"));
-        let files = nash_proof::export(&programs[..1], &directory, 1, 10).unwrap();
+        let files = nash_proof::export(&programs[..1], &directory, 1, 1000, 10).unwrap();
         let outcome = nash_proof::run(&programs[0], &files[0], &config).unwrap();
         assert_eq!(outcome.status, status, "{}", outcome.diagnostics);
     }
+}
+
+#[tokio::test]
+async fn partial_correctness_compiles_computation_and_condition_separately() {
+    let programs = compile(
+        r#"module Main exposing (..)
+proof
+    import Proof
+    prop "identity result" = let x via Proof.int in do
+        Proof.returns (x + 0) (\result -> result == x)
+    test "unit result" = do
+        Proof.returns () (\_ -> True)
+    prop "Data result" = let x via Proof.integer in do
+        Proof.returns x (\result -> result == x)
+"#,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        programs[0].postcondition.as_ref().unwrap().result,
+        nash_proof::ReturnDomain::Int
+    );
+    assert_eq!(
+        programs[1].postcondition.as_ref().unwrap().result,
+        nash_proof::ReturnDomain::Unit
+    );
+    assert_eq!(
+        programs[2].postcondition.as_ref().unwrap().result,
+        nash_proof::ReturnDomain::Data
+    );
+    assert!(
+        programs
+            .iter()
+            .all(|p| !p.postcondition.as_ref().unwrap().flat.is_empty())
+    );
+    assert_ne!(
+        programs[0].flat,
+        programs[0].postcondition.as_ref().unwrap().flat
+    );
+}
+
+#[tokio::test]
+async fn partial_correctness_rejects_failure_modifiers_and_function_results() {
+    for (body, expected) in [
+        (
+            "test \"invalid fail\" fail = do\n        Proof.returns 1 (\\_ -> True)",
+            "cannot use fail",
+        ),
+        (
+            "test \"function result\" = do\n        Proof.returns (\\x -> x + 1) (\\_ -> True)",
+            "result",
+        ),
+    ] {
+        let source = format!("module Main exposing (..)\nproof\n    import Proof\n    {body}\n");
+        let error = compile(&source).await.unwrap_err();
+        assert!(error.contains(expected), "{error}");
+    }
+}
+
+#[tokio::test]
+#[ignore = "requires the pinned Lean project and Z3"]
+async fn live_partial_correctness() {
+    let programs = compile(
+        r#"module Main exposing (..)
+wrong x = x + 1
+reject : int -> int
+reject _ = fail
+loop : int -> int
+loop x = loop x
+proof
+    import Proof
+    prop "correct identity" = let x via Proof.int in do
+        Proof.returns x (\result -> result == x)
+    prop "wrong returned result must refute" = let x via Proof.int in do
+        Proof.returns (wrong x) (\result -> result == x)
+    prop "rejection has no successful return" = let x via Proof.int in do
+        Proof.returns (reject x) (\_ -> False)
+    prop "exhaustion has no successful return" = let x via Proof.int in do
+        Proof.returns (loop x) (\_ -> False)
+    prop "undefined condition must refute" = let x via Proof.int in do
+        Proof.returns x (\_ -> 1 / 0 == 0)
+    prop "condition exhaustion must be inconclusive" = let x via Proof.int in do
+        Proof.returns x (\result -> loop result == 0)
+    test "unit return" = do
+        Proof.returns () (\_ -> True)
+    prop "Data return" = let x via Proof.integer in do
+        Proof.returns x (\result -> result == x)
+    prop "Boolean return" = let x via Proof.bool in do
+        Proof.returns x (\result -> result == x)
+    prop "Boolean false case must refute" = let x via Proof.bool in do
+        Proof.returns x (\result -> result)
+    prop "bytes return" = let x via Proof.bytes in do
+        Proof.returns x (\result -> result == x)
+    prop "string return" = let x via Proof.string in do
+        Proof.returns x (\result -> result == x)
+"#,
+    )
+    .await
+    .unwrap();
+    let directory = std::env::temp_dir().join(format!("nash-live-partial-{}", std::process::id()));
+    let files = nash_proof::export(&programs, &directory, 120, 150, 10).unwrap();
+    let config = nash_proof::Config {
+        lean_project: std::env::var_os("NASH_PROOF_LEAN_PROJECT")
+            .expect("Lean project")
+            .into(),
+        fuel: 120,
+        postcondition_fuel: 150,
+        solver_timeout: 10,
+        wall_timeout: std::time::Duration::from_secs(60),
+    };
+    for ((program, source), expected) in programs.iter().zip(files).zip([
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::Counterexample,
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::Counterexample,
+        nash_proof::Status::PostconditionExhausted,
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::Counterexample,
+        nash_proof::Status::VerifiedPartial,
+        nash_proof::Status::VerifiedPartial,
+    ]) {
+        let outcome = nash_proof::run(program, &source, &config).unwrap();
+        assert_eq!(
+            outcome.status, expected,
+            "{}: {}",
+            program.name, outcome.diagnostics
+        );
+    }
+}
+
+const EXISTING_FIXTURES: &[(&str, &str, usize)] = &[
+    (
+        "DataConversions",
+        include_str!("fixtures/base-traits/DataConversions.nash"),
+        7,
+    ),
+    (
+        "Equality",
+        include_str!("fixtures/base-traits/Equality.nash"),
+        4,
+    ),
+    (
+        "IntegerMath",
+        include_str!("fixtures/base-traits/IntegerMath.nash"),
+        4,
+    ),
+];
+
+#[tokio::test]
+async fn existing_test_fixtures_compile_and_export_proofs() {
+    let directory = std::env::temp_dir().join(format!(
+        "nash-fixture-export-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    for (name, source, count) in EXISTING_FIXTURES {
+        let programs = compile(source)
+            .await
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(programs.len(), *count, "{name}");
+        let files = nash_proof::export(&programs, &directory, 500, 1000, 30).unwrap();
+        assert_eq!(files.len(), *count, "{name}");
+        assert!(files.iter().all(|path| path.is_file()));
+        assert!(files[0].parent().unwrap().join("proofs.json").is_file());
+        if *name == "IntegerMath" {
+            assert_eq!(
+                programs
+                    .iter()
+                    .filter(|p| p.postcondition.is_some())
+                    .count(),
+                3
+            );
+        }
+    }
+}
+
+/// Runs the actual proof blocks in the existing fixtures, rather than copies of them.
+/// Defaults to the verified conversion/Boolean suite. NASH_PROOF_MATCH can select
+/// the expensive arithmetic/ordering candidates; these must still fail closed.
+#[tokio::test]
+#[ignore = "requires the pinned Lean project and Z3"]
+async fn live_existing_test_proofs() {
+    let matching = std::env::var("NASH_PROOF_MATCH").unwrap_or_default();
+    let fuel = std::env::var("NASH_PROOF_FUEL").map_or(500, |s| s.parse().unwrap());
+    let directory =
+        std::env::temp_dir().join(format!("nash-existing-proofs-{}", std::process::id()));
+    let config = nash_proof::Config {
+        lean_project: std::env::var_os("NASH_PROOF_LEAN_PROJECT")
+            .expect("Lean project")
+            .into(),
+        fuel,
+        postcondition_fuel: 1000,
+        solver_timeout: 30,
+        wall_timeout: std::time::Duration::from_secs(60),
+    };
+    let mut checked = 0;
+    let mut failures = Vec::new();
+    for (fixture, source, _) in EXISTING_FIXTURES {
+        let programs = compile(source).await.unwrap();
+        let programs: Vec<_> = programs
+            .into_iter()
+            .filter(|p| {
+                if matching.is_empty() {
+                    *fixture == "DataConversions" || p.name == "boolean equality agrees with logic"
+                } else {
+                    format!("{fixture}/{}", p.name).contains(&matching)
+                }
+            })
+            .collect();
+        if programs.is_empty() {
+            continue;
+        }
+        let files = nash_proof::export(&programs, &directory, fuel, 1000, 30).unwrap();
+        for (program, source) in programs.iter().zip(files) {
+            let outcome = nash_proof::run(program, &source, &config).unwrap();
+            eprintln!("{fixture}/{}: {:?}", program.name, outcome.status);
+            if !outcome.passed() {
+                failures.push(format!(
+                    "{fixture}/{}: {:?}: {}",
+                    program.name, outcome.status, outcome.diagnostics
+                ));
+            }
+            checked += 1;
+        }
+    }
+    assert!(checked > 0, "no existing proofs matched");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[tokio::test]
+async fn vesting_authorization_proofs_compile_and_export() {
+    use nash_driver::{FileSystemSource, Project, build_graph_with_tests};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/vesting");
+    let project = Project::load(root).await.unwrap();
+    let db = Arc::new(Mutex::new(Database::new(FileSystemSource::new())));
+    let modules = project.discover_modules(&*db.lock().await).await.unwrap();
+    let roots = project
+        .discover_own_modules(&*db.lock().await)
+        .await
+        .unwrap();
+    let graph = build_graph_with_tests(
+        db.clone(),
+        &modules.keys().cloned().collect::<Vec<_>>(),
+        &roots.keys().cloned().collect::<Vec<_>>(),
+    )
+    .await
+    .unwrap();
+    let (report, programs) = test_with(db, &graph, &modules, move |solved| {
+        nash_driver::build::compile_proofs_matching_with(
+            solved,
+            |uri| roots.contains_key(uri).then(nash_config::Build::default),
+            |_, _| true,
+        )
+    })
+    .await;
+    assert!(report.is_success(), "{report:#?}");
+    let programs = programs.unwrap().unwrap();
+    assert_eq!(programs.len(), 2);
+    assert!(
+        programs
+            .iter()
+            .all(|p| p.postcondition.as_ref().unwrap().result == nash_proof::ReturnDomain::Unit)
+    );
+    assert_eq!(programs[0].domains, vec![nash_proof::Domain::Spending(3)]);
+    assert_eq!(
+        programs[1].domains,
+        vec![nash_proof::Domain::Int, nash_proof::Domain::Spending(3)]
+    );
+    let output = std::env::temp_dir().join(format!("nash-vesting-proofs-{}", std::process::id()));
+    let files = nash_proof::export(&programs, &output, 1000, 1500, 30).unwrap();
+    assert_eq!(files.len(), 2);
 }

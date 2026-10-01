@@ -20,6 +20,9 @@ pub struct Args {
     /// CEK execution step limit; exhaustion counts as rejection.
     #[arg(long, default_value = "10000", value_parser = positive)]
     pub fuel: u32,
+    /// Separate CEK limit for evaluating a partial-correctness postcondition.
+    #[arg(long, default_value = "10000", value_parser = positive)]
+    pub postcondition_fuel: u32,
     #[arg(long, default_value = "30", value_parser = positive)]
     pub timeout: u32,
     #[arg(long, default_value = "120", value_parser = positive)]
@@ -129,8 +132,14 @@ impl Args {
         if let Some(parent) = output.parent() {
             std::fs::create_dir_all(parent).into_diagnostic()?;
         }
-        let files =
-            nash_proof::export(&programs, &output, self.fuel, self.timeout).into_diagnostic()?;
+        let files = nash_proof::export(
+            &programs,
+            &output,
+            self.fuel,
+            self.postcondition_fuel,
+            self.timeout,
+        )
+        .into_diagnostic()?;
         if self.emit_only {
             if self.json {
                 println!(
@@ -177,6 +186,7 @@ impl Args {
         let config = nash_proof::Config {
             lean_project,
             fuel: self.fuel,
+            postcondition_fuel: self.postcondition_fuel,
             solver_timeout: self.timeout,
             wall_timeout: Duration::from_secs(u64::from(self.wall_timeout)),
         };
@@ -184,9 +194,17 @@ impl Args {
         for (program, file) in programs.iter().zip(files) {
             let outcome = nash_proof::run(program, &file, &config).into_diagnostic()?;
             if !self.json {
+                let limits = if program.postcondition.is_some() {
+                    format!(
+                        "execution fuel {}, postcondition fuel {}",
+                        outcome.fuel, outcome.postcondition_fuel
+                    )
+                } else {
+                    format!("execution fuel {}", outcome.fuel)
+                };
                 eprintln!(
-                    "{}: {:?} (SMT verification, fuel {})",
-                    outcome.name, outcome.status, outcome.fuel
+                    "{}: {:?} (SMT verification, {limits})",
+                    outcome.name, outcome.status
                 );
                 for entry in &outcome.counterexample {
                     eprintln!("  {entry}");

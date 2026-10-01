@@ -891,3 +891,116 @@ tests
                         )
                         (List.range 0 101)
                 )
+
+
+proof
+    import Proof
+
+    -- Partial correctness checks successful results, without requiring termination.
+    -- The adjacent-squares predicate does not call the square-root algorithm.
+    prop "square root satisfies adjacent squares when it returns" =
+        let
+            value via Proof.int
+        in
+            do
+                Proof.returns
+                    (Int.isqrt value)
+                    (
+                        \root ->
+                            root >=
+                                0 &&
+                                root *
+                                root <=
+                                value &&
+                                value <
+                                (root + 1) *
+                                (root + 1)
+                    )
+
+    -- Every positive common divisor must divide the returned gcd.
+    prop "gcd satisfies the greatest common divisor specification" =
+        let
+            left via Proof.int
+            right via Proof.int
+            candidate via Proof.int
+        in
+            do
+                Proof.returns
+                    (Int.gcd left right)
+                    (
+                        \divisor ->
+                            (
+                                if divisor == 0 then
+                                    left == 0 && right == 0
+                                else
+                                    divisor >
+                                        0 &&
+                                        left %
+                                        divisor ==
+                                        0 &&
+                                        right %
+                                        divisor ==
+                                        0
+                            ) &&
+                                (
+                                    if candidate >
+                                        0 &&
+                                        left %
+                                        candidate ==
+                                        0 &&
+                                        right %
+                                        candidate ==
+                                        0 then
+                                        divisor % candidate == 0
+                                    else
+                                        True
+                                )
+                    )
+
+    -- Every positive common multiple must be divisible by the returned lcm.
+    prop "lcm satisfies the least common multiple specification" =
+        let
+            left via Proof.int
+            right via Proof.int
+            candidate via Proof.int
+        in
+            do
+                Proof.returns
+                    (Int.lcm left right)
+                    (
+                        \multiple ->
+                            if left == 0 || right == 0 then
+                                multiple == 0
+                            else
+                                multiple >
+                                    0 &&
+                                    multiple %
+                                    left ==
+                                    0 &&
+                                    multiple %
+                                    right ==
+                                    0 &&
+                                    (
+                                        if candidate >
+                                            0 &&
+                                            candidate %
+                                            left ==
+                                            0 &&
+                                            candidate %
+                                            right ==
+                                            0 then
+                                            candidate % multiple == 0
+                                        else
+                                            True
+                                    )
+                    )
+
+    prop "square root rejects every negative input" fail =
+        let
+            value via Proof.int
+        in
+            do
+                let
+                    _ = Int.isqrt (-1 - Int.abs value)
+                in
+                    ()

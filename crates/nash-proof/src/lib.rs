@@ -48,5 +48,23 @@ pub struct ProofProgram {
     pub expect: Expect,
     pub domains: Vec<Domain>,
     pub flat: Vec<u8>,
+    pub postcondition: Option<Postcondition>,
     pub plutus_version: nash_config::PlutusVersion,
+}
+
+/// Constant representations that can cross the computation/postcondition boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReturnDomain {
+    Int,
+    Bool,
+    Bytes,
+    String,
+    Unit,
+    Data,
+}
+
+#[derive(Debug)]
+pub struct Postcondition {
+    pub flat: Vec<u8>,
+    pub result: ReturnDomain,
 }

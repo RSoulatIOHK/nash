@@ -147,3 +147,68 @@ tests
             assert (compare ( 1, 2 ) ( 1, 3 ) == LT)
             assert (compare ( 1, 2, 3 ) ( 1, 2, 2 ) == GT)
             assert (compare ( 1, 2, 3, 4 ) ( 1, 2, 3, 4 ) == EQ)
+
+
+proof
+    import Proof
+
+    prop "integer ordering agrees with comparison" =
+        let
+            left via Proof.int
+            right via Proof.int
+        in
+            do
+                assert
+                    (
+                        case compare left right of
+                            LT ->
+                                left < right
+
+                            EQ ->
+                                left == right
+
+                            GT ->
+                                left > right
+                    )
+
+    prop "integer ordering is antisymmetric" =
+        let
+            left via Proof.int
+            right via Proof.int
+        in
+            do
+                assert
+                    (
+                        case ( compare left right, compare right left ) of
+                            ( LT, GT ) ->
+                                True
+
+                            ( EQ, EQ ) ->
+                                True
+
+                            ( GT, LT ) ->
+                                True
+
+                            _ ->
+                                False
+                    )
+
+    prop "minimum and maximum partition integer inputs" =
+        let
+            left via Proof.int
+            right via Proof.int
+        in
+            do
+                assert (min left right + max left right == left + right)
+
+    prop "boolean equality agrees with logic" =
+        let
+            left via Proof.bool
+            right via Proof.bool
+        in
+            do
+                assert
+                    (
+                        (left == right) ==
+                            ((left && right) || (not left && not right))
+                    )

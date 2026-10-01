@@ -1,5 +1,6 @@
 module Proof exposing
-    ( int
+    ( returns
+    , int
     , integer
     , bool
     , bytes
@@ -85,3 +86,12 @@ mintingV2 = data
 {-| Contexts satisfying the CardanoLedgerApi Plutus V3 minting validity predicate. -}
 mintingV3 : Data
 mintingV3 = data
+
+
+{-| Partial correctness: if the computation successfully returns, its result must
+satisfy the condition. Use as the sole expression of a passing proof body.
+The proof backend compiles the computation and condition separately.
+In ordinary Nash execution this checks the condition with an assertion.
+-}
+returns : 'a -> ('a -> bool) -> unit
+returns value condition = assert (condition value)

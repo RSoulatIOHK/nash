@@ -13,6 +13,7 @@ pub struct Config {
     /// An existing Lake project with the three pinned dependencies built.
     pub lean_project: PathBuf,
     pub fuel: u32,
+    pub postcondition_fuel: u32,
     pub solver_timeout: u32,
     pub wall_timeout: Duration,
 }
@@ -21,6 +22,8 @@ pub struct Config {
 #[serde(rename_all = "snake_case")]
 pub enum Status {
     Verified,
+    VerifiedPartial,
+    PostconditionExhausted,
     Counterexample,
     Witness,
     NoWitness,
@@ -35,13 +38,17 @@ pub struct Outcome {
     pub name: String,
     pub status: Status,
     pub fuel: u32,
+    pub postcondition_fuel: u32,
     pub trust: &'static str,
     pub counterexample: Vec<String>,
     pub diagnostics: String,
 }
 impl Outcome {
     pub fn passed(&self) -> bool {
-        matches!(self.status, Status::Verified | Status::Witness)
+        matches!(
+            self.status,
+            Status::Verified | Status::VerifiedPartial | Status::Witness
+        )
     }
 }
 
@@ -57,6 +64,7 @@ pub fn export(
     programs: &[ProofProgram],
     destination: &Path,
     fuel: u32,
+    postcondition_fuel: u32,
     timeout: u32,
 ) -> std::io::Result<Vec<PathBuf>> {
     // Only reuse a project we created, with the unchanged pinned configuration.
@@ -95,9 +103,9 @@ pub fn export(
     for (i, program) in programs.iter().enumerate() {
         let filename = format!("Proof{i}.lean");
         let file = run.join(&filename);
-        fs::write(&file, render(program, fuel, timeout))?;
+        fs::write(&file, render(program, fuel, postcondition_fuel, timeout))?;
         manifest.push(serde_json::json!({"file": filename, "module": program.module, "name": program.name,
-            "fuel": fuel, "trust": "smt_verified", "plutus_version": format!("{:?}", program.plutus_version)}));
+            "fuel": fuel, "postcondition_fuel": postcondition_fuel, "kind": if program.postcondition.is_some() { "partial_correctness" } else { "execution" }, "trust": "smt_verified", "plutus_version": format!("{:?}", program.plutus_version)}));
         files.push(file);
     }
     fs::write(
@@ -143,19 +151,37 @@ pub fn run(program: &ProofProgram, source: &Path, config: &Config) -> std::io::R
     };
     let out = fs::read_to_string(stdout)?;
     let err = fs::read_to_string(stderr)?;
-    let (status, counterexample) = classify(program.expect, success, timed_out, &out);
+    let (status, counterexample) = classify_mode(
+        program.expect,
+        program.postcondition.is_some(),
+        success,
+        timed_out,
+        &out,
+    );
     Ok(Outcome {
         module: program.module.clone(),
         name: program.name.clone(),
         status,
         fuel: config.fuel,
+        postcondition_fuel: config.postcondition_fuel,
         trust: "smt_verified",
         counterexample,
         diagnostics: format!("{out}{err}"),
     })
 }
 
+#[cfg(test)]
 fn classify(expect: Expect, success: bool, timed_out: bool, output: &str) -> (Status, Vec<String>) {
+    classify_mode(expect, false, success, timed_out, output)
+}
+
+fn classify_mode(
+    expect: Expect,
+    partial: bool,
+    success: bool,
+    timed_out: bool,
+    output: &str,
+) -> (Status, Vec<String>) {
     if timed_out {
         return (Status::Timeout, vec![]);
     }
@@ -175,11 +201,36 @@ fn classify(expect: Expect, success: bool, timed_out: bool, output: &str) -> (St
         }
     }
     let existential = expect == Expect::FailOnce;
-    if replies.len() != 1 || replies[0].query != "property" {
+    let queries: &[&str] = if partial {
+        &["postcondition_completion", "property"]
+    } else {
+        &["property"]
+    };
+    if !replies
+        .iter()
+        .map(|r| r.query.as_str())
+        .eq(queries.iter().copied())
+    {
         return (Status::BackendError, vec![]);
+    }
+    if partial {
+        if expect != Expect::Pass {
+            return (Status::BackendError, vec![]);
+        }
+        match replies[0].status.as_str() {
+            "valid" => {}
+            "falsified" => {
+                return (
+                    Status::PostconditionExhausted,
+                    replies.remove(0).counterexample,
+                );
+            }
+            _ => return (Status::Unknown, vec![]),
+        }
     }
     let property = replies.pop().unwrap();
     let status = match (existential, property.status.as_str()) {
+        (false, "valid") if partial => Status::VerifiedPartial,
         (false, "valid") => Status::Verified,
         (false, "falsified") => Status::Counterexample,
         (true, "falsified") => Status::Witness,
@@ -245,5 +296,26 @@ mod tests {
                 Status::BackendError
             );
         }
+    }
+    #[test]
+    fn partial_correctness_requires_a_completed_postcondition() {
+        for (completion, property, expected) in [
+            ("valid", "valid", Status::VerifiedPartial),
+            ("valid", "falsified", Status::Counterexample),
+            ("falsified", "valid", Status::PostconditionExhausted),
+            ("unknown", "valid", Status::Unknown),
+            ("valid", "unknown", Status::Unknown),
+        ] {
+            let output =
+                reply("postcondition_completion", completion) + &reply("property", property);
+            assert_eq!(
+                classify_mode(Expect::Pass, true, true, false, &output).0,
+                expected
+            );
+        }
+        assert_eq!(
+            classify_mode(Expect::Pass, true, true, false, &reply("property", "valid")).0,
+            Status::BackendError
+        );
     }
 }

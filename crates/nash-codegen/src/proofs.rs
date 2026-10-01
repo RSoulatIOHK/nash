@@ -4,9 +4,13 @@ use crate::{
     decision_tree::{self, MatchBranch, MatchInputs},
 };
 use nash_ast::{Expr, ModuleName, NodeId, primitives};
-use nash_ir::core::*;
+use nash_ir::{
+    core::*,
+    ty::{ConstTy, Ty},
+};
 use nash_plutus::{arena::Arena, flat};
 pub use nash_proof::{Domain, ProofProgram};
+use nash_proof::{Postcondition, ReturnDomain};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error<'a> {
@@ -22,6 +26,12 @@ pub enum Error<'a> {
     Budget,
     #[error("ledger domain version must match the proof's Plutus version")]
     LedgerVersion,
+    #[error("Proof.returns is a partial-correctness claim and cannot use fail or fail once")]
+    PartialExpectation,
+    #[error(
+        "Proof.returns requires an integer, Boolean, bytes, string, unit or Data-represented result"
+    )]
+    PartialResult,
     #[error("{0}")]
     Build(crate::build::Error<'a>),
     #[error("{0}")]
@@ -122,43 +132,103 @@ pub fn compile_proofs_matching<'a>(
             params.push(value);
             patterns.push((binder, value, records, literals, bindings));
         }
-        let mut body = engine.expr(proof.body, &ctx)?;
-        for (binder, value, records, literals, bindings) in patterns.into_iter().rev() {
-            body = decision_tree::compile(
-                &engine.ir,
-                &mut engine.types,
-                value.ty,
-                engine.ir.var(value.name, value.ty),
-                &[MatchBranch {
-                    pattern: binder.pattern,
-                    bindings,
-                    body,
-                }],
-                MatchInputs {
-                    record_fields: &records,
-                    literal_tests: &literals,
-                },
-                engine.ir.error(body.ty),
-            )?;
-        }
-        let root = if params.is_empty() {
-            body
-        } else {
-            engine.ir.lam(&params, body)
+        let partial = match proof.body.value {
+            Expr::Call {
+                function,
+                arguments: [computation, condition],
+            } if matches!(function.value, Expr::VarForeign { reference, .. }
+                    if reference.home.package == Some(primitives::BASE)
+                        && reference.home.name == "Proof" && reference.name == "returns") =>
+            {
+                Some((*computation, *condition))
+            }
+            _ => None,
         };
-        let core = engine.finish_root(root)?;
+        if partial.is_some() && proof.expect != nash_ast::Expect::Pass {
+            return Err(Error::PartialExpectation);
+        }
+        let body = engine.expr(partial.map_or(proof.body, |(value, _)| value), &ctx)?;
+        let mut postcondition = None;
+        let mut checker = None;
+        if let Some((_, condition)) = partial {
+            let result = match body.ty {
+                Ty::Const(ConstTy::Int) => ReturnDomain::Int,
+                Ty::Const(ConstTy::Bool) => ReturnDomain::Bool,
+                Ty::Const(ConstTy::Bytes) => ReturnDomain::Bytes,
+                Ty::Const(ConstTy::String) => ReturnDomain::String,
+                Ty::Const(ConstTy::Unit) => ReturnDomain::Unit,
+                Ty::Big(_) => ReturnDomain::Data,
+                _ => return Err(Error::PartialResult),
+            };
+            let value = Binder {
+                name: engine.ir.fresh("returned"),
+                ty: body.ty,
+            };
+            let condition = engine.expr(condition, &ctx)?;
+            let holds = engine.ir.app(
+                condition,
+                &[engine.ir.var(value.name, value.ty)],
+                Ty::Const(&ConstTy::Bool),
+            );
+            checker = Some((holds, value));
+            postcondition = Some(Postcondition {
+                flat: Vec::new(),
+                result,
+            });
+        }
+        // Both programs bind the same symbolic inputs, but only the condition
+        // receives a successfully returned value. Never guard the assertion body.
+        let wrap = |engine: &mut Engine<'a, '_, '_>, mut body| -> Result<_, Error<'a>> {
+            for (binder, value, records, literals, bindings) in patterns.iter().rev() {
+                body = decision_tree::compile(
+                    &engine.ir,
+                    &mut engine.types,
+                    value.ty,
+                    engine.ir.var(value.name, value.ty),
+                    &[MatchBranch {
+                        pattern: binder.pattern,
+                        bindings: bindings.clone(),
+                        body,
+                    }],
+                    MatchInputs {
+                        record_fields: records,
+                        literal_tests: literals,
+                    },
+                    engine.ir.error(body.ty),
+                )?;
+            }
+            Ok(body)
+        };
+        let body = wrap(&mut engine, body)?;
+        let root = engine.ir.lam(&params, body);
+        let checker_root = if let Some((body, value)) = checker {
+            let body = wrap(&mut engine, body)?;
+            let mut arguments = params.clone();
+            arguments.push(value);
+            Some(engine.ir.lam(&arguments, body))
+        } else {
+            None
+        };
         let target = match version {
             nash_config::PlutusVersion::V1 => nash_plutus::machine::PlutusVersion::V1,
             nash_config::PlutusVersion::V2 => nash_plutus::machine::PlutusVersion::V2,
             nash_config::PlutusVersion::V3 => nash_plutus::machine::PlutusVersion::V3,
         };
+        let core = engine.finish_root(root)?;
         let compiled = crate::program::assemble_core_for_version(arena, core, target)?;
+        if let Some(root) = checker_root {
+            let core = engine.finish_root(root)?;
+            let compiled = crate::program::assemble_core_for_version(arena, core, target)?;
+            postcondition.as_mut().unwrap().flat =
+                flat::encode(compiled.program).map_err(|e| Error::Encoding(e.to_string()))?;
+        }
         programs.push(ProofProgram {
             module: module.name.to_owned(),
             name: proof.name.value.to_owned(),
             expect: proof.expect,
             domains,
             flat: flat::encode(compiled.program).map_err(|e| Error::Encoding(e.to_string()))?,
+            postcondition,
             plutus_version: version,
         });
     }

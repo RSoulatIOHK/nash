@@ -76,11 +76,48 @@ async fn bundled_base_vesting_artifacts_execute_all_ledger_cases() {
             output.module
         );
         let parameterized = output.module == "VestingParam";
+        let applied = if parameterized {
+            program.apply(&arena, Term::integer_from(&arena, 5))
+        } else {
+            program
+        };
+        for malformed in [
+            PlutusData::integer_from(&arena, 0),
+            PlutusData::constr(&arena, 0, &[]),
+            PlutusData::constr(&arena, 1, &[]),
+        ] {
+            assert!(
+                applied
+                    .apply(&arena, Term::data(&arena, malformed))
+                    .eval(&arena)
+                    .term
+                    .is_err(),
+                "{}: malformed context accepted",
+                output.module
+            );
+        }
         for (name, deadline, redeemer, signer, expected) in [
             ("claim after deadline", 10, 0, &b""[..], true),
             ("claim before deadline", 30, 0, &b""[..], false),
+            (
+                "claim exactly at deadline",
+                if parameterized { 15 } else { 20 },
+                0,
+                &b""[..],
+                false,
+            ),
+            (
+                "claim just after deadline",
+                if parameterized { 14 } else { 19 },
+                0,
+                &b""[..],
+                true,
+            ),
+            ("claim with negative deadline", -100, 0, &b""[..], true),
             ("cancel signed by owner", 10, 1, &[0xaa][..], true),
             ("cancel unsigned", 10, 1, &b""[..], false),
+            ("cancel signed by another key", 10, 1, &[0xcc][..], false),
+            ("cancel ignores deadline", 100, 1, &[0xaa][..], true),
         ] {
             let datum = PlutusData::constr(
                 &arena,
