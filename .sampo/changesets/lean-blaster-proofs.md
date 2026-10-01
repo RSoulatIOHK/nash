@@ -28,3 +28,8 @@ Represent proofs with dedicated source and canonical AST types, symbolic-domain
 binders, and distinct execution and successful-return obligations. Reject proof
 budgets during parsing and report proof-specific domain, expectation and
 postcondition errors before code generation.
+
+Add independent compilation contracts for all 101 builtins and all application
+prefixes. Export kernel-checked syntax certificates and universal CEK equality
+corollaries for the 91 builtins supported by pinned PlutusCoreBlaster. Document
+the ten missing array/value models and the translation-validation scope.

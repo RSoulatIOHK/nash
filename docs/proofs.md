@@ -177,6 +177,14 @@ cross this boundary yet. `fail` and `fail once` modifiers are rejected for
 statements does not select partial correctness: only the direct body call is
 recognized. Outside that position it is an ordinary strict assertion helper.
 
+## Compiler validation
+
+A separate [builtin compilation suite](builtin-compilation.md) validates all
+101 builtin entries across 283 reference/application forms. Its Lean kernel
+certificates establish syntax equality and, for 91 modeled builtins, equality
+of CEK states for arbitrary arguments and fuel. This uses an independent UPLC
+reference rather than a Nash postcondition compiled through the same backend.
+
 ## Coverage of existing tests
 
 The existing Base fixtures now include 15 proof declarations alongside their
