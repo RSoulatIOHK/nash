@@ -177,67 +177,6 @@ cross this boundary yet. `fail` and `fail once` modifiers are rejected for
 statements does not select partial correctness: only the direct body call is
 recognized. Outside that position it is an ordinary strict assertion helper.
 
-## Builtin semantic specifications
-
-The [builtin proof project](../proofs/README.md) contains one Nash file per
-builtin and 324 readable obligations: algebraic laws, unbounded integer behavior,
-conversion roundtrips, boundary cases and invalid-input rejection. Its explicit
-verification snapshot records 64 SMT-verified obligations and all remaining
-limitations. The standard regression executes the actual source obligations,
-requires nonvacuous partial-correctness samples, and rejects deliberate opcode,
-argument-order, wrap and saturation mutations. This suite also exposed and guards
-the local evaluator's index and shift fixes.
-
-## Compiler validation
-
-A separate [builtin compilation suite](builtin-compilation.md) validates all
-101 builtin entries across 283 reference/application forms. Its Lean kernel
-certificates establish syntax equality and, for 91 modeled builtins, equality
-of CEK states for arbitrary arguments and fuel. This uses an independent UPLC
-reference rather than a Nash postcondition compiled through the same backend.
-
-## Coverage of existing tests
-
-The existing Base fixtures now include 15 proof declarations alongside their
-runtime checks. They use the actual bundled functions and compile through the
-same backend as validators. The three fixtures have also been formatted with
-`nash format`.
-
-| Fixture | Proof coverage | Current verification |
-|---|---|---|
-| `DataConversions.nash` | arbitrary integer, Boolean and byte roundtrips; optional integer decoding; malformed scalar encodings | all seven verified with 500 execution steps |
-| `Equality.nash` | Boolean equality, integer comparison, antisymmetry, min/max partition | Boolean equality verified; three integer obligations currently time out |
-| `IntegerMath.nash` | adjacent-square root specification; greatest-common-divisor and least-common-multiple divisibility specifications; negative square-root rejection | compile/export checked; symbolic execution currently times out |
-
-The gcd and lcm specifications quantify over an additional candidate divisor or
-multiple. They use arithmetic divisibility, not another call to the algorithm
-under verification. Existing oracle examples, finite-grid tests, UTF-8 cases,
-collection tests and cross-language Cardano goldens remain active while the
-more expensive obligations need backend improvements.
-
-The real `Vesting` and `VestingParam` examples also have partial-correctness
-proofs over `Proof.spendingV3`: accepting a ledger-valid context must imply the
-claim deadline or owner-signature policy. They use the existing unchecked
-datum/redeemer casts and do not establish full application encoding validation. Both export successfully; verification
-currently times out. Their serialized-artifact tests now cover exact deadlines,
-just-after deadlines, negative deadlines, different signers, cancellation after
-the deadline, and malformed outer contexts. Artifact encoding, traces, budgets
-and optimized/unoptimized comparisons remain runtime checks.
-
-The default optional regression suite runs the eight verified conversion/Boolean
-obligations directly from their existing fixture files:
-
-```sh
-NASH_PROOF_LEAN_PROJECT=/path/to/prebuilt/lean-project \
-    cargo test -p nash-driver --test proofs live_existing_test_proofs -- --ignored
-```
-
-Use `NASH_PROOF_MATCH=Equality` or `NASH_PROOF_MATCH=IntegerMath` to attempt the
-expensive candidates; `NASH_PROOF_MATCH=/` selects every fixture obligation.
-`NASH_PROOF_FUEL` overrides the default 500 execution steps. Unverified results
-fail the test. This optional suite requires Lean and Z3; regular workspace tests
-always type-check and compile/export all 15 declarations.
-
 ## Command and generated artifacts
 
 ```sh

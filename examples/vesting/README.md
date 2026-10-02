@@ -26,18 +26,3 @@ The codegen snapshots and serialized artifact tests apply exactly one context
 and exercise successful and failed claims and cancellations. The snapshots
 compare unoptimized and optimized Core/UPLC and execution outcomes. Budget
 regressions run separately in `tools/optimizer-perf`.
-
-Both validators include a `proof` block for partial correctness: every successful
-return within the execution limit must satisfy the deadline or owner-signature
-policy. `Proof.spendingV3` quantifies over CardanoLedgerApiBlaster's ledger-valid
-spending contexts. These are candidate obligations: export and type checking
-pass, but the current symbolic evaluator times out during verification.
-
-```sh
-nash proof examples/vesting --emit-only
-nash proof examples/vesting --fuel 1000 --postcondition-fuel 1500
-```
-
-The runtime suite retains artifact and optimizer checks and adds exact-deadline,
-just-after-deadline, negative-deadline, wrong-signer and malformed-context cases.
-See [proof semantics and current coverage](../../docs/proofs.md).
